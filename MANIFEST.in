@@ -1,0 +1,2 @@
+include README.txt
+include autospec/global_config/*

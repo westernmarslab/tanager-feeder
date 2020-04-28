@@ -1,0 +1,8 @@
+local_config/
+__pycache__/
+not__init__.py
+dist/
+build/
+delme/
+AutoSpec.egg-info/
+

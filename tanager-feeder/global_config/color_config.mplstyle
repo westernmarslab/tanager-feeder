@@ -1,0 +1,21 @@
+lines.color: lightgray
+patch.edgecolor: lightgray
+text.color: lightgray
+
+axes.facecolor: 333333
+axes.edgecolor: lightgray
+axes.labelcolor: lightgray
+
+xtick.color: white
+ytick.color: white
+
+grid.color: darkgray
+
+figure.facecolor: 333333
+figure.edgecolor: 333333
+
+savefig.facecolor: 333333
+savefig.edgecolor: 333333
+
+ 
+
