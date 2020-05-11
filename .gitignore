@@ -5,4 +5,5 @@ dist/
 build/
 delme/
 AutoSpec.egg-info/
-
+.project
+.pydevproject

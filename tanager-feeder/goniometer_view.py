@@ -1,9 +1,10 @@
 
 #I don't want pygame to print a welcome message when it loads.
-import contextlib
-with contextlib.redirect_stdout(None):
-    import pygame
-
+# import contextlib
+# with contextlib.redirect_stdout(None):
+#     import pygame
+import pathlib, pygame
+print(pathlib.Path(pygame.__file__).resolve().parent)
 import threading
 from threading import Lock
 import time
@@ -11,6 +12,7 @@ import numpy as np
 from tkinter import *
 import os
 import tkinter as tk
+import math
 
 #Animated graphic of goniometer
 class GoniometerView():
@@ -27,14 +29,14 @@ class GoniometerView():
         self.double_embed=Frame(self.embed,width=self.width,height=self.height)
         self.double_embed.pack(fill=BOTH,expand=True)
         
-        
         self.notebook.add(self.embed,text='Goniometer view')
         
         self.master.update()
         
         os.environ['SDL_WINDOWID'] = str(self.double_embed.winfo_id())
-        if self.controller.opsys=='Windows':
-            os.environ['SDL_VIDEODRIVER'] = 'windib'
+#        Needed for pygame 1.9.6, breaks 2.0.0.dev8
+#         if self.controller.opsys=='Windows':
+#             os.environ['SDL_VIDEODRIVER'] = 'windib'
         self.screen = pygame.display.set_mode((self.width,self.height))
         
         self.light=pygame.Rect(30,30,60,60)
@@ -44,26 +46,101 @@ class GoniometerView():
         self.l_up=False
         self.current_sample=''
         
+        self.wireframes = {}
+        self.displayNodes = True
+        self.displayEdges = True
+        self.nodeColour = (255,255,255)
+        self.edgeColour = (200,200,200)
+        self.nodeRadius = 4
+        self.define_wireframes()
         pygame.init()
 
         
     def tab_switch(self,event):
-        
         self.master.update()
         os.environ['SDL_WINDOWID'] = str(self.double_embed.winfo_id())
-        if self.controller.opsys=='Windows':
-            os.environ['SDL_VIDEODRIVER'] = 'windib'
+#        Needed for pygame 1.9.6, breaks 2.0.0.dev8
+#         if self.controller.opsys=='Windows':
+#             os.environ['SDL_VIDEODRIVER'] = 'windib'
         self.flip()
         
     def flip(self,event=None):
-
         pygame.display.update()
         pygame.display.flip()
         
-
+    def define_wireframes(self):
+        i_wireframe = Wireframe()
+        e_wireframe=Wireframe()
         
-    #draws everything not just one circle
-    def draw_circle(self,width,height):
+        i_nodes=[]
+        e_nodes=[]
+        
+        for angle in np.arange(0,math.pi,0.1):
+            x=math.cos(angle)
+            y=-math.sin(angle)
+            i_nodes.append((x,y,0))
+            if angle<math.pi/2:
+                e_nodes.append((x,y,0))
+                
+        x=math.cos(math.pi)
+        y=-math.sin(math.pi)
+        i_nodes.append((x,y,0))
+        i_wireframe.add_nodes(i_nodes)
+        
+        x=math.cos(math.pi/2)
+        y=-math.sin(math.pi/2)
+        e_nodes.append((x,y,0))
+        e_wireframe.add_nodes(e_nodes)
+        
+        i_edges=[]
+        e_edges=[]
+        
+        for n in range(len(i_nodes)):
+            if n<len(i_nodes)-1:
+                i_edges.append((n, n+1))
+            if n<len(e_nodes)-1:
+                e_edges.append((n,n+1))
+                
+        i_wireframe.add_edges(i_edges)
+        e_wireframe.add_edges(e_edges)
+        
+        self.wireframes['i']=i_wireframe
+        self.wireframes['e']=e_wireframe
+        
+    def draw_3D_goniometer(self, width, height):
+        self.width=width
+        self.height=height
+        self.char_len=self.height #characteristic length we use to scale drawings
+        scale=1.12
+        if self.width-120<self.height:
+            self.char_len=self.width-120
+            
+        pivot = (int(self.width/2),int(0.8*self.height),0)
+        light_len = int(5*self.char_len/8)
+        
+        i_radius=int(self.char_len/3)#250
+        e_radius=int(i_radius*0.75)
+        
+        self.wireframes['i'].set_scale(i_radius)
+        self.wireframes['e'].set_scale(e_radius)
+
+        self.screen.fill(pygame.Color(self.controller.bg))
+        
+        
+        for wireframe in self.wireframes.values():
+            wireframe.move_to(pivot)
+            if self.displayEdges:
+                for edge in wireframe.edges:
+                    pygame.draw.aaline(self.screen, self.edgeColour, (edge.start.x, edge.start.y), (edge.stop.x, edge.stop.y), 1)
+            if self.displayNodes:
+                for node in wireframe.nodes:
+                    pygame.draw.circle(self.screen, self.nodeColour, (int(node.x), int(node.y)), self.nodeRadius, 0)
+        
+    #draws the side view of the goniometer
+    def draw_side_view(self,width,height):
+        self.draw_3D_goniometer(width, height)
+        return 
+    
         self.width=width
         self.height=height
         self.char_len=self.height
@@ -129,15 +206,16 @@ class GoniometerView():
         self.screen.fill(pygame.Color(self.controller.bg))
         
         #Draw goniometer
-        pygame.draw.circle(self.screen, pygame.Color('darkgray'), pivot, back_radius+border_thickness)
-        pygame.draw.circle(self.screen, (0,0,0), pivot, back_radius)
+        #pygame.draw.circle(self.screen, pygame.Color('darkgray'), pivot, back_radius+border_thickness, 3)
+        pygame.draw.arc(self.screen, pygame.Color('darkgray'), [pivot[0]-back_radius, pivot[1]-back_radius, 2*back_radius, 2*back_radius], 0,3.14159, 3)
+        #pygame.draw.circle(self.screen, (0,0,0), pivot, back_radius)
         pygame.draw.rect(self.screen, pygame.Color(self.controller.bg),(pivot[0]-back_radius,pivot[1]+int(self.char_len/10-5),2*back_radius,2*back_radius))
-        pygame.draw.rect(self.screen, (0,0,0),(pivot[0]-back_radius,pivot[1],2*back_radius,int(self.char_len/6.5)))
+        #pygame.draw.rect(self.screen, (0,0,0),(pivot[0]-back_radius,pivot[1],2*back_radius,int(self.char_len/6.5)))
         
         #draw border around bottom part of goniometer
-        pygame.draw.line(self.screen,pygame.Color('darkgray'),(pivot[0]-back_radius-1,pivot[1]),(pivot[0]-back_radius-1,pivot[1]+int(self.char_len/6.5)))
-        pygame.draw.line(self.screen,pygame.Color('darkgray'),(pivot[0]+back_radius,pivot[1]),(pivot[0]+back_radius,pivot[1]+int(self.char_len/6.5)))
-        pygame.draw.line(self.screen,pygame.Color('darkgray'),(pivot[0]-back_radius,pivot[1]+int(self.char_len/6.5)),(pivot[0]+back_radius,pivot[1]+int(self.char_len/6.5)))
+        pygame.draw.line(self.screen,pygame.Color('darkgray'),(pivot[0]-back_radius-1,pivot[1]),(pivot[0]-back_radius-1,pivot[1]+int(self.char_len/6.5)), 3)
+        pygame.draw.line(self.screen,pygame.Color('darkgray'),(pivot[0]+back_radius,pivot[1]),(pivot[0]+back_radius,pivot[1]+int(self.char_len/6.5)), 3)
+        pygame.draw.line(self.screen,pygame.Color('darkgray'),(pivot[0]-back_radius,pivot[1]+int(self.char_len/6.5)),(pivot[0]+back_radius,pivot[1]+int(self.char_len/6.5)), 3)
 
         
         #draw light arm
@@ -170,12 +248,12 @@ class GoniometerView():
                 time.sleep(0.16)
             else:
                 time.sleep(.005)
-            self.draw_circle(self.width,self.height)
+            self.draw_side_view(self.width,self.height)
             self.flip()
             
     def set_current_sample(self, sample):
             self.current_sample=sample
-            self.draw_circle(self.width,self.height)
+            self.draw_side_view(self.width,self.height)
             self.flip()
             
     def move_detector(self, theta,config=False):
@@ -185,12 +263,85 @@ class GoniometerView():
                 time.sleep(0.16)
             else:
                 time.sleep(.005)
-            self.draw_circle(self.width,self.height)
+            self.draw_side_view(self.width,self.height)
             self.flip()
                 
     def quit(self):
         pygame.display.quit()
         pygame.quit()
+       
+#see reference: http://www.petercollingridge.co.uk/tutorials/3d/pygame/nodes-and-edges/ 
+class Node:
+    def __init__(self, coordinates):
+        self.x = coordinates[0]
+        self.y = coordinates[1]
+        self.z = coordinates[2]
         
+class Edge:
+    def __init__(self, start, stop):
+        self.start = start
+        self.stop  = stop
         
+class Wireframe:
+    def __init__(self):
+        self.nodes = []
+        self.edges = []
+        self.center=(0,0,0)
+        self.scale=1
+        
+    def set_center(self, center):
+        self.center=center
+        
+    def add_nodes(self, nodeList):
+        for node in nodeList:
+            self.nodes.append(Node(node))
+            
+    def add_edges(self, edgeList):
+        for (start, stop) in edgeList:
+            self.edges.append(Edge(self.nodes[start], self.nodes[stop]))
 
+    def output_nodes(self):
+        print("\n --- Nodes --- ")
+        for i, node in enumerate(self.nodes):
+            print(" %d: (%.2f, %.2f, %.2f)" % (i, node.x, node.y, node.z))
+                
+    def output_edges(self):
+        print("\n --- Edges --- ")
+        for i, edge in enumerate(self.edges):
+            print(" %d: (%.2f, %.2f, %.2f)" % (i, edge.start.x, edge.start.y, edge.start.z))
+            print("to (%.2f, %.2f, %.2f)" % (edge.stop.x,  edge.stop.y,  edge.stop.z))
+            
+    def scale(self, scale):
+        #Scale the wireframe from the centre of the screen.
+        for node in self.nodes:
+            node.x = self.center[0] + scale * (node.x - self.center[0])
+            node.y = self.center[1] + scale * (node.y - self.center[1])
+            node.z *= scale
+            
+    def translate(self, axis, d):
+    #Translate each node of a wireframe by d along a given axis.
+        if axis in ['x', 'y', 'z']:
+            for node in self.nodes:
+                setattr(node, axis, getattr(node, axis) + d)
+                
+    def move_to(self, center):
+        print(self.center)
+        diff={}
+        diff['x']=center[0]-self.center[0]
+        diff['y']=center[1]-self.center[1]
+        diff['z']=center[2]-self.center[2]
+        for node in self.nodes:
+            for axis in ['x', 'y', 'z']:
+                setattr(node, axis, getattr(node, axis) + diff[axis])
+        self.center=center
+        print(self.center)
+        
+    def set_scale(self, scale):
+        diff=scale/self.scale
+        for node in self.nodes:
+            node.x = self.center[0] + diff*(node.x - self.center[0])
+            node.y = self.center[1] + diff*(node.y - self.center[1])
+            node.z = self.center[2] + diff*(node.z - self.center[2])
+        self.scale=scale
+        
+        

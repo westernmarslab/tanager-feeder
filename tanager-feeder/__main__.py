@@ -38,6 +38,7 @@ import shutil
 
 #Which spectrometer computer are you using? This should probably be desktop, but could be 'new' for the new lappy or 'old' for the ancient laptop.
 computer='desktop'
+computer='new'
 
 #Figure out where this file is hanging out and tell python to look there for custom modules. This will depend on what operating system you are using.
 
@@ -136,7 +137,7 @@ elif computer=='desktop':
     PI_BUFFER=20
     server='marsinsight' #new computer
 
-pi_server='hozapi'
+pi_server='raspberrypi'
 spec_share='specshare'
 spec_share_Mac='SpecShare'
 
@@ -148,8 +149,6 @@ if opsys=='Linux':
     import ctypes
     x11 = ctypes.cdll.LoadLibrary('libX11.so')
     x11.XInitThreads()
-    # except:
-    #     print("Warning: failed to XInitThreads()")
     
     home_loc+='/'
     spec_share_loc='/run/user/1000/gvfs/smb-share:server='+server+',share='+spec_share+'/'
@@ -2321,7 +2320,7 @@ class Controller():
                 self.log('Error: Not in automatic mode')
                 return False
             try:
-                param=cmd.split('move_tray(')[1][:-1]
+                param=cmd.split('move_tray(')[1].strip(')')
             except:
                 self.log('Error: Could not parse command '+cmd)
                 self.queue=[]
@@ -2349,6 +2348,7 @@ class Controller():
                     return False
             else:
                 pos=param
+                print(pos)
                 alternatives=['1','2','3','4','5'] #These aren't how sample positions are specified in available_sample_positions (which has Sample 1, etc) but we'll accept them.
                 if pos in alternatives:
                     pos=self.available_sample_positions[alternatives.index(pos)]
@@ -3912,7 +3912,7 @@ class Controller():
                 thread = Thread(target =self.refresh) #I don't understand why this is needed, but things don't seem to get drawn right without it. 
                 thread.start()
                 
-                self.goniometer_view.draw_circle(window.width-self.control_frame.winfo_width()-2,goniometer_height-10)
+                self.goniometer_view.draw_side_view(window.width-self.control_frame.winfo_width()-2,goniometer_height-10)
                 self.goniometer_view.flip()
                 self.master.update()
             except AttributeError:
@@ -5888,8 +5888,10 @@ class PiListener(Listener):
                 try:
                     os.remove(self.read_command_loc+cmdfile)
                 except:
-                    print('failed to remove '+self.read_command_loc+cmdfile)
-                    pass #happens if the file is still in use, e.g. not done writing
+                    #happens if the file is still in use, e.g. not done writing
+                    if cmdfile!='delme':
+                        print('failed to remove '+self.read_command_loc+cmdfile)
+                  
                 if cmdfile not in self.cmdfiles0 and cmdfile !='delme':
                     cmd, params=decrypt(cmdfile)
 
