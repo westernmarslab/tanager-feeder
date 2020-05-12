@@ -104,6 +104,13 @@ class GoniometerView():
         i_wireframe.add_edges(i_edges)
         e_wireframe.add_edges(e_edges)
         
+        i_wireframe.az=90
+        e_wireframe.az=90
+        
+
+        #i_wireframe.set_elevation(0)
+        e_wireframe.set_azimuth(0)
+        
         self.wireframes['i']=i_wireframe
         self.wireframes['e']=e_wireframe
         
@@ -123,6 +130,7 @@ class GoniometerView():
         
         self.wireframes['i'].set_scale(i_radius)
         self.wireframes['e'].set_scale(e_radius)
+
 
         self.screen.fill(pygame.Color(self.controller.bg))
         
@@ -288,6 +296,8 @@ class Wireframe:
         self.edges = []
         self.center=(0,0,0)
         self.scale=1
+        self.az=0
+        self.el=0
         
     def set_center(self, center):
         self.center=center
@@ -325,7 +335,6 @@ class Wireframe:
                 setattr(node, axis, getattr(node, axis) + d)
                 
     def move_to(self, center):
-        print(self.center)
         diff={}
         diff['x']=center[0]-self.center[0]
         diff['y']=center[1]-self.center[1]
@@ -334,7 +343,6 @@ class Wireframe:
             for axis in ['x', 'y', 'z']:
                 setattr(node, axis, getattr(node, axis) + diff[axis])
         self.center=center
-        print(self.center)
         
     def set_scale(self, scale):
         diff=scale/self.scale
@@ -343,5 +351,40 @@ class Wireframe:
             node.y = self.center[1] + diff*(node.y - self.center[1])
             node.z = self.center[2] + diff*(node.z - self.center[2])
         self.scale=scale
+        
+    def rotate_az(self, degrees):
+        radians=degrees/180*math.pi
+        for node in self.nodes:
+            x      = node.x - self.center[0]
+            z      = node.z - self.center[2]
+            d      = math.hypot(x, z)
+            theta  = math.atan2(x, z) + radians
+            node.z = self.center[2] + d * math.cos(theta)
+            node.x = self.center[0] + d * math.sin(theta)
+            
+    def rotate_el(self, degrees):
+        radians=degrees/180*math.pi
+        for node in self.nodes:
+            y      = node.y - self.center[1]
+            z      = node.z - self.center[2]
+            d      = math.hypot(y, z)
+            theta  = math.atan2(y, z) + radians
+            node.z = self.center[2] + d * math.cos(theta)
+            node.y = self.center[1] + d * math.sin(theta)
+    
+    def set_azimuth(self, az):
+        diff=az-self.az
+        self.rotate_az(diff)
+        self.az=az
+        
+    def set_elevation(self, el):
+        print('set elevation to')
+        print(el)
+        az=self.az
+        self.set_azimuth(90)
+        diff=el-self.el
+        self.rotate_el(diff)
+        self.el=el
+        self.set_azimuth(az)
         
         

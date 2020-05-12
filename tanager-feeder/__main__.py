@@ -2309,7 +2309,6 @@ class Controller():
                 if len(self.queue)>0:
                     self.next_in_queue()
             except:
-                print('h!')
                 self.log('Error: could not parse command '+cmd)
                 self.queue=[]
                 self.script_running=False
@@ -2479,7 +2478,35 @@ class Controller():
                     self.queue=[]
                     self.script_running=False
                     return False
-
+        elif 'set_display' in cmd:
+            params=cmd.split('set_display(')[1].strip(')').split(',')
+            if len(params)!=3:
+                self.log(len(params))
+                self.log('Error: invalid geometry')
+                return 
+            for n, angle in enumerate(params[0:2]):
+                valid=validate_int_input(angle, 0, 90)
+                if not valid:
+                    print('foo')
+                    self.log('Error: invalid geometry')
+                    return 
+                else:
+                    params[n]=int(params[n])
+                    
+            valid=validate_int_input(params[2],0,180)
+            if not valid:
+                print(params[2])
+                self.log('Error: invalid geometry')
+                return 
+            else:
+                params[2]=int(params[2])
+            print(params)
+            self.goniometer_view.wireframes['i'].set_elevation(params[0])
+            self.goniometer_view.wireframes['i'].set_azimuth(params[2])
+            self.goniometer_view.wireframes['e'].set_elevation(params[1])
+            self.goniometer_view.draw_3D_goniometer(self.goniometer_view.width, self.goniometer_view.height)
+            self.goniometer_view.flip()
+            
         elif cmd=='end file':
             self.script_running=False
             self.queue=[]
