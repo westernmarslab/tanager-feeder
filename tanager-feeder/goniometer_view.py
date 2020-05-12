@@ -47,10 +47,11 @@ class GoniometerView():
         self.current_sample=''
         
         self.wireframes = {}
-        self.displayNodes = True
-        self.displayEdges = True
+        self.display_nodes = False
+        self.display_edges = True
+        self.display_faces=True
         self.nodeColour = (255,255,255)
-        self.edgeColour = (200,200,200)
+        self.edge_color = (200,200,200)
         self.nodeRadius = 4
         self.define_wireframes()
         pygame.init()
@@ -75,44 +76,71 @@ class GoniometerView():
         i_nodes=[]
         e_nodes=[]
         
-        for angle in np.arange(0,math.pi,0.1):
+        i_nodes.append((1,0.1, -0.1))
+        i_nodes.append((1,0.1, 0.1))
+        for angle in np.arange(0,math.pi,math.pi/30):
             x=math.cos(angle)
             y=-math.sin(angle)
-            i_nodes.append((x,y,0))
+            i_nodes.append((x,y,-0.1))
+            i_nodes.append((x,y,0.1))
             if angle<math.pi/2:
-                e_nodes.append((x,y,0))
+                e_nodes.append((x,y,-0.1))
+                e_nodes.append((x,y,0.1))
                 
         x=math.cos(math.pi)
         y=-math.sin(math.pi)
-        i_nodes.append((x,y,0))
+        i_nodes.append((x,y,-0.1))
+        i_nodes.append((x,y,0.1))
+        
+        i_nodes.append((-1,0.1, -0.1))
+        i_nodes.append((-1,0.1, 0.1))
+        
+        
         i_wireframe.add_nodes(i_nodes)
         
-        x=math.cos(math.pi/2)
-        y=-math.sin(math.pi/2)
-        e_nodes.append((x,y,0))
+#         x=math.cos(math.pi/2)
+#         y=-math.sin(math.pi/2)
+#         e_nodes.append((x,y,-0.1))
+#         e_nodes.append((x,y,0.1))
         e_wireframe.add_nodes(e_nodes)
         
         i_edges=[]
         e_edges=[]
-        
-        for n in range(len(i_nodes)):
-            if n<len(i_nodes)-1:
-                i_edges.append((n, n+1))
-            if n<len(e_nodes)-1:
-                e_edges.append((n,n+1))
+        print(len(i_nodes)/2)
+#         for n in range(int(len(i_nodes)/2)):
+#             i_edges.append((n, n+int(len(i_nodes)/2)))
+#             if n<len(e_nodes)/2:
+#                 e_edges.append((n, n+int(len(e_nodes)/2)))
+        for n in range(len(i_nodes)-2):
+            i_edges.append((n, n+2))
+            if n<len(e_nodes)-2:
+                e_edges.append((n, n+2))
                 
         i_wireframe.add_edges(i_edges)
         e_wireframe.add_edges(e_edges)
         
+        i_faces=[]
+        for n in range(len(i_nodes)-3):
+            if n%2==0:
+                i_faces.append((n, n+1, n+3, n+2))
+        i_wireframe.add_faces(i_faces)
+        
+        e_faces=[]
+        for n in range(len(e_nodes)-3):
+            if n%2==0:
+                e_faces.append((n, n+1, n+3, n+2))
+        e_wireframe.add_faces(e_faces)
+            
+        
         i_wireframe.az=90
         e_wireframe.az=90
-        
 
         #i_wireframe.set_elevation(0)
         e_wireframe.set_azimuth(0)
-        
-        self.wireframes['i']=i_wireframe
+        #e_wireframe.home_azimuth=90
+
         self.wireframes['e']=e_wireframe
+        self.wireframes['i']=i_wireframe
         
     def draw_3D_goniometer(self, width, height):
         self.width=width
@@ -137,116 +165,155 @@ class GoniometerView():
         
         for wireframe in self.wireframes.values():
             wireframe.move_to(pivot)
-            if self.displayEdges:
+            if self.display_edges:
+                shade=(200,200,200)
+                slopes=[]
+#                 for edge in wireframe.edges:
+#                     try:
+#                         slopes.append(edge.delta_y*edge.delta_y/(edge.delta_x*edge.delta_x+edge.delta_z*edge.delta_z))
+#                     except:
+#                         pass
+#                 for edge in wireframe.edges:
+#                     try:
+#                         slope=edge.delta_y*edge.delta_y/(edge.delta_x*edge.delta_x+edge.delta_z*edge.delta_z)
+#                         scale=1-slope/max(slopes)
+#                     except:
+#                         scale=0
+#                         print('vertical')
                 for edge in wireframe.edges:
-                    pygame.draw.aaline(self.screen, self.edgeColour, (edge.start.x, edge.start.y), (edge.stop.x, edge.stop.y), 1)
-            if self.displayNodes:
+                    slopes.append(abs(edge.delta_y))
+                for edge in wireframe.edges:
+                    slope=abs(edge.delta_y)
+                    scale=1-slope/max(slopes)
+                    shade=(100+100*scale, 100+100*scale, 100+100*scale)
+                    #print(shade)
+                    pygame.draw.line(self.screen, shade, (edge.start.x, edge.start.y), (edge.stop.x, edge.stop.y), 6)
+            if self.display_nodes:
                 for node in wireframe.nodes:
                     pygame.draw.circle(self.screen, self.nodeColour, (int(node.x), int(node.y)), self.nodeRadius, 0)
+            if self.display_faces:
+                shade=(200,200,200)
+                light=np.array([-0.2,-1,-0.2])
+                slopes=[]
+                for face in wireframe.faces:
+                    slopes.append(face.delta_y*face.delta_y/(face.delta_x*face.delta_x+face.delta_z*face.delta_z))
+                    
+                for face in wireframe.faces:
+                    nodes=face.nodes
+                    min_light=100
+                    theta = np.dot(face.normal, light)
+                    print(theta)
+                    theta=theta*50
+                    if theta < 0:
+                        shade = (min_light,min_light,min_light)
+                    else:
+                        shade = (theta*100+min_light,theta*100+min_light,theta*100+min_light)
+
+                    pygame.draw.polygon(self.screen, shade, [(node.x, node.y) for node in nodes], 0)
         
     #draws the side view of the goniometer
     def draw_side_view(self,width,height):
         self.draw_3D_goniometer(width, height)
         return 
-    
-        self.width=width
-        self.height=height
-        self.char_len=self.height
-        scale=1.12
-        if self.width-120<self.height:
-            self.char_len=self.width-120
-        try:
-            i_str='i='+str(int(self.theta_l))
-            e_str='e='+str(int(self.theta_d))
-            sample_str=self.current_sample
-
-            
-            text_size=np.max([int(self.char_len/18),20])
-            largeText = pygame.font.Font('freesansbold.ttf',text_size)
-            sample_font=pygame.font.Font('freesansbold.ttf',int(0.75*text_size))
-            i_text=largeText.render(i_str, True, pygame.Color(self.controller.textcolor))
-            e_text=largeText.render(e_str, True, pygame.Color(self.controller.textcolor))
-            sample_text=sample_font.render(sample_str, True, pygame.Color(self.controller.textcolor))
-        except:
-            print('no pygame font')
-        
-        #pivot point of goniometer arms. Used as reference for drawing everyting else
-        pivot = (int(self.width/2),int(0.8*self.height))
-        light_len = int(5*self.char_len/8)#300
-        light_width=24  #needs to be an even number
-        
-        back_radius=int(self.char_len/2)#250
-        border_thickness=1
-        
-        x_l = pivot[0] + np.sin(np.radians(self.theta_l)) * light_len
-        x_l_text=pivot[0] + np.sin(np.radians(self.theta_l)) * (light_len/scale)
-        y_l = pivot[1] - np.cos(np.radians(self.theta_l)) * light_len
-        y_l_text = pivot[1] - np.cos(np.radians(self.theta_l)) * light_len*scale-abs(np.sin(np.radians(self.theta_l))*light_len/12)
-        
-        detector_len=light_len
-        detector_width=light_width
-        x_d = pivot[0] + np.sin(np.radians(self.theta_d)) * detector_len
-        x_d_text = pivot[0] + np.sin(np.radians(self.theta_d)) * (detector_len/scale)
-        y_d = pivot[1] - np.cos(np.radians(self.theta_d)) * detector_len
-        y_d_text = pivot[1] - np.cos(np.radians(self.theta_d)) * detector_len*scale-abs(np.sin(np.radians(self.theta_d))*detector_len/12)
-        if np.abs(y_d_text-y_l_text)<self.char_len/30 and np.abs(x_d_text-x_l_text)<self.char_len/15:
-            if self.d_up:
-                y_d_text-=self.char_len/20
-            elif self.l_up:
-                y_l_text-=self.char_len/20
-            elif y_d_text<y_l_text:
-                y_d_text-=self.char_len/20
-                self.d_up=True
-            else:
-                self.l_up=True
-                y_l_text-=self.char_len/20
-        else:
-            self.d_up=False
-            self.l_up=False
-        
-        #deltas to give arm width.
-        delta_y_l=light_width/2*np.sin(np.radians(self.theta_l))
-        delta_x_l=light_width/2*np.cos(np.radians(self.theta_l))
-        
-        delta_y_d=detector_width/2*np.sin(np.radians(self.theta_d))
-        delta_x_d=detector_width/2*np.cos(np.radians(self.theta_d))
-        
-        self.screen.fill(pygame.Color(self.controller.bg))
-        
-        #Draw goniometer
-        #pygame.draw.circle(self.screen, pygame.Color('darkgray'), pivot, back_radius+border_thickness, 3)
-        pygame.draw.arc(self.screen, pygame.Color('darkgray'), [pivot[0]-back_radius, pivot[1]-back_radius, 2*back_radius, 2*back_radius], 0,3.14159, 3)
-        #pygame.draw.circle(self.screen, (0,0,0), pivot, back_radius)
-        pygame.draw.rect(self.screen, pygame.Color(self.controller.bg),(pivot[0]-back_radius,pivot[1]+int(self.char_len/10-5),2*back_radius,2*back_radius))
-        #pygame.draw.rect(self.screen, (0,0,0),(pivot[0]-back_radius,pivot[1],2*back_radius,int(self.char_len/6.5)))
-        
-        #draw border around bottom part of goniometer
-        pygame.draw.line(self.screen,pygame.Color('darkgray'),(pivot[0]-back_radius-1,pivot[1]),(pivot[0]-back_radius-1,pivot[1]+int(self.char_len/6.5)), 3)
-        pygame.draw.line(self.screen,pygame.Color('darkgray'),(pivot[0]+back_radius,pivot[1]),(pivot[0]+back_radius,pivot[1]+int(self.char_len/6.5)), 3)
-        pygame.draw.line(self.screen,pygame.Color('darkgray'),(pivot[0]-back_radius,pivot[1]+int(self.char_len/6.5)),(pivot[0]+back_radius,pivot[1]+int(self.char_len/6.5)), 3)
-
-        
-        #draw light arm
-        points=((pivot[0]-delta_x_l,pivot[1]-delta_y_l),(x_l-delta_x_l,y_l-delta_y_l),(x_l+delta_x_l,y_l+delta_y_l),(pivot[0]+delta_x_l,pivot[1]+delta_y_l))
-        pygame.draw.polygon(self.screen, pygame.Color('black'), points)
-        pygame.draw.polygon(self.screen, pygame.Color('darkgray'), points, border_thickness)
-        
-        #draw detector arm
-        points=((pivot[0]-delta_x_d,pivot[1]-delta_y_d),(x_d-delta_x_d,y_d-delta_y_d),(x_d+delta_x_d,y_d+delta_y_d),(pivot[0]+delta_x_d,pivot[1]+delta_y_d))
-        pygame.draw.polygon(self.screen, pygame.Color('black'), points)
-        pygame.draw.polygon(self.screen, pygame.Color('darkgray'), points, border_thickness)
-
-        
-        
-        self.screen.blit(i_text,(x_l_text,y_l_text))
-        self.screen.blit(e_text,(x_d_text,y_d_text))
-        if self.current_sample=='WR':
-            self.screen.blit(sample_text,(pivot[0]-text_size, pivot[1]+text_size))
-        else:
-            self.screen.blit(sample_text,(pivot[0]-int(1.5*text_size), pivot[1]+text_size))
-        
-        #border around screen
-        pygame.draw.rect(self.screen,pygame.Color('darkgray'),(2,2,self.width-6,self.height+15),2)
+#     
+#         self.width=width
+#         self.height=height
+#         self.char_len=self.height
+#         scale=1.12
+#         if self.width-120<self.height:
+#             self.char_len=self.width-120
+#         try:
+#             i_str='i='+str(int(self.theta_l))
+#             e_str='e='+str(int(self.theta_d))
+#             sample_str=self.current_sample
+# 
+#             
+#             text_size=np.max([int(self.char_len/18),20])
+#             largeText = pygame.font.Font('freesansbold.ttf',text_size)
+#             sample_font=pygame.font.Font('freesansbold.ttf',int(0.75*text_size))
+#             i_text=largeText.render(i_str, True, pygame.Color(self.controller.textcolor))
+#             e_text=largeText.render(e_str, True, pygame.Color(self.controller.textcolor))
+#             sample_text=sample_font.render(sample_str, True, pygame.Color(self.controller.textcolor))
+#         except:
+#             print('no pygame font')
+#         
+#         #pivot point of goniometer arms. Used as reference for drawing everyting else
+#         pivot = (int(self.width/2),int(0.8*self.height))
+#         light_len = int(5*self.char_len/8)#300
+#         light_width=24  #needs to be an even number
+#         
+#         back_radius=int(self.char_len/2)#250
+#         border_thickness=1
+#         
+#         x_l = pivot[0] + np.sin(np.radians(self.theta_l)) * light_len
+#         x_l_text=pivot[0] + np.sin(np.radians(self.theta_l)) * (light_len/scale)
+#         y_l = pivot[1] - np.cos(np.radians(self.theta_l)) * light_len
+#         y_l_text = pivot[1] - np.cos(np.radians(self.theta_l)) * light_len*scale-abs(np.sin(np.radians(self.theta_l))*light_len/12)
+#         
+#         detector_len=light_len
+#         detector_width=light_width
+#         x_d = pivot[0] + np.sin(np.radians(self.theta_d)) * detector_len
+#         x_d_text = pivot[0] + np.sin(np.radians(self.theta_d)) * (detector_len/scale)
+#         y_d = pivot[1] - np.cos(np.radians(self.theta_d)) * detector_len
+#         y_d_text = pivot[1] - np.cos(np.radians(self.theta_d)) * detector_len*scale-abs(np.sin(np.radians(self.theta_d))*detector_len/12)
+#         if np.abs(y_d_text-y_l_text)<self.char_len/30 and np.abs(x_d_text-x_l_text)<self.char_len/15:
+#             if self.d_up:
+#                 y_d_text-=self.char_len/20
+#             elif self.l_up:
+#                 y_l_text-=self.char_len/20
+#             elif y_d_text<y_l_text:
+#                 y_d_text-=self.char_len/20
+#                 self.d_up=True
+#             else:
+#                 self.l_up=True
+#                 y_l_text-=self.char_len/20
+#         else:
+#             self.d_up=False
+#             self.l_up=False
+#         
+#         #deltas to give arm width.
+#         delta_y_l=light_width/2*np.sin(np.radians(self.theta_l))
+#         delta_x_l=light_width/2*np.cos(np.radians(self.theta_l))
+#         
+#         delta_y_d=detector_width/2*np.sin(np.radians(self.theta_d))
+#         delta_x_d=detector_width/2*np.cos(np.radians(self.theta_d))
+#         
+#         self.screen.fill(pygame.Color(self.controller.bg))
+#         
+#         #Draw goniometer
+#         #pygame.draw.circle(self.screen, pygame.Color('darkgray'), pivot, back_radius+border_thickness, 3)
+#         pygame.draw.arc(self.screen, pygame.Color('darkgray'), [pivot[0]-back_radius, pivot[1]-back_radius, 2*back_radius, 2*back_radius], 0,3.14159, 3)
+#         #pygame.draw.circle(self.screen, (0,0,0), pivot, back_radius)
+#         pygame.draw.rect(self.screen, pygame.Color(self.controller.bg),(pivot[0]-back_radius,pivot[1]+int(self.char_len/10-5),2*back_radius,2*back_radius))
+#         #pygame.draw.rect(self.screen, (0,0,0),(pivot[0]-back_radius,pivot[1],2*back_radius,int(self.char_len/6.5)))
+#         
+#         #draw border around bottom part of goniometer
+#         pygame.draw.line(self.screen,pygame.Color('darkgray'),(pivot[0]-back_radius-1,pivot[1]),(pivot[0]-back_radius-1,pivot[1]+int(self.char_len/6.5)), 3)
+#         pygame.draw.line(self.screen,pygame.Color('darkgray'),(pivot[0]+back_radius,pivot[1]),(pivot[0]+back_radius,pivot[1]+int(self.char_len/6.5)), 3)
+#         pygame.draw.line(self.screen,pygame.Color('darkgray'),(pivot[0]-back_radius,pivot[1]+int(self.char_len/6.5)),(pivot[0]+back_radius,pivot[1]+int(self.char_len/6.5)), 3)
+# 
+#         
+#         #draw light arm
+#         points=((pivot[0]-delta_x_l,pivot[1]-delta_y_l),(x_l-delta_x_l,y_l-delta_y_l),(x_l+delta_x_l,y_l+delta_y_l),(pivot[0]+delta_x_l,pivot[1]+delta_y_l))
+#         pygame.draw.polygon(self.screen, pygame.Color('black'), points)
+#         pygame.draw.polygon(self.screen, pygame.Color('darkgray'), points, border_thickness)
+#         
+#         #draw detector arm
+#         points=((pivot[0]-delta_x_d,pivot[1]-delta_y_d),(x_d-delta_x_d,y_d-delta_y_d),(x_d+delta_x_d,y_d+delta_y_d),(pivot[0]+delta_x_d,pivot[1]+delta_y_d))
+#         pygame.draw.polygon(self.screen, pygame.Color('black'), points)
+#         pygame.draw.polygon(self.screen, pygame.Color('darkgray'), points, border_thickness)
+# 
+#         
+#         
+#         self.screen.blit(i_text,(x_l_text,y_l_text))
+#         self.screen.blit(e_text,(x_d_text,y_d_text))
+#         if self.current_sample=='WR':
+#             self.screen.blit(sample_text,(pivot[0]-text_size, pivot[1]+text_size))
+#         else:
+#             self.screen.blit(sample_text,(pivot[0]-int(1.5*text_size), pivot[1]+text_size))
+#         
+#         #border around screen
+#         pygame.draw.rect(self.screen,pygame.Color('darkgray'),(2,2,self.width-6,self.height+15),2)
 
         
     def move_light(self, theta, config=False):
@@ -289,26 +356,50 @@ class Edge:
     def __init__(self, start, stop):
         self.start = start
         self.stop  = stop
+        self.delta_x=self.stop.x-self.start.x
+        self.delta_y=self.stop.y-self.start.y
+        self.delta_z=self.stop.z-self.start.z
+        
+class Face:
+    def __init__(self, node_list):
+        self.nodes=node_list
+        
+        self.delta_x=self.nodes[2].x-self.nodes[0].x
+        self.delta_y=self.nodes[2].y-self.nodes[0].y
+        self.delta_z=self.nodes[2].z-self.nodes[0].z
+        
+        v1=np.array([self.nodes[1].x-self.nodes[0].x, self.nodes[1].y-self.nodes[0].y, self.nodes[1].z-self.nodes[0].z])
+        v2=np.array([self.nodes[3].x-self.nodes[0].x, self.nodes[3].y-self.nodes[0].y, self.nodes[3].z-self.nodes[0].z])
+        self.normal=np.cross(v1,v2)
         
 class Wireframe:
     def __init__(self):
         self.nodes = []
         self.edges = []
+        self.faces=[]
         self.center=(0,0,0)
         self.scale=1
         self.az=0
         self.el=0
+        self.home_azimuth=90 #used for rotating
         
     def set_center(self, center):
         self.center=center
         
-    def add_nodes(self, nodeList):
-        for node in nodeList:
+    def add_nodes(self, node_list):
+        for node in node_list:
             self.nodes.append(Node(node))
             
-    def add_edges(self, edgeList):
-        for (start, stop) in edgeList:
+    def add_edges(self, edge_list):
+        for (start, stop) in edge_list:
             self.edges.append(Edge(self.nodes[start], self.nodes[stop]))
+            
+    def add_faces(self, face_list):
+        for corners in face_list:
+            node_list=[]
+            for index in corners:
+                node_list.append(self.nodes[index])
+            self.faces.append(Face(node_list))
 
     def output_nodes(self):
         print("\n --- Nodes --- ")
@@ -361,6 +452,7 @@ class Wireframe:
             theta  = math.atan2(x, z) + radians
             node.z = self.center[2] + d * math.cos(theta)
             node.x = self.center[0] + d * math.sin(theta)
+        self.az=self.az+degrees
             
     def rotate_el(self, degrees):
         radians=degrees/180*math.pi
@@ -378,11 +470,9 @@ class Wireframe:
         self.az=az
         
     def set_elevation(self, el):
-        print('set elevation to')
-        print(el)
         az=self.az
-        self.set_azimuth(90)
-        diff=el-self.el
+        self.set_azimuth(self.home_azimuth)
+        diff=self.el-el
         self.rotate_el(diff)
         self.el=el
         self.set_azimuth(az)

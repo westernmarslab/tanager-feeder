@@ -2485,9 +2485,8 @@ class Controller():
                 self.log('Error: invalid geometry')
                 return 
             for n, angle in enumerate(params[0:2]):
-                valid=validate_int_input(angle, 0, 90)
+                valid=validate_int_input(angle, -90, 90)
                 if not valid:
-                    print('foo')
                     self.log('Error: invalid geometry')
                     return 
                 else:
@@ -2502,8 +2501,22 @@ class Controller():
                 params[2]=int(params[2])
             print(params)
             self.goniometer_view.wireframes['i'].set_elevation(params[0])
-            self.goniometer_view.wireframes['i'].set_azimuth(params[2])
+            e_az=self.goniometer_view.wireframes['e'].az
+            self.goniometer_view.wireframes['i'].set_azimuth(e_az+params[2])
             self.goniometer_view.wireframes['e'].set_elevation(params[1])
+            self.goniometer_view.draw_3D_goniometer(self.goniometer_view.width, self.goniometer_view.height)
+            self.goniometer_view.flip()
+        elif 'rotate_display' in cmd:
+            angle=cmd.split('rotate_display(')[1].strip(')')
+            valid=validate_int_input(angle, -360, 360)
+            if not valid:
+                self.log('Error: invalid geometry')
+                return 
+            else:
+                angle=int(angle)
+                    
+            self.goniometer_view.wireframes['i'].rotate_az(angle)
+            self.goniometer_view.wireframes['e'].rotate_az(angle)
             self.goniometer_view.draw_3D_goniometer(self.goniometer_view.width, self.goniometer_view.height)
             self.goniometer_view.flip()
             
