@@ -240,7 +240,14 @@ def main_part_3():
         delme=os.listdir(pi_read_loc)
         print(str(len(delme))+' files to delete')
         for file in delme:
-            os.remove(pi_read_loc+file)
+            try:
+                os.remove(pi_read_loc+file)
+            except:
+                time.sleep(2)
+                try:
+                    os.remove(pi_read_loc+file)
+                except(FileNotFoundError):
+                    pass
     
     #Create a listener, which listens for commands, and a controller, which manages the model (which writes commands) and the view.
     spec_listener=SpecListener(spec_read_loc)
@@ -2381,7 +2388,6 @@ class Controller():
                 return False
                 
             if 'steps' in param:
-                print('yep here!')
                 try:
                     steps=int(param.split('=')[-1])
                     valid_steps=validate_int_input(steps,-1000,1000)
@@ -2481,12 +2487,13 @@ class Controller():
         elif 'set_display' in cmd:
             params=cmd.split('set_display(')[1].strip(')').split(',')
             if len(params)!=3:
-                self.log(len(params))
+                self.log(str(len(params)))
                 self.log('Error: invalid geometry')
                 return 
             for n, angle in enumerate(params[0:2]):
                 valid=validate_int_input(angle, -90, 90)
                 if not valid:
+                    print(angle)
                     self.log('Error: invalid geometry')
                     return 
                 else:
@@ -2506,6 +2513,7 @@ class Controller():
             self.goniometer_view.wireframes['i'].set_azimuth(e_az+params[2])
             self.goniometer_view.wireframes['light'].set_azimuth(e_az+params[2])
             self.goniometer_view.wireframes['e'].set_elevation(params[1])
+            self.goniometer_view.wireframes['detector'].set_elevation(params[1])
             self.goniometer_view.set_goniometer_tilt(20)
             
             self.goniometer_view.draw_3D_goniometer(self.goniometer_view.width, self.goniometer_view.height)
@@ -2523,6 +2531,7 @@ class Controller():
             self.goniometer_view.wireframes['i'].rotate_az(angle)
             self.goniometer_view.wireframes['light'].rotate_az(angle)
             self.goniometer_view.wireframes['e'].rotate_az(angle)
+            self.goniometer_view.wireframes['detector'].rotate_az(angle)
             self.goniometer_view.set_goniometer_tilt(20)
             
             self.goniometer_view.draw_3D_goniometer(self.goniometer_view.width, self.goniometer_view.height)
