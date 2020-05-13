@@ -54,6 +54,7 @@ class GoniometerView():
         self.edge_color = (200,200,200)
         self.nodeRadius = 4
         self.define_wireframes()
+        self.tilt=0 #tilt of entire goniometer
         pygame.init()
 
         
@@ -76,8 +77,8 @@ class GoniometerView():
         i_nodes=[]
         e_nodes=[]
         
-        i_nodes.append((1,0.1, -0.1))
-        i_nodes.append((1,0.1, 0.1))
+#         i_nodes.append((1,0.1, -0.1))
+#         i_nodes.append((1,0.1, 0.1))
         for angle in np.arange(0,math.pi,math.pi/30):
             x=math.cos(angle)
             y=-math.sin(angle)
@@ -92,8 +93,8 @@ class GoniometerView():
         i_nodes.append((x,y,-0.1))
         i_nodes.append((x,y,0.1))
         
-        i_nodes.append((-1,0.1, -0.1))
-        i_nodes.append((-1,0.1, 0.1))
+#         i_nodes.append((-1,0.1, -0.1))
+#         i_nodes.append((-1,0.1, 0.1))
         
         
         i_wireframe.add_nodes(i_nodes)
@@ -106,11 +107,7 @@ class GoniometerView():
         
         i_edges=[]
         e_edges=[]
-        print(len(i_nodes)/2)
-#         for n in range(int(len(i_nodes)/2)):
-#             i_edges.append((n, n+int(len(i_nodes)/2)))
-#             if n<len(e_nodes)/2:
-#                 e_edges.append((n, n+int(len(e_nodes)/2)))
+
         for n in range(len(i_nodes)-2):
             i_edges.append((n, n+2))
             if n<len(e_nodes)-2:
@@ -134,13 +131,101 @@ class GoniometerView():
         
         i_wireframe.az=90
         e_wireframe.az=90
-
-        #i_wireframe.set_elevation(0)
         e_wireframe.set_azimuth(0)
-        #e_wireframe.home_azimuth=90
 
         self.wireframes['e']=e_wireframe
         self.wireframes['i']=i_wireframe
+        
+        i_base_wireframe=Wireframe()
+        e_base_wireframe=Wireframe()
+        
+        i_base_nodes=[]
+        e_base_nodes=[]
+        
+        for angle in np.arange(0,math.pi*2,math.pi/30):
+            x1=math.cos(angle)*1.01
+            x2=math.cos(angle)*0.99
+            y=0
+            z1=math.sin(angle)*1.01
+            z2=math.sin(angle)*0.99
+            i_base_nodes.append((x1,y,z1))
+            i_base_nodes.append((x2,y,z2))
+            e_base_nodes.append((x1,y,z1))
+            e_base_nodes.append((x2,y,z2))
+            
+        i_base_wireframe.add_nodes(i_base_nodes)
+        e_base_wireframe.add_nodes(e_base_nodes)
+        
+        i_base_edges=[]
+        e_base_edges=[]
+        
+        for n in range(len(i_base_nodes)-2):
+            i_base_edges.append((n, n+2))
+            e_base_edges.append((n, n+2))
+        i_base_edges.append((-2,0))
+        e_base_edges.append((-2,0))
+        i_base_edges.append((-1,1))
+        e_base_edges.append((-1,1))
+        
+        #i_base_wireframe.add_edges(i_base_edges)
+        #e_base_wireframe.add_edges(e_base_edges)
+        
+        e_base_faces=[]
+        i_base_faces=[]
+        for n in range(len(e_base_nodes)-3):
+            if n%2==0:
+                i_base_faces.append((n, n+1, n+3, n+2))
+                e_base_faces.append((n, n+1, n+3, n+2))
+                
+        i_base_faces.append((-2, -1, 1, 0))
+        e_base_faces.append((-2, -1, 1, 0))
+        
+        i_base_wireframe.add_faces(i_base_faces)
+        e_base_wireframe.add_faces(e_base_faces)
+        
+        self.wireframes['i_base']=i_base_wireframe
+        self.wireframes['e_base']=e_base_wireframe
+        
+        light_wireframe=Wireframe()
+        detector_wireframe=Wireframe()
+        
+        light_nodes=[]
+        detector_nodes=[]
+        for angle in np.arange(0,math.pi*2,math.pi/30):
+            x=math.cos(angle)*0.03
+            y1=-1
+            y2=-0.6
+            z=math.sin(angle)*.03
+            light_nodes.append((x,y1,z))
+            light_nodes.append((x,y2,z))
+            detector_nodes.append((x,y1,z))
+            detector_nodes.append((x,y2,z))
+            
+        light_wireframe.add_nodes(light_nodes)
+        detector_wireframe.add_nodes(detector_nodes)
+        
+        light_edges=[]
+        detector_edges=[]
+        
+        for n in range(len(light_nodes)-2):
+            if n%2==0:
+                light_edges.append((n, n+1))
+                light_edges.append((n, n+2))
+        #light_wireframe.add_edges(light_edges)
+        
+        light_faces=[]
+        detector_faces=[]
+        
+        for n in range(len(light_nodes)-3):
+            if n%2==0:
+                light_faces.append((n, n+1, n+3, n+2))
+                detector_faces.append((n, n+1, n+3, n+2))
+        light_wireframe.add_faces(light_faces)
+            
+        
+        self.wireframes['light']=light_wireframe
+        
+            
         
     def draw_3D_goniometer(self, width, height):
         self.width=width
@@ -150,24 +235,29 @@ class GoniometerView():
         if self.width-120<self.height:
             self.char_len=self.width-120
             
-        pivot = (int(self.width/2),int(0.8*self.height),0)
+        pivot = (int(self.width/2),int(0.7*self.height),0)
         light_len = int(5*self.char_len/8)
         
-        i_radius=int(self.char_len/3)#250
+        i_radius=int(self.char_len/2)#250
         e_radius=int(i_radius*0.75)
         
         self.wireframes['i'].set_scale(i_radius)
+        self.wireframes['i_base'].set_scale(i_radius)
+        self.wireframes['light'].set_scale(i_radius)
         self.wireframes['e'].set_scale(e_radius)
+        self.wireframes['e_base'].set_scale(e_radius)
 
 
         self.screen.fill(pygame.Color(self.controller.bg))
-        
-        
+        slopes=[]
+        for wireframe in self.wireframes.values():
+            for edge in wireframe.edges:
+                slopes.append(abs(edge.delta_y))
         for wireframe in self.wireframes.values():
             wireframe.move_to(pivot)
             if self.display_edges:
                 shade=(200,200,200)
-                slopes=[]
+                
 #                 for edge in wireframe.edges:
 #                     try:
 #                         slopes.append(edge.delta_y*edge.delta_y/(edge.delta_x*edge.delta_x+edge.delta_z*edge.delta_z))
@@ -180,8 +270,7 @@ class GoniometerView():
 #                     except:
 #                         scale=0
 #                         print('vertical')
-                for edge in wireframe.edges:
-                    slopes.append(abs(edge.delta_y))
+
                 for edge in wireframe.edges:
                     slope=abs(edge.delta_y)
                     scale=1-slope/max(slopes)
@@ -191,25 +280,39 @@ class GoniometerView():
             if self.display_nodes:
                 for node in wireframe.nodes:
                     pygame.draw.circle(self.screen, self.nodeColour, (int(node.x), int(node.y)), self.nodeRadius, 0)
-            if self.display_faces:
+                    
+                
+        if self.display_faces:
+            faces_to_draw=[]
+            for wireframe in self.wireframes.values():
+                faces_to_draw+=wireframe.faces
+            faces_to_draw=sorted(faces_to_draw, key=lambda face: -face.get_min_z())
+            for face in faces_to_draw:
+                print(face.get_min_z())  
+                
+            for face in faces_to_draw:
                 shade=(200,200,200)
                 light=np.array([-0.2,-1,-0.2])
-                slopes=[]
-                for face in wireframe.faces:
-                    slopes.append(face.delta_y*face.delta_y/(face.delta_x*face.delta_x+face.delta_z*face.delta_z))
-                    
-                for face in wireframe.faces:
-                    nodes=face.nodes
-                    min_light=100
-                    theta = np.dot(face.normal, light)
-                    print(theta)
-                    theta=theta*50
-                    if theta < 0:
-                        shade = (min_light,min_light,min_light)
-                    else:
-                        shade = (theta*100+min_light,theta*100+min_light,theta*100+min_light)
+                nodes=face.nodes
+                min_light=80
+                theta = np.dot(face.normal, light)
+                print(theta)
+                theta=theta*50
+                if theta < 0:
+                    shade = (min_light,min_light,min_light)
+                else:
+                    shade = (theta*100+min_light,theta*100+min_light,theta*100+min_light)
 
-                    pygame.draw.polygon(self.screen, shade, [(node.x, node.y) for node in nodes], 0)
+                pygame.draw.polygon(self.screen, shade, [(node.x, node.y) for node in nodes], 0)
+            self.set_goniometer_tilt(20)
+
+    def set_goniometer_tilt(self, degrees):
+        print('TILTING')
+        diff=self.tilt-degrees
+        print(diff)
+        for wireframe in self.wireframes.values():
+            wireframe.rotate_el(diff)
+        self.tilt=degrees
         
     #draws the side view of the goniometer
     def draw_side_view(self,width,height):
@@ -371,6 +474,16 @@ class Face:
         v1=np.array([self.nodes[1].x-self.nodes[0].x, self.nodes[1].y-self.nodes[0].y, self.nodes[1].z-self.nodes[0].z])
         v2=np.array([self.nodes[3].x-self.nodes[0].x, self.nodes[3].y-self.nodes[0].y, self.nodes[3].z-self.nodes[0].z])
         self.normal=np.cross(v1,v2)
+        
+        
+        
+    def get_min_z(self):
+        z_vals=[]
+        for node in self.nodes:
+            z_vals.append(node.z)
+        return min(z_vals)
+            
+    
         
 class Wireframe:
     def __init__(self):

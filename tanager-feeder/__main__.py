@@ -2499,11 +2499,15 @@ class Controller():
                 return 
             else:
                 params[2]=int(params[2])
-            print(params)
+            self.goniometer_view.set_goniometer_tilt(0)
             self.goniometer_view.wireframes['i'].set_elevation(params[0])
+            self.goniometer_view.wireframes['light'].set_elevation(params[0])
             e_az=self.goniometer_view.wireframes['e'].az
             self.goniometer_view.wireframes['i'].set_azimuth(e_az+params[2])
+            self.goniometer_view.wireframes['light'].set_azimuth(e_az+params[2])
             self.goniometer_view.wireframes['e'].set_elevation(params[1])
+            self.goniometer_view.set_goniometer_tilt(20)
+            
             self.goniometer_view.draw_3D_goniometer(self.goniometer_view.width, self.goniometer_view.height)
             self.goniometer_view.flip()
         elif 'rotate_display' in cmd:
@@ -2514,9 +2518,13 @@ class Controller():
                 return 
             else:
                 angle=int(angle)
-                    
+            
+            self.goniometer_view.set_goniometer_tilt(0)
             self.goniometer_view.wireframes['i'].rotate_az(angle)
+            self.goniometer_view.wireframes['light'].rotate_az(angle)
             self.goniometer_view.wireframes['e'].rotate_az(angle)
+            self.goniometer_view.set_goniometer_tilt(20)
+            
             self.goniometer_view.draw_3D_goniometer(self.goniometer_view.width, self.goniometer_view.height)
             self.goniometer_view.flip()
             
