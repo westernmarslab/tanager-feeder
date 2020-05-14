@@ -53,7 +53,8 @@ class GoniometerView():
         self.nodeColour = (255,255,255)
         self.edge_color = (200,200,200)
         self.nodeRadius = 4
-        self.define_wireframes()
+        self.define_goniometer_wireframes()
+        self.define_sample_tray_wireframes()
         self.tilt=0 #tilt of entire goniometer
         pygame.init()
 
@@ -70,7 +71,62 @@ class GoniometerView():
         pygame.display.update()
         pygame.display.flip()
         
-    def define_wireframes(self):
+    def define_sample_tray_wireframes(self):
+        tray_wireframe=Wireframe()
+        spectralon_wireframe=Wireframe()
+        
+        tray_nodes=[]
+        spectralon_nodes=[]
+        for angle in np.arange(0,math.pi*2,math.pi/8):
+            x=math.cos(angle)
+            y1=0.03
+            y2=0.1
+            y3=0
+            z=math.sin(angle)
+            tray_nodes.append((-0.5+x,y1,z))
+            tray_nodes.append((-0.5+x,y2,z))
+            spectralon_nodes.append((0.25*x, y3, 0.25*z))
+            spectralon_nodes.append((.25*x, y1, 0.25*z))
+            
+        tray_wireframe.add_nodes(tray_nodes)
+        spectralon_wireframe.add_nodes(spectralon_nodes)
+        
+#         tray_faces=[(0,),(1,)]
+#         spectralon_faces=[(0,),(1,)]
+        tray_faces=[]
+        spectralon_faces=[]
+
+        for n in range(len(spectralon_nodes)):
+            if n<len(spectralon_nodes)-3:
+                if n%2==0:
+                    spectralon_faces.append((n,n+1, n+3, n+2))
+                    tray_faces.append((n,n+1, n+3, n+2))
+#             if n==0 or n==1: 
+#                 continue
+#             elif n%2==0 and n<len(spectralon_nodes)-1:
+#                 spectralon_faces[0]+=(n,)
+#                 spectralon_faces.append((n,n+1))
+#                 tray_faces[0]+=(n,)
+#             else:
+#                 spectralon_faces[1]+=(n,)
+#                 tray_faces[1]+=(n,)
+        for n in range(len(tray_nodes)):
+            if n==0:
+                tray_faces.append((0,))
+                spectralon_faces.append((0,))
+            elif n%2==0:
+                tray_faces[-1]+=(n,)
+                spectralon_faces[-1]+=(n,)
+        print(tray_faces[-1])
+        #tray_faces.append((0,2,4,6,8,10,12,14,16,18))
+        tray_wireframe.add_faces(tray_faces)
+        spectralon_wireframe.add_faces(spectralon_faces, color=(200,200,200))
+        
+        self.wireframes['tray']=tray_wireframe
+        self.wireframes['spectralon']=spectralon_wireframe
+        
+        
+    def define_goniometer_wireframes(self):
         i_wireframe = Wireframe()
         e_wireframe=Wireframe()
         
@@ -228,7 +284,7 @@ class GoniometerView():
             if n%2==0:
                 light_faces.append((n, n+1, n+3, n+2))
                 detector_faces.append((n, n+1, n+3, n+2))
-        light_wireframe.add_faces(light_faces)
+        light_wireframe.add_faces(light_faces, color=(150,50,50))
         detector_wireframe.add_faces(detector_faces)
         
         self.wireframes['light']=light_wireframe
@@ -264,6 +320,7 @@ class GoniometerView():
         
         i_radius=int(self.char_len/2)#250
         e_radius=int(i_radius*0.75)
+        tray_radius=(i_radius*0.25)
         
         self.wireframes['i'].set_scale(i_radius)
         self.wireframes['i_base'].set_scale(i_radius)
@@ -271,6 +328,8 @@ class GoniometerView():
         self.wireframes['e'].set_scale(e_radius)
         self.wireframes['e_base'].set_scale(e_radius)
         self.wireframes['detector'].set_scale(e_radius)
+        self.wireframes['spectralon'].set_scale(tray_radius)
+        self.wireframes['tray'].set_scale(tray_radius)
 
 
         self.screen.fill(pygame.Color(self.controller.bg))
@@ -308,36 +367,45 @@ class GoniometerView():
                     
                 
         if self.display_faces:
-            faces_to_draw=[]
-            for wireframe in self.wireframes.values():
-                faces_to_draw+=wireframe.faces
-            faces_to_draw=sorted(faces_to_draw, key=lambda face: -face.get_min_z())
-                
-            for face in faces_to_draw:
-                shade=(200,200,200)
-                light=np.array([-0.7,-0.7,-0.3])
-                nodes=face.nodes
-                min_light=80
-                normal=face.normal
-                if False:#normal[2]<0: 
-                    continue #if it is facing away from us don't draw it
-                else:
-                    theta = np.dot(face.normal, light)
-                    
-                    theta=int(theta*100)
-                    print(theta)
-                    if theta < 0:
-                        shade = (min_light,min_light,min_light)
-                    else:
-                        shade = (theta+min_light,theta+min_light,theta+min_light)
-                    print(shade)
-                    pygame.draw.polygon(self.screen, shade, [(node.x, node.y) for node in nodes], 0)
+            
+            self.draw_wireframes([self.wireframes['tray']])
+            draw_me=[]
+            for w in self.wireframes.values():
+                if w!=self.wireframes['tray']:
+                    draw_me.append(w)
+            print(w)
+            self.draw_wireframes(draw_me)
             self.set_goniometer_tilt(20)
+            
+    def draw_wireframes(self, wireframes):
+        faces_to_draw=[]
+        for wireframe in wireframes:
+            faces_to_draw+=wireframe.faces
+        faces_to_draw=sorted(faces_to_draw, key=lambda face: -face.min_z)
+            
+        for face in faces_to_draw:
+            shade=(200,200,200)
+            light=np.array([-0.7,-0.7,-0.3])
+            nodes=face.nodes
+            color=face.color
+            normal=face.normal
+            if False: #normal[2]>0: 
+                continue #if it is facing away from us don't draw it
+            else:
+                theta = np.dot(face.normal, light)
+                
+                theta=int(theta*100)
+                if theta < 0:
+                    shade = color
+                else:
+                    r=min([255,theta+color[0]])
+                    g=min([255,theta+color[1]])
+                    b=min([255,theta+color[2]])
+                    shade = (r,g,b)
+                pygame.draw.polygon(self.screen, shade, [(node.x, node.y) for node in nodes], 0)
 
     def set_goniometer_tilt(self, degrees):
-        print('TILTING')
         diff=self.tilt-degrees
-        print(diff)
         for wireframe in self.wireframes.values():
             wireframe.rotate_el(diff)
         self.tilt=degrees
@@ -492,9 +560,9 @@ class Edge():
         self.delta_z=self.stop.z-self.start.z
         
 class Face():
-    def __init__(self, node_list):
+    def __init__(self, node_list, color=(80,80,80)):
         self.nodes=node_list
-        
+        self.color=color
         self.delta_x=self.nodes[2].x-self.nodes[0].x
         self.delta_y=self.nodes[2].y-self.nodes[0].y
         self.delta_z=self.nodes[2].z-self.nodes[0].z
@@ -505,22 +573,36 @@ class Face():
         normal= np.cross(v1,v2)
         mag=sum(normal*normal)**0.5
         normal=normal/mag
-        print('normal: ')
-        print(normal)
         return normal
     
     def set_normal(self, val):
         return None
     
-    normal=property(get_normal,set_normal)
-        
-        
-        
     def get_min_z(self):
         z_vals=[]
         for node in self.nodes:
             z_vals.append(node.z)
         return min(z_vals)
+    
+    def set_min_z(self, val):
+        return None
+    
+    def get_max_z(self):
+        z_vals=[]
+        for node in self.nodes:
+            z_vals.append(node.z)
+        return max(z_vals)
+    
+    def set_max_z(self, val):
+        return None
+    
+    normal=property(get_normal,set_normal)
+    min_z=property(get_min_z, set_min_z)
+    max_z=property(get_max_z, set_max_z)
+        
+        
+        
+
             
     
         
@@ -546,12 +628,12 @@ class Wireframe():
         for (start, stop) in edge_list:
             self.edges.append(Edge(self.nodes[start], self.nodes[stop]))
             
-    def add_faces(self, face_list):
+    def add_faces(self, face_list, color=(80,80,80)):
         for corners in face_list:
             node_list=[]
             for index in corners:
                 node_list.append(self.nodes[index])
-            self.faces.append(Face(node_list))
+            self.faces.append(Face(node_list, color))
 
     def output_nodes(self):
         print("\n --- Nodes --- ")

@@ -2506,6 +2506,7 @@ class Controller():
                 return 
             else:
                 params[2]=int(params[2])
+                
             self.goniometer_view.set_goniometer_tilt(0)
             self.goniometer_view.wireframes['i'].set_elevation(params[0])
             self.goniometer_view.wireframes['light'].set_elevation(params[0])
