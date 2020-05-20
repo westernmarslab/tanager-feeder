@@ -1,11 +1,11 @@
 
 #I don't want pygame to print a welcome message when it loads.
-# import contextlib
-# with contextlib.redirect_stdout(None):
-#     import pygame
-import pathlib, pygame
+import contextlib
+with contextlib.redirect_stdout(None):
+    import pygame
+# import pathlib, pygame
 from pygame.transform import rotate
-print(pathlib.Path(pygame.__file__).resolve().parent)
+#print(pathlib.Path(pygame.__file__).resolve().parent)
 import threading
 from threading import Lock
 import time
@@ -41,9 +41,7 @@ class GoniometerView():
         self.screen = pygame.display.set_mode((self.width,self.height))
         
         self.light=pygame.Rect(30,30,60,60)
-        self.incidence=-30
-        self.emission=0
-        self.az=40
+
         self.d_up=False
         self.l_up=False
         self.current_sample=''
@@ -62,7 +60,10 @@ class GoniometerView():
         self.define_goniometer_wireframes()
         self.define_sample_tray_wireframes()
         self.tilt=0 #tilt of entire goniometer
-
+        self.incidence=20
+        self.emission=0
+        self.az=90
+        self.negative=False
         pygame.init()
 
         
@@ -440,7 +441,10 @@ class GoniometerView():
             self.draw_wireframes(draw_me)
             self.set_goniometer_tilt(20)
             
-            i_str='i='+str(int(self.incidence))
+            if self.negative:
+                i_str='i='+str(-1*int(self.incidence))
+            else:
+                i_str='i='+str(int(self.incidence))
             e_str='e='+str(int(self.emission))
             az_str='az='+str(int(self.az))
             sample_str=self.current_sample
@@ -617,29 +621,42 @@ class GoniometerView():
 
         
     def set_incidence(self, theta, config=False):
+        print('SET INCIDENCE TO '+str(theta))
+        #theta=-theta
+        if self.negative==True:
+            theta=-1*theta
+
         delta_theta=5*np.sign(theta-self.incidence)
         while np.abs(theta-self.incidence)>0:
             self.incidence=self.incidence+delta_theta
             if not config:
-                time.sleep(0.16)
+                time.sleep(0.005)
             else:
-                time.sleep(.005)
+                time.sleep(0.005)
             self.set_goniometer_tilt(0)
-            self.wireframes['i'].set_elevation(self.incidence)
-            self.wireframes['light'].set_elevation(self.incidence)
-            self.wireframes['light guide'].set_elevation(self.incidence)
+            self.wireframes['i'].set_elevation(-self.incidence)
+            self.wireframes['light'].set_elevation(-self.incidence)
+            self.wireframes['light guide'].set_elevation(-self.incidence)
             self.set_goniometer_tilt(20)
             self.draw_3D_goniometer(self.width,self.height)
             self.flip()
             
     def set_azimuth(self, theta, config=False):
+        print('set azimuth')
         goal=self.wireframes['detector'].az+theta
-        delta_theta=5*np.sign(goal-self.wireframes['i'].az)
+        #if goal>=180: goal=goal-180
+        #delta_theta=5*np.sign(goal-self.wireframes['i'].az)
+        delta_theta=5*np.sign(goal-self.wireframes['i'].az-180)
         #next=self.az #if the azimuth isn't changing, this gets used when self.az is reassigned to next
-        while np.abs(goal-self.wireframes['i'].az)>=5:
+        print('detector az:'+str(self.wireframes['detector'].az))
+        print('GOAL:'+str(goal))
+        while np.abs(goal-self.wireframes['i'].az-180)>=5:
+            print('diff: '+str(np.abs(goal-self.wireframes['i'].az-180)))
             next=self.wireframes['i'].az+delta_theta
+            #if next>180: next=next-180
+            #if next<0: next=next+180
             if not config:
-                time.sleep(0.16)
+                time.sleep(0.005)
             else:
                 time.sleep(.005)
             self.set_goniometer_tilt(0)
@@ -648,6 +665,22 @@ class GoniometerView():
             self.wireframes['light guide'].set_azimuth(next)
             self.set_goniometer_tilt(20)
             self.az=next-self.wireframes['detector'].az
+            #print(self.az)
+            if self.az>=0:
+                print('More than 180!')
+                self.negative=True
+#                 print(self.incidence)
+#                 self.incidence=-1*self.incidence
+#                 self.wireframes['i'].el=-1*self.wireframes['i'].el
+#                 self.wireframes['light'].el=-1*self.wireframes['i'].el
+#                 self.wireframes['light guide'].el=-1*self.wireframes['i'].el
+            if self.az<0: 
+                self.negative=False
+                self.az=self.az+180
+            #print(self.az)
+
+                #self.az=self.az-180
+                
             self.draw_3D_goniometer(self.width,self.height)
             self.flip()
             
@@ -662,7 +695,7 @@ class GoniometerView():
         while np.abs(theta-self.emission)>0:
             self.emission=self.emission+delta_theta
             if not config:
-                time.sleep(0.16)
+                time.sleep(0.005)
             else:
                 time.sleep(.005)
             self.set_goniometer_tilt(0)
@@ -746,12 +779,7 @@ class Face():
     normal=property(get_normal,set_normal)
     min_z=property(get_min_z, set_min_z)
     max_z=property(get_max_z, set_max_z)
-        
-        
-        
 
-            
-    
         
 class Wireframe():
     def __init__(self):

@@ -314,7 +314,7 @@ class Controller():
         self.e_interval=None
         
         self.min_az=0
-        self.max_az=170
+        self.max_az=260
         self.az=None #current emission angle
         self.final_az=None
         self.az_interval=None
@@ -653,7 +653,7 @@ class Controller():
         self.range_frame=Frame(self.viewing_geom_frame,padx=self.padx,pady=self.pady,bd=2,highlightbackground=self.border_color,highlightcolor=self.border_color,highlightthickness=0,bg=self.bg)
         #self.range_frame.pack()
         self.light_frame=Frame(self.range_frame,bg=self.bg)
-        self.light_frame.pack(side=LEFT,padx=(5,30))
+        self.light_frame.pack(side=LEFT,padx=(5,5))
         self.light_label=Label(self.light_frame,padx=self.padx, pady=self.pady,bg=self.bg,fg=self.textcolor,text='Incidence angles:')
         self.light_label.pack()
         
@@ -661,88 +661,86 @@ class Controller():
         light_labels_frame.pack(side=LEFT)
         
         light_start_label=Label(light_labels_frame,padx=self.padx,pady=self.pady,bg=self.bg,fg=self.textcolor,text='First:')
-        light_start_label.pack(pady=(0,8))
+        light_start_label.pack(pady=(0,8),padx=(40,0))
         light_end_label=Label(light_labels_frame,bg=self.bg,padx=self.padx,pady=self.pady,fg=self.textcolor,text='Last:')
-        light_end_label.pack(pady=(0,5))
-    
+        light_end_label.pack(pady=(0,5), padx=(40,0))
         light_increment_label=Label(light_labels_frame,bg=self.bg,padx=self.padx,pady=self.pady,fg=self.textcolor,text='Increment:')
-        light_increment_label.pack(pady=(0,5))
+        light_increment_label.pack(pady=(0,5), padx=(0,0))
     
         
         light_entries_frame=Frame(self.light_frame,bg=self.bg,padx=self.padx,pady=self.pady)
         light_entries_frame.pack(side=RIGHT)
         
-        self.light_start_entry=Entry(light_entries_frame,width=10, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+        self.light_start_entry=Entry(light_entries_frame,width=5, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
         self.entries.append(self.light_start_entry)
         self.light_start_entry.pack(padx=self.padx,pady=self.pady)
-        
-        self.light_end_entry=Entry(light_entries_frame,width=10, highlightbackground='white', bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+        self.light_end_entry=Entry(light_entries_frame,width=5, highlightbackground='white', bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
         self.entries.append(self.light_end_entry)
         self.light_end_entry.pack(padx=self.padx,pady=self.pady)    
-        self.light_increment_entry=Entry(light_entries_frame,width=10,highlightbackground='white', bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+        self.light_increment_entry=Entry(light_entries_frame,width=5,highlightbackground='white', bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
         self.entries.append(self.light_increment_entry)
         self.light_increment_entry.pack(padx=self.padx,pady=self.pady)
         
         detector_frame=Frame(self.range_frame,bg=self.bg)
-        detector_frame.pack(side=RIGHT)
+        detector_frame.pack(side=LEFT)
         
         detector_label=Label(detector_frame,padx=self.padx, pady=self.pady,bg=self.bg,fg=self.textcolor,text='Emission angles:')
         detector_label.pack()
         
         detector_labels_frame = Frame(detector_frame,bg=self.bg,padx=self.padx,pady=self.pady)
-        detector_labels_frame.pack(side=LEFT,padx=(30,5))
+        detector_labels_frame.pack(side=LEFT,padx=(5,5))
         
         detector_start_label=Label(detector_labels_frame,padx=self.padx,pady=self.pady,bg=self.bg,fg=self.textcolor,text='First:')
-        detector_start_label.pack(pady=(0,8))
+        detector_start_label.pack(pady=(0,8),padx=(40,0))
         detector_end_label=Label(detector_labels_frame,bg=self.bg,padx=self.padx,pady=self.pady,fg=self.textcolor,text='Last:')
-        detector_end_label.pack(pady=(0,5))
+        detector_end_label.pack(pady=(0,5),padx=(40,0))
     
         detector_increment_label=Label(detector_labels_frame,bg=self.bg,padx=self.padx,pady=self.pady,fg=self.textcolor,text='Increment:')
-        detector_increment_label.pack(pady=(0,5))
+        detector_increment_label.pack(pady=(0,5),padx=(0,0))
     
         
         detector_entries_frame=Frame(detector_frame,bg=self.bg,padx=self.padx,pady=self.pady)
         detector_entries_frame.pack(side=RIGHT)
-        self.detector_start_entry=Entry(detector_entries_frame,bd=self.bd,width=10,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+        self.detector_start_entry=Entry(detector_entries_frame,bd=self.bd,width=5,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
         self.entries.append(self.detector_start_entry)
         self.detector_start_entry.pack(padx=self.padx,pady=self.pady)
         
-        self.detector_end_entry=Entry(detector_entries_frame,bd=self.bd,width=10,highlightbackground='white',bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+        self.detector_end_entry=Entry(detector_entries_frame,bd=self.bd,width=5,highlightbackground='white',bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
         self.entries.append(self.detector_end_entry)
         self.detector_end_entry.pack(padx=self.padx,pady=self.pady)
         
-        self.detector_increment_entry=Entry(detector_entries_frame,bd=self.bd,width=10, highlightbackground='white',bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+        self.detector_increment_entry=Entry(detector_entries_frame,bd=self.bd,width=5, highlightbackground='white',bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
         self.entries.append(self.detector_increment_entry)
         self.detector_increment_entry.pack(padx=self.padx,pady=self.pady)
         
         self.azimuth_frame=Frame(self.range_frame,bg=self.bg)
-        self.azimuth_frame.pack(side=LEFT,padx=(5,30))
-        self.azimuth_label=Label(self.azimuth_frame,padx=self.padx, pady=self.pady,bg=self.bg,fg=self.textcolor,text='Incidence angles:')
+        self.azimuth_frame.pack(side=LEFT,padx=(5,5))
+        self.azimuth_label=Label(self.azimuth_frame,padx=self.padx, pady=self.pady,bg=self.bg,fg=self.textcolor,text='Azimuth angles:')
         self.azimuth_label.pack()
         
         azimuth_labels_frame = Frame(self.azimuth_frame,bg=self.bg,padx=self.padx,pady=self.pady)
         azimuth_labels_frame.pack(side=LEFT)
         
         azimuth_start_label=Label(azimuth_labels_frame,padx=self.padx,pady=self.pady,bg=self.bg,fg=self.textcolor,text='First:')
-        azimuth_start_label.pack(pady=(0,8))
+        azimuth_start_label.pack(pady=(0,8),padx=(40,0))
         azimuth_end_label=Label(azimuth_labels_frame,bg=self.bg,padx=self.padx,pady=self.pady,fg=self.textcolor,text='Last:')
-        azimuth_end_label.pack(pady=(0,5))
+        azimuth_end_label.pack(pady=(0,5),padx=(40,0))
     
         azimuth_increment_label=Label(azimuth_labels_frame,bg=self.bg,padx=self.padx,pady=self.pady,fg=self.textcolor,text='Increment:')
-        azimuth_increment_label.pack(pady=(0,5))
+        azimuth_increment_label.pack(pady=(0,5),padx=(0,0))
     
         
         azimuth_entries_frame=Frame(self.azimuth_frame,bg=self.bg,padx=self.padx,pady=self.pady)
         azimuth_entries_frame.pack(side=RIGHT)
         
-        self.azimuth_start_entry=Entry(azimuth_entries_frame,width=10, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+        self.azimuth_start_entry=Entry(azimuth_entries_frame,width=5, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
         self.entries.append(self.azimuth_start_entry)
         self.azimuth_start_entry.pack(padx=self.padx,pady=self.pady)
         
-        self.azimuth_end_entry=Entry(azimuth_entries_frame,width=10, highlightbackground='white', bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+        self.azimuth_end_entry=Entry(azimuth_entries_frame,width=5, highlightbackground='white', bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
         self.entries.append(self.azimuth_end_entry)
         self.azimuth_end_entry.pack(padx=self.padx,pady=self.pady)    
-        self.azimuth_increment_entry=Entry(azimuth_entries_frame,width=10,highlightbackground='white', bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+        self.azimuth_increment_entry=Entry(azimuth_entries_frame,width=5,highlightbackground='white', bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
         self.entries.append(self.azimuth_increment_entry)
         self.azimuth_increment_entry.pack(padx=self.padx,pady=self.pady)
        
@@ -1311,13 +1309,15 @@ class Controller():
             for index in range(len(self.active_incidence_entries)):
                 i=self.active_incidence_entries[index].get()
                 e=self.active_emission_entries[index].get()
+                az=self.active_azimuth_entries[index].get()
                 valid_i=validate_int_input(i,-90,90)
                 valid_e=validate_int_input(e,-90,90)
-                if not valid_i or not valid_e:
-                    dialog=ErrorDialog(self,label='Error: Invalid viewing geometry:\n\nincidence = '+str(i)+'\nemission = '+str(e),width=300, height=130)
+                valid_az=validate_int_input(az,-90,90)
+                if not valid_i or not valid_e or not valid_az:
+                    dialog=ErrorDialog(self,label='Error: Invalid viewing geometry:\n\nincidence = '+str(i)+'\nemission = '+str(e)+'\nazimuth = '+str(az),width=300, height=130)
                     return False
-                elif int(i)>int(e)-15:
-                    dialog=ErrorDialog(self,label='Error: Due to geometric constraints on the goniometer,\nincidence must be at least 15 degrees less than emission.',width=300, height=130)
+                elif not self.validate_distance(i, e, az):
+                    dialog=ErrorDialog(self,label='Error: Due to geometric constraints on the goniometer,\nincidence must be at least '+str(self.required_angular_separation)+' degrees different than emission.',width=300, height=130)
                     return False
         
         return True
@@ -1514,6 +1514,7 @@ class Controller():
             #Set all entries to active. Viewing geometry information will be pulled from these one at a time. Entries are removed from the active list after the geom info is read.
             self.active_incidence_entries=list(self.incidence_entries)
             self.active_emission_entries=list(self.emission_entries)
+            self.active_azimuth_entries=list(self.azimuth_entries)
             self.active_geometry_frames=list(self.geometry_frames)
             
             
@@ -1592,9 +1593,12 @@ class Controller():
         script_queue=list(self.queue) #If we're running a script, the queue might have a lot of commands in it that will need to be executed after we're done acquiring. save these, we'll append them in a moment.
         self.queue=[]
 
-            #For each (i, e), opt, white reference, save the white reference, move the tray, take a  spectrum, then move the tray back, then update geom to next.
-        self.queue.append({self.move_tray:['wr']})
-        for entry in self.active_incidence_entries: #This is one for each geometry when geometries are specified individually. When a range is specified, we actually quietly create pretend entry objects for each pair, so it works then too.
+            #For each (i, e, az), opt, white reference, save the white reference, move the tray, take a  spectrum, then move the tray back, then update geom to next.
+        
+        for index, entry in enumerate(self.active_incidence_entries): #This is one for each geometry when geometries are specified individually. When a range is specified, we actually quietly create pretend entry objects for each pair, so it works then too.
+            if index==0:self.queue.append({self.next_geom:[False]}) #For the first, don't complete anything
+            else:self.queue.append({self.next_geom:[]})
+            self.queue.append({self.move_tray:['wr']})
             self.queue.append({self.opt:[True, True]})
             self.queue.append({self.wr:[True,True]})
             self.queue.append({self.take_spectrum:[True,True,False]})
@@ -1602,27 +1606,10 @@ class Controller():
                 self.queue.append({self.move_tray:[pos]})
                 self.queue.append({self.take_spectrum:[True,True,True]}) #Save and delete a garbage spectrum
                 self.queue.append({self.take_spectrum:[True,True,False]}) #Save a real spectrum
-            self.queue.append({self.move_tray:['wr']})
-            self.queue.append({self.next_geom:[]})
-            
-        #No update geometry call after last spectrum
-        self.queue.pop(-1)
-
-        #Put in calls to move light and detector for the first geometry (this happens in next_indv geom, or repeatedly here if you are specifying a range)
-        next_i=int(self.active_incidence_entries[0].get())
-        next_e=int(self.active_emission_entries[0].get())
-        next_az=int(self.active_azimuth_entries[0].get())
         
+        #Return tray to wr position when finished
+        self.queue.append({self.move_tray:['wr']})
         
-        if next_e<int(self.e):
-            self.queue.insert(0,{self.move_detector:[]})
-            self.queue.insert(0,{self.move_light:[]})
-            self.queue.insert(0, self.set_azimuth)
-        else:
-            self.queue.insert(0,{self.move_light:[]})
-            self.queue.insert(0,{self.move_detector:[]})
-            self.queue.insert(0, self.set_azimuth)
-            
         #Now append the script queue we saved at the beginning. But check if acquire is the first command in the script queue and if it is, complete that item.
         if self.script_running:
             if len(script_queue)>0:
@@ -1636,18 +1623,26 @@ class Controller():
                 self.set_geom()
             except:
                 return
-            valid_i=validate_int_input(self.i,-90,90)
+            valid_i=validate_int_input(self.i,self.min_i,self.max_i)
             if valid_i:
                 if self.manual_automatic.get()==0:#manual, no animation
                     self.goniometer_view.set_incidence(int(self.i),config=True)
                 else:
                     self.goniometer_view.set_incidence(int(self.i))
-            valid_e=validate_int_input(self.e,-90,90)
+            
+            valid_e=validate_int_input(self.e,self.min_e,self.max_e)
             if valid_e:
-                if self.manual_automatic.get()==0:#manual, no animation
+                if self.manual_automatic.get()==0:#manual, fast animation
                     self.goniometer_view.set_emission(int(self.e),config=True)
                 else:
                     self.goniometer_view.set_emission(int(self.e))
+            
+            valid_az=validate_int_input(self.az,self.min_az,self.max_az)
+            if valid_az:
+                if self.manual_automatic.get()==0:#manual, fast animation
+                    self.goniometer_view.set_emission(int(self.az),config=True)
+                else:
+                    self.goniometer_view.set_emission(int(self.az))
 
             if complete_queue_item:
                 self.complete_queue_item()
@@ -1655,12 +1650,13 @@ class Controller():
                     self.next_in_queue()
                         
     def set_geom(self):
-        if self.i==None or self.e==None:
+        if self.i==None or self.e==None or self.az==None:
             self.angles_change_time=time.time()
-        elif int(self.i)!=int(self.active_incidence_entries[0].get()) or int(self.e)!=int(self.active_emission_entries[0].get()):
+        elif int(self.i)!=int(self.active_incidence_entries[0].get()) or int(self.e)!=int(self.active_emission_entries[0].get()) or int(self.az)!=self.active_azimuth_entries[0].get():
             self.angles_change_time=time.time()
         self.i=int(self.active_incidence_entries[0].get())
         self.e=int(self.active_emission_entries[0].get())
+        self.az=int(self.active_azimuth_entries[0].get())
         
 
         
@@ -1671,120 +1667,164 @@ class Controller():
         widget.insert(0,text)
         widget.configure(state=state)
         
-    def next_geom(self): 
-        self.active_incidence_entries.pop(0)
-        self.active_emission_entries.pop(0)
-        self.active_azimuth_entries.pop(0)
-        
-        if self.individual_range.get()==0:
-            self.active_geometry_frames.pop(0)
+    def next_geom(self, complete_last=True): 
+        self.complete_queue_item()
+        if complete_last:
+            self.active_incidence_entries.pop(0)
+            self.active_emission_entries.pop(0)
+            self.active_azimuth_entries.pop(0)
+            if self.individual_range.get()==0:
+                self.active_geometry_frames.pop(0)
         
         next_i=int(self.active_incidence_entries[0].get())
-        next_e=int(self.active_incidence_entries[0].get())
+        next_e=int(self.active_emission_entries[0].get())
         next_az=int(self.active_azimuth_entries[0].get())
 
-        self.complete_queue_item()
+        
         
         #Update goniometer position. Don't run the arms into each other.
-        if int(next_e)<int(self.e):
-            self.queue.insert(0,{self.set_incidence:[]})
-            self.queue.insert(0,{self.set_emission:[]})
-            self.queue.insert(0, {self.set_azimuth:[]})
-
+        print('CURRENT')
+        print(self.i)
+        print(self.e)
+        print(self.az)
+        print('NEXT')
+        print(next_i)
+        print(next_e)
+        print(next_az)
+        n=0
+        if int(next_i)<int(next_e):#(int(self.e)>int(self.i) and int(next_e)<int(next_i)) or (int(self.e)<int(self.i) and int(next_e)>int(next_i)): #If keeping az the same would result in swapping positions
+            print('DANGER!')
+            
+            
+#             self.queue.insert(n, {self.set_azimuth:[90]})            
+#             n+=1
+            self.queue.insert(n, {self.set_azimuth:[next_az+180]})
+            n+=1
         else:
-            self.queue.insert(0,{self.move_detector:[]})
-            self.queue.insert(0,{self.move_light:[]})
-            self.queue.insert(0, {self.set_azimuth:[]})
-
+            self.queue.insert(n, {self.set_azimuth:[next_az]})
+            n+=1
+            #if self.
+#             if int(self.e)>int(self.i):
+#                 self.queue.insert(0,{self.set_emission:[self.max_e]})
+#             else:
+#                 self.queue.insert(0,{self.set_emission:[self.min_e]})
+#             if int(next_i)>=0:
+#                 self.queue.insert(1, {self.set_azimuth:[90]})
+#                 self.queue.insert(2,{self.set_incidence:[self.max_i]})
+#                 self.queue.insert(3,{self.set_emission:[]})
+#                 self.queue.insert(4,{self.set_incidence:[]})
+#                 self.queue.insert(5, {self.set_azimuth:[]})
+#             else:
+#                 self.queue.insert(1, {self.set_azimuth:[90]})
+#                 self.queue.insert(2,{self.set_incidence:[self.max_i]})
+#                 self.queue.insert(3,{self.set_emission:[]})
+#                 self.queue.insert(4, {self.set_azimuth:[next_az+180]})
+#                 self.queue.insert(5,{self.set_incidence:[]})
+                
+                
+        if int(self.e)>int(self.i): #Keeping az the same does not result in swapping arm positions
+            if int(next_e)>int(self.e):  
+                self.queue.insert(n,{self.set_emission:[]})
+                self.queue.insert(n+1,{self.set_incidence:[]})
+                if n==0: self.queue.insert(n+2, {self.set_azimuth:[]})
+            else:
+                self.queue.insert(n,{self.set_incidence:[]})
+                self.queue.insert(n+1,{self.set_emission:[]})
+                if n==0: self.queue.insert(n+2, {self.set_azimuth:[]})
+        elif int(self.e)<int(self.i): #Keeping az the same does not result in swapping arm positions
+            if int(next_e)<int(self.e):
+                self.queue.insert(n,{self.set_emission:[]})
+                self.queue.insert(n+1,{self.set_incidence:[]})
+                if n==0: self.queue.insert(n+2, {self.set_azimuth:[]})
+            else:
+                self.queue.insert(n,{self.set_incidence:[]})
+                self.queue.insert(n+1,{self.set_emission:[]})
+                if n==0: self.queue.insert(n+2, {self.set_azimuth:[]})
+        
+        
         self.next_in_queue()
-                   
+    #def set_motion_order(self, next_i, next_e, next_az):
+
     #Move light will either read i from the GUI (default, i=None), or if this is a text command then i will be passed as a parameter.
-    #When from the commandline, i may not be an emission angle at all but a number of steps to move. In this case, type will be 'steps'.
-    def move_light(self, i=None, type='angle'):
-        print('move light!')
+    #When from the commandline, i may not be an incidence angle at all but a number of steps to move. In this case, type will be 'steps'.
+    def set_incidence(self, i=None, type='angle', negative=False):
         steps=True
+        timeout=0
+        
         if type=='angle':
             steps=False #We will need to tell the motionhandler whether we're specifying steps or an angle
-
+            
             #First check whether we actually need to move at all.
             if i==None:
                 i=int(self.active_incidence_entries[0].get())
             if i==self.i: #No change in incidence angle, no need to move
-                self.log('Goniometer remaining at an incidence angle of '+str(self.i)+' degrees.')
+                self.log('Goniometer remaining at an incidence angle of '+str(i)+' degrees.')
                 self.complete_queue_item()
                 if len(self.queue)>0:
                     self.next_in_queue()
                 return #If we're staying in the same spot, just return!
-
-        timeout=0
-        if type=='angle':
             timeout=np.abs(int(i)-int(self.i))*8+PI_BUFFER
         else:
             timeout=np.abs(int(i))/15+PI_BUFFER
-        self.pi_commander.move_light(i,type)
-
-        handler=MotionHandler(self,label='Moving light source...',timeout=timeout,steps=steps)
-
-        if type=='angle':
-            self.goniometer_view.set_incidence(int(i))
-        self.set_light_geom(i,type)
-        
-    def set_light_geom(self, i=None, type='angle'):
-        
-        if i==None:
-            if str(self.i)!=self.active_incidence_entries[0].get():
-                self.angles_change_time=time.time()
-            self.i=int(self.active_incidence_entries[0].get())
-        else:
-            #If we are using set_incidence(steps=...) from the commandline, don't change i.
-            if type=='angle':
-                if str(self.i)!=str(i):
-                    self.angles_change_time=time.time()
-                self.i=i
-
             
-    #Move detector will either read e from the GUI (default), or if this is a text command then e will be passed as a parameter.
-    #When from the commandline, e may not be an emission angle at all but a number of steps to move. In this case, type will be 'steps'. 
-    def move_detector(self, e=None, type='angle'):
+        self.pi_commander.set_incidence(i,type)
+        handler=MotionHandler(self,label='Setting incidence...',timeout=timeout,steps=steps, destination=i)
+
+        if type=='angle': #Only change the visualization if an angle is specified. Specifiying steps is for setting up the 
+            self.goniometer_view.set_incidence(int(i))
+                
+            
+    def set_emission(self, e=None, type='angle'):
         steps=True
+        timeout=0
+        
         if type=='angle':
             steps=False #We will need to tell the motionhandler whether we're specifying steps or an angle
-
+            
             #First check whether we actually need to move at all.
             if e==None:
                 e=int(self.active_emission_entries[0].get())
             if e==self.e: #No change in incidence angle, no need to move
-                self.log('Goniometer remaining at an emission angle of '+str(self.i)+' degrees.')
+                self.log('Goniometer remaining at an emission angle of '+str(e)+' degrees.')
                 self.complete_queue_item()
                 if len(self.queue)>0:
                     self.next_in_queue()
-
                 return #If we're staying in the same spot, just return!
-
-        timeout=0
-        if type=='angle':
             timeout=np.abs(int(e)-int(self.e))*8+PI_BUFFER
         else:
-            timeout=np.abs(int(e))/15+PI_BUFFER
+            timeout=np.abs(int(i))/15+PI_BUFFER
+            
+        self.pi_commander.set_emission(e,type)
+        handler=MotionHandler(self,label='Setting emission...',timeout=timeout,steps=steps, destination=e)
 
-        self.pi_commander.move_detector(e,type)
-        handler=MotionHandler(self,label='Moving detector...',timeout=timeout,steps=steps)
-        if type=='angle':
+        if type=='angle': #Only change the visualization if an angle is specified. Specifiying steps is for setting up the 
             self.goniometer_view.set_emission(int(e))
-        self.set_detector_geom(e,type)
+            
+    def set_azimuth(self, az=None, type='angle'):
+        steps=True
+        timeout=0
         
+        if type=='angle':
+            steps=False #We will need to tell the motionhandler whether we're specifying steps or an angle
 
-    def set_detector_geom(self,e=None, type='angle'):
-        if e==None:
-            if str(self.e)!=self.active_emission_entries[0].get():
-                self.angles_change_time=time.time()
-            self.e=int(self.active_emission_entries[0].get())
+            #First check whether we actually need to move at all.
+            if az==None:
+                az=int(self.active_azimuth_entries[0].get())
+            if az==self.az: #No change in incidence angle, no need to move
+                self.log('Goniometer remaining at an azimuth angle of '+str(az)+' degrees.')
+                self.complete_queue_item()
+                if len(self.queue)>0:
+                    self.next_in_queue()
+                return #If we're staying in the same spot, just return!
+            timeout=np.abs(int(az)-int(self.az))*8+PI_BUFFER
         else:
-            #If we are using set_emission(steps=...) from the commandline, don't change e.
-            if type=='angle':
-                if str(self.e)!=str(e):
-                    self.angles_change_time=time.time()
-                self.e=e
+            timeout=np.abs(int(i))/15+PI_BUFFER
+            
+        self.pi_commander.set_azimuth(az,type)
+        handler=MotionHandler(self,label='Setting azimuth...',timeout=timeout,steps=steps, destination=az)
+
+        if type=='angle': #Only change the visualization if an angle is specified. Specifiying steps is for setting up the 
+            self.goniometer_view.set_azimuth(int(az))
 
         
     def move_tray(self, pos, type='position'):
@@ -1887,9 +1927,49 @@ class Controller():
             return False
         warning_string=incidence_warn_str+emission_warn_str
         
+        azimuth_err_str=''
+        azimuth_warn_str=''
+        
+        first_az=self.azimuth_start_entry.get()
+        valid=validate_int_input(first_az,self.min_az,self.max_az)
+        if not valid: 
+            azimuth_err_str='Azimuth must be a number from '+str(self.min_az)+' to '+str(self.max_az)+'.\n'
+        else:
+            first_az=int(first_az)
+        final_az=self.azimuth_end_entry.get()
+        valid=validate_int_input(final_az,self.min_az,self.max_az)
+        
+        if not valid: 
+            azimuth_err_str='Azimuth must be a number from '+str(self.min_az)+' to '+str(self.max_az)+'.\n'
+        else:
+            final_az=int(final_az)
+            
+        az_interval=self.azimuth_increment_entry.get()
+        valid=validate_int_input(az_interval,0,2*self.max_az)
+        if not valid:
+            azimuth_err_str+='Azimuth interval must be a number from 0 to '+str(2*self.max_az) +'.\n'
+        else:
+            az_interval=int(az_interval)
+        azimuths=[]
+        if azimuth_err_str=='':
+            if az_interval==0:
+                if first_az==final_az:
+                    azimuths=[first_az]
+                else:
+                    azimuths=[first_az,final_az]
+                    azimuth_warn_str='Azimuth interval = 0. Using first and last given azimuth values.'
+            elif final_az>first_az:
+                azimuths=np.arange(first_az,final_az,az_interval)
+                azimuths=list(azimuths)
+                azimuths.append(final_az)
+            else:
+                azimuths=np.arange(first_az,final_az,-1*az_interval)
+                azimuths=list(azimuths)
+                azimuths.append(final_az)
+        
         for i in incidences:
             for e in emissions:
-                for az in azimuth:
+                for az in azimuths:
                     if self.validate_distance(i, e, az):
                         i_entry=PrivateEntry(str(i))
                         e_entry=PrivateEntry(str(e))
@@ -2568,7 +2648,7 @@ class Controller():
             params=cmd.split('set_display(')[1].strip(')').split(',')
             if len(params)!=3:
                 self.log(str(len(params)))
-                self.log('Error: invalid geometry')
+                self.log('Error: invalid display setting. Enter set_display(i, e, az')
                 return 
             for n, angle in enumerate(params[0:2]):
                 valid=validate_int_input(angle, -90, 90)
@@ -2589,23 +2669,27 @@ class Controller():
                 
             self.goniometer_view.set_goniometer_tilt(0)
             
-            self.goniometer_view.wireframes['i'].set_elevation(params[0])
-            self.goniometer_view.wireframes['light'].set_elevation(params[0])
-            self.goniometer_view.wireframes['light guide'].set_elevation(params[0])
+#             self.goniometer_view.wireframes['i'].set_elevation(params[0])
+#             self.goniometer_view.wireframes['light'].set_elevation(params[0])
+#             self.goniometer_view.wireframes['light guide'].set_elevation(params[0])
             
-            e_az=self.goniometer_view.wireframes['e'].az
-            self.goniometer_view.wireframes['i'].set_azimuth(e_az+params[2])
-            self.goniometer_view.wireframes['light'].set_azimuth(e_az+params[2])
-            self.goniometer_view.wireframes['light guide'].set_azimuth(e_az+params[2])
+            #e_az=self.goniometer_view.wireframes['e'].az
+            self.goniometer_view.set_azimuth(params[2], config=True)
+            self.goniometer_view.set_incidence(params[0], config=True)
+            self.goniometer_view.set_emission(params[1], config=True)
             
-            self.goniometer_view.wireframes['e'].set_elevation(params[1])
-            self.goniometer_view.wireframes['detector'].set_elevation(params[1])
-            self.goniometer_view.wireframes['detector guide'].set_elevation(params[1])
+#             self.goniometer_view.wireframes['i'].set_azimuth(e_az+params[2])
+#             self.goniometer_view.wireframes['light'].set_azimuth(e_az+params[2])
+#             self.goniometer_view.wireframes['light guide'].set_azimuth(e_az+params[2])
             
-            self.goniometer_view.set_goniometer_tilt(20)
-            
-            self.goniometer_view.draw_3D_goniometer(self.goniometer_view.width, self.goniometer_view.height)
-            self.goniometer_view.flip()
+#             self.goniometer_view.wireframes['e'].set_elevation(params[1])
+#             self.goniometer_view.wireframes['detector'].set_elevation(params[1])
+#             self.goniometer_view.wireframes['detector guide'].set_elevation(params[1])
+#             
+#             self.goniometer_view.set_goniometer_tilt(20)
+#             
+#             self.goniometer_view.draw_3D_goniometer(self.goniometer_view.width, self.goniometer_view.height)
+#             self.goniometer_view.flip()
             
         elif 'rotate_display' in cmd:
             angle=cmd.split('rotate_display(')[1].strip(')')
@@ -3755,12 +3839,11 @@ class Controller():
     def remove_geometry(self,index):
         self.incidence_labels.pop(index)
         self.incidence_entries.pop(index)
-        #self.active_incidence_entries.pop(index)
+        self.azimuth_labels.pop(index)
+        self.azimuth_entries.pop(index)
         self.emission_entries.pop(index)
-        #self.active_emission_entries.pop(index)
         self.emission_labels.pop(index)
         self.geometry_removal_buttons.pop(index)
-        #self.active_geometry_frames.pop(index)
         self.geometry_frames.pop(index).destroy()
 
 
@@ -4042,6 +4125,7 @@ class Controller():
             self.unfreeze()
             self.active_incidence_entries[0].delete(0,'end')
             self.active_emission_entries[0].delete(0,'end')
+            self.active_azimuth_enries[0].delete(0,'end')
             self.sample_label_entries[self.current_sample_gui_index].delete(0,'end')
             
     def next_in_queue(self):
@@ -5181,7 +5265,7 @@ class CloseHandler(CommandHandler):
             self.controller.next_in_queue()
             
 class MotionHandler(CommandHandler):
-    def __init__(self, controller, title='Moving...', label='Moving...', buttons={'cancel':{}}, timeout=90, new_sample_loc='foo', steps=False):
+    def __init__(self, controller, title='Moving...', label='Moving...', buttons={'cancel':{}}, timeout=90, new_sample_loc='foo', steps=False, destination=None):
         self.steps=steps
         self.listener=controller.pi_listener
         try:
@@ -5190,6 +5274,7 @@ class MotionHandler(CommandHandler):
             print('exception in super init in motion handler') #There has been an erro rthat has come up a couple of times saying the motion handler has no attribute self.steps. Maybe because the call to super is silently failing so this method never finishes?
         self.new_sample_loc=new_sample_loc
         self.steps=steps
+        self.destination=destination
 
 
 
@@ -5198,7 +5283,6 @@ class MotionHandler(CommandHandler):
         while self.timeout_s>0:
             if 'donemoving' in self.listener.queue:
                 self.listener.queue.remove('donemoving')
-                print('hooray!')
                 self.success()
                 return
             elif 'nopiconfig' in self.listener.queue:
@@ -5216,16 +5300,28 @@ class MotionHandler(CommandHandler):
         self.timeout()
     def success(self):
 
-        if 'detector' in self.label:
+        if 'emission' in self.label:
+            self.controller.angles_change_time=time.time()
+            self.controller.e=self.destination
             try:
-                self.controller.log('Goniometer moved to an emission angle of '+str(self.controller.e)+' degrees.')
+                self.controller.log('Goniometer moved to an emission angle of '+str(self.destination)+' degrees.')
             except:
-                self.controller.log('Detector moved')
-        elif 'light' in self.label:
+                self.controller.log('Emission set')
+        elif 'incidence' in self.label:
+            self.controller.angles_change_time=time.time()
+            self.controller.i=self.destination
             try:
-                self.controller.log('Goniometer moved to an incidence angle of '+self.controller.i+' degrees.')
+                self.controller.log('Goniometer moved to an incidence angle of '+str(self.destination)+' degrees.')
             except:
-                self.controller.log('Light source moved')
+                self.controller.log('Incidence set')
+                
+        elif 'azimuth' in self.label:
+            self.controller.angles_change_time=time.time()
+            self.controller.az=self.destination
+            try:
+                self.controller.log('Goniometer moved to an azimuth angle of '+str(self.destination)+' degrees.')
+            except:
+                self.controller.log('Azimuth set')
             
         elif 'tray' in self.label:
             try:
@@ -5341,7 +5437,7 @@ class SaveConfigHandler(CommandHandler):
                     
 
                     self.wait_dialog.set_buttons(buttons,button_width=10)
-                self.wait_dialog.top.geometry("%dx%d%+d%+d" % (376, 150, 107, 69))
+                self.wait_dialog.top.geometry("%dx%d%+d%+d" % (376, 175, 107, 69))
                 return
 
             elif 'saveconfigfailed' in self.listener.queue:
@@ -6323,22 +6419,32 @@ class PiCommander(Commander):
         self.send(filename)
         return filename
         
-    #We may specify either an emission angle to move to, or a number of steps to move
-    def move_light(self, num,type='angle'):
+    #We may specify either an incidence angle to move to, or a number of steps to move
+    def set_incidence(self, num,type='angle'):
         self.remove_from_listener_queue(['donemoving','nopiconfig'])
         if type=='angle':
             incidence=num
             filename=self.encrypt('movelight',[incidence])
-            print(filename)
         else:
             steps=num
             filename=self.encrypt('movelight',[steps,'steps'])
-        print('sending!')
+        self.send(filename)
+        return filename
+    
+    #We may specify either an azimuth angle to move to, or a number of steps to move
+    def set_azimuth(self, num,type='angle'):
+        self.remove_from_listener_queue(['donemoving','nopiconfig'])
+        if type=='angle':
+            azimuth=num
+            filename=self.encrypt('movelight',[azimuth])
+        else:
+            steps=num
+            filename=self.encrypt('movelight',[steps,'steps'])
         self.send(filename)
         return filename
     
     #We may specify either an emission angle to move to, or a number of steps to move
-    def move_detector(self, num,type='angle'):
+    def set_emission(self, num,type='angle'):
         self.remove_from_listener_queue(['donemoving','nopiconfig'])
         if type=='angle':
             emission=num
@@ -6346,7 +6452,6 @@ class PiCommander(Commander):
         else:
             steps=num
             filename=self.encrypt('movedetector',[steps,'steps'])
-        print('sending')
         self.send(filename)
         return filename
     
