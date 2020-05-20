@@ -1,6 +1,7 @@
 #The controller runs the main thread controlling the program.
 #It opens a Tkinter GUI with options for instrument control parameters and sample configuration
 #The user can use the GUI to operate the goniometer motors and the spectrometer software.
+from test._test_multiprocessing import baz
 
 dev=False
 
@@ -206,12 +207,22 @@ def exit_func():
 def main():
     #Check if you are connected to the server. If not, put up dialog box and wait. If you are connected, go on to main part 2.
     spec_connection_checker=SpecConnectionChecker(spec_read_loc, func=main_part_2)
+    print('Checking spectrometer computer connection...')
     connected = spec_connection_checker.check_connection(True)
+    if connected:
+        print('Connected.')
+    else:
+        print('Not connected.')
 
 #repeat check for raspi
 def main_part_2():
     pi_connection_checker=PiConnectionChecker(pi_read_loc, func=main_part_3)
+    print('Checking raspberry pi connection...')
     connected=pi_connection_checker.check_connection(True)
+    if connected:
+        print('Connected.')
+    else:
+        print('Not connected.')
 
 def main_part_3():
     #Clean out your read and write directories for commands. Prevents confusion based on past instances of the program.
@@ -289,19 +300,26 @@ class Controller():
         
         #One wait dialog open at a time. CommandHandlers check whether to use an existing one or make a new one.
         self.wait_dialog=None
-        self.min_i=-50
-        self.max_i=45
+        
+        self.min_i=-70
+        self.max_i=70
         self.i=None
         self.final_i=None
         self.i_interval=None
         
-        self.min_e=-30
-        self.max_e=60
+        self.min_e=-70
+        self.max_e=70
         self.e=None #current emission angle
         self.final_e=None
         self.e_interval=None
         
-        self.required_angular_separation=15
+        self.min_az=0
+        self.max_az=170
+        self.az=None #current emission angle
+        self.final_az=None
+        self.az_interval=None
+        
+        self.required_angular_separation=10
         self.text_only=False #for running scripts.
         
         #cmds the user has entered into the console. Allows scrolling back and forth through commands by using up and down arrows.
@@ -326,15 +344,21 @@ class Controller():
         self.opt_time=None
         self.angles_change_time=None
         self.current_label=''
-        self.i_e_pair_frames=[]
+        
         self.incidence_entries=[]
         self.incidence_labels=[]
         self.emission_entries=[]
         self.emission_labels=[]
+        self.azimuth_entries=[]
+        self.azimuth_labels=[]
+        
         self.active_incidence_entries=[] #list of geometries where data is currently being collected
         self.active_emission_entries=[]
-        self.active_i_e_pair_frames=[]
-        self.i_e_removal_buttons=[] #buttons for removing geometries from GUI
+        self.active_azimuth_entries=[]
+        
+        self.geometry_frames=[]
+        self.active_geometry_frames=[]
+        self.geometry_removal_buttons=[] #buttons for removing geometries from GUI
         
         self.sample_removal_buttons=[] #As each sample is added, it also gets an associated button for removing it.
 
@@ -622,7 +646,7 @@ class Controller():
         
         self.individual_angles_frame=Frame(self.viewing_geom_frame, bg=self.bg,highlightbackground=self.border_color)
         self.individual_angles_frame.pack()
-        self.add_i_e_pair()
+        self.add_geometry()
 
 
         
@@ -690,6 +714,37 @@ class Controller():
         self.detector_increment_entry=Entry(detector_entries_frame,bd=self.bd,width=10, highlightbackground='white',bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
         self.entries.append(self.detector_increment_entry)
         self.detector_increment_entry.pack(padx=self.padx,pady=self.pady)
+        
+        self.azimuth_frame=Frame(self.range_frame,bg=self.bg)
+        self.azimuth_frame.pack(side=LEFT,padx=(5,30))
+        self.azimuth_label=Label(self.azimuth_frame,padx=self.padx, pady=self.pady,bg=self.bg,fg=self.textcolor,text='Incidence angles:')
+        self.azimuth_label.pack()
+        
+        azimuth_labels_frame = Frame(self.azimuth_frame,bg=self.bg,padx=self.padx,pady=self.pady)
+        azimuth_labels_frame.pack(side=LEFT)
+        
+        azimuth_start_label=Label(azimuth_labels_frame,padx=self.padx,pady=self.pady,bg=self.bg,fg=self.textcolor,text='First:')
+        azimuth_start_label.pack(pady=(0,8))
+        azimuth_end_label=Label(azimuth_labels_frame,bg=self.bg,padx=self.padx,pady=self.pady,fg=self.textcolor,text='Last:')
+        azimuth_end_label.pack(pady=(0,5))
+    
+        azimuth_increment_label=Label(azimuth_labels_frame,bg=self.bg,padx=self.padx,pady=self.pady,fg=self.textcolor,text='Increment:')
+        azimuth_increment_label.pack(pady=(0,5))
+    
+        
+        azimuth_entries_frame=Frame(self.azimuth_frame,bg=self.bg,padx=self.padx,pady=self.pady)
+        azimuth_entries_frame.pack(side=RIGHT)
+        
+        self.azimuth_start_entry=Entry(azimuth_entries_frame,width=10, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+        self.entries.append(self.azimuth_start_entry)
+        self.azimuth_start_entry.pack(padx=self.padx,pady=self.pady)
+        
+        self.azimuth_end_entry=Entry(azimuth_entries_frame,width=10, highlightbackground='white', bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+        self.entries.append(self.azimuth_end_entry)
+        self.azimuth_end_entry.pack(padx=self.padx,pady=self.pady)    
+        self.azimuth_increment_entry=Entry(azimuth_entries_frame,width=10,highlightbackground='white', bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+        self.entries.append(self.azimuth_increment_entry)
+        self.azimuth_increment_entry.pack(padx=self.padx,pady=self.pady)
        
         self.samples_frame=Frame(self.control_frame.interior,bg=self.bg, highlightthickness=1)
         self.samples_frame.pack(fill=BOTH,expand=True) 
@@ -1123,6 +1178,8 @@ class Controller():
                 cmd=script.readline().strip('\n')
                 continue
         self.queue.append({self.next_script_line:['end file']})
+        for item in self.queue:
+            print(item)
         self.next_in_queue()
 
     
@@ -1448,14 +1505,18 @@ class Controller():
     def acquire(self, override=False, setup_complete=False, action=None, garbage=False):
         if not setup_complete:
             #Make sure basenum entry has the right number of digits. It is already guaranteed to have no more digits than allowed and to only have numbers.
-            while len(self.spec_startnum_entry.get())<NUMLEN:
-                self.spec_startnum_entry.insert(0,'0')
+            start_num=self.spec_startnum_entry.get()
+            num_zeros=NUMLEN-len(start_num)
+            for _ in range(num_zeros):
+                start_num='0'+start_num
+            self.set_text(self.spec_startnum_entry, start_num)
+
             #Set all entries to active. Viewing geometry information will be pulled from these one at a time. Entries are removed from the active list after the geom info is read.
             self.active_incidence_entries=list(self.incidence_entries)
             self.active_emission_entries=list(self.emission_entries)
-            self.active_i_e_pair_frames=list(self.i_e_pair_frames)
+            self.active_geometry_frames=list(self.geometry_frames)
             
-
+            
         range_warnings=''
         if action==None: #If this was called by the user clicking acquire. otherwise, it will be take_spectrum or wr?
             action=self.acquire
@@ -1482,7 +1543,6 @@ class Controller():
                 valid_input=self.check_optional_input(self.opt,[True,False],range_warnings)
             if not valid_input:
                 return         
-                
         #Make sure RS3 save config and instrument config are taken care of. This will add those actions to the queue if needed.
         if not setup_complete:
             if action==self.take_spectrum:
@@ -1491,7 +1551,9 @@ class Controller():
                 #print(action)
                 setup=self.setup_RS3_config({action:[True, False]})
             elif action==self.opt:
+                print('SETUP')
                 setup=self.setup_RS3_config({self.opt:[True, False]})
+                print(setup)
             else:
                 raise Exception()
             #If things were not already set up (instrument config, etc) then the compy will take care of that and call take_spectrum again after it's done.
@@ -1532,7 +1594,7 @@ class Controller():
 
             #For each (i, e), opt, white reference, save the white reference, move the tray, take a  spectrum, then move the tray back, then update geom to next.
         self.queue.append({self.move_tray:['wr']})
-        for entry in self.active_incidence_entries: 
+        for entry in self.active_incidence_entries: #This is one for each geometry when geometries are specified individually. When a range is specified, we actually quietly create pretend entry objects for each pair, so it works then too.
             self.queue.append({self.opt:[True, True]})
             self.queue.append({self.wr:[True,True]})
             self.queue.append({self.take_spectrum:[True,True,False]})
@@ -1549,13 +1611,17 @@ class Controller():
         #Put in calls to move light and detector for the first geometry (this happens in next_indv geom, or repeatedly here if you are specifying a range)
         next_i=int(self.active_incidence_entries[0].get())
         next_e=int(self.active_emission_entries[0].get())
+        next_az=int(self.active_azimuth_entries[0].get())
+        
         
         if next_e<int(self.e):
             self.queue.insert(0,{self.move_detector:[]})
             self.queue.insert(0,{self.move_light:[]})
+            self.queue.insert(0, self.set_azimuth)
         else:
             self.queue.insert(0,{self.move_light:[]})
             self.queue.insert(0,{self.move_detector:[]})
+            self.queue.insert(0, self.set_azimuth)
             
         #Now append the script queue we saved at the beginning. But check if acquire is the first command in the script queue and if it is, complete that item.
         if self.script_running:
@@ -1573,15 +1639,15 @@ class Controller():
             valid_i=validate_int_input(self.i,-90,90)
             if valid_i:
                 if self.manual_automatic.get()==0:#manual, no animation
-                    self.goniometer_view.move_light(int(self.i),config=True)
+                    self.goniometer_view.set_incidence(int(self.i),config=True)
                 else:
-                    self.goniometer_view.move_light(int(self.i))
+                    self.goniometer_view.set_incidence(int(self.i))
             valid_e=validate_int_input(self.e,-90,90)
             if valid_e:
                 if self.manual_automatic.get()==0:#manual, no animation
-                    self.goniometer_view.move_detector(int(self.e),config=True)
+                    self.goniometer_view.set_emission(int(self.e),config=True)
                 else:
-                    self.goniometer_view.move_detector(int(self.e))
+                    self.goniometer_view.set_emission(int(self.e))
 
             if complete_queue_item:
                 self.complete_queue_item()
@@ -1599,32 +1665,36 @@ class Controller():
 
         
     def set_text(self, widget, text):
+        state=widget.cget('state')
         widget.configure(state='normal')
         widget.delete(0,'end')
         widget.insert(0,text)
-        widget.configure(state='disabled')
+        widget.configure(state=state)
         
     def next_geom(self): 
-            
         self.active_incidence_entries.pop(0)
         self.active_emission_entries.pop(0)
+        self.active_azimuth_entries.pop(0)
         
         if self.individual_range.get()==0:
-            self.active_i_e_pair_frames.pop(0)
+            self.active_geometry_frames.pop(0)
         
         next_i=int(self.active_incidence_entries[0].get())
         next_e=int(self.active_incidence_entries[0].get())
+        next_az=int(self.active_azimuth_entries[0].get())
 
         self.complete_queue_item()
         
         #Update goniometer position. Don't run the arms into each other.
         if int(next_e)<int(self.e):
-            self.queue.insert(0,{self.move_light:[]})
-            self.queue.insert(0,{self.move_detector:[]})
+            self.queue.insert(0,{self.set_incidence:[]})
+            self.queue.insert(0,{self.set_emission:[]})
+            self.queue.insert(0, {self.set_azimuth:[]})
 
         else:
             self.queue.insert(0,{self.move_detector:[]})
             self.queue.insert(0,{self.move_light:[]})
+            self.queue.insert(0, {self.set_azimuth:[]})
 
         self.next_in_queue()
                    
@@ -1652,12 +1722,11 @@ class Controller():
         else:
             timeout=np.abs(int(i))/15+PI_BUFFER
         self.pi_commander.move_light(i,type)
-        print('light timeout = ')
-        print(timeout)
+
         handler=MotionHandler(self,label='Moving light source...',timeout=timeout,steps=steps)
 
         if type=='angle':
-            self.goniometer_view.move_light(int(i))
+            self.goniometer_view.set_incidence(int(i))
         self.set_light_geom(i,type)
         
     def set_light_geom(self, i=None, type='angle'):
@@ -1701,7 +1770,7 @@ class Controller():
         self.pi_commander.move_detector(e,type)
         handler=MotionHandler(self,label='Moving detector...',timeout=timeout,steps=steps)
         if type=='angle':
-            self.goniometer_view.move_detector(int(e))
+            self.goniometer_view.set_emission(int(e))
         self.set_detector_geom(e,type)
         
 
@@ -1728,9 +1797,9 @@ class Controller():
 
             
     def range_setup(self,override=False):
-
         self.active_incidence_entries=[]
         self.active_emission_entries=[]
+        self.active_azimuth_entries=[]
         
         incidence_err_str=''
         incidence_warn_str=''
@@ -1820,11 +1889,14 @@ class Controller():
         
         for i in incidences:
             for e in emissions:
-                if e-i>=15:
-                    i_entry=PrivateEntry(str(i))
-                    e_entry=PrivateEntry(str(e))
-                    self.active_incidence_entries.append(i_entry)
-                    self.active_emission_entries.append(e_entry)
+                for az in azimuth:
+                    if self.validate_distance(i, e, az):
+                        i_entry=PrivateEntry(str(i))
+                        e_entry=PrivateEntry(str(e))
+                        az_entry=PrivateEntry(str(az))
+                        self.active_incidence_entries.append(i_entry)
+                        self.active_emission_entries.append(e_entry)
+                        self.active_azimuth_entries.append(az_entry)
                 
         if warning_string=='':
             return True
@@ -1994,7 +2066,8 @@ class Controller():
         thread.start()
     
     def execute_cmd_2(self,cmd): #In a separate method because that allows it to be spun off in a new thread, so tkinter mainloop continues, which means that the console log gets updated immediately e.g. if you say sleep(10) it will say sleep up in the log while it is sleeping.
-
+        print('Command is: '+cmd)
+        
         def get_val(param):
             return param.split('=')[1].strip(' ').strip('"').strip("'")
             
@@ -2008,7 +2081,7 @@ class Controller():
             if not self.script_running:
                 self.queue=[]
             self.queue.insert(0,{self.opt:[True, False]})
-            self.opt(True, False)
+            self.opt(True, False) #override=True, setup complete=False
         elif cmd=='goniometer.configure(MANUAL)':
             self.set_manual_automatic(force=0)
 
@@ -2048,7 +2121,7 @@ class Controller():
                     self.incidence_entries[0].insert(0,params[0])
                     self.emission_entries[0].delete(0,'end')
                     self.emission_entries[0].insert(0,params[1])
-                    self.configure_pi(params[0],params[1],params[2])
+                    self.configure_pi(params[0],params[1],params[2], params[3])
 
                 else:
                     self.log('Error: invalid arguments for mode, i, e, sample_num: '+str(params)+'\nExample input: goniometer.configure(AUTOMATIC, 0, 20, wr)')
@@ -2131,7 +2204,7 @@ class Controller():
                         self.incidence_entries[0].insert(0,params[0])
                         self.emission_entries[0].insert(0,params[1])
                     else:
-                        self.add_i_e_pair()
+                        self.add_geometry()
                         self.incidence_entries[-1].insert(0,params[0])
                         self.emission_entries[-1].insert(0,params[1])
             
@@ -2204,7 +2277,8 @@ class Controller():
             #First clear all existing sample names
             while len(self.sample_frames)>1:
                 self.remove_sample(-1)
-            self.sample_label_entries[0].delete(0,'end')
+            print('clearing')
+            self.set_text(self.sample_label_entries[0],'')
             
             #Then add in samples in order specified in params. Each param should be a sample name and pos.
             skip_count=0 #If a param is badly formatted, we'll skip it. Keep track of how many are skipped in order to index labels, etc right.
@@ -2226,8 +2300,8 @@ class Controller():
                     skip_count+=1
 
                 if valid_pos:
-                    self.sample_label_entries[i-skip_count].configure(state=NORMAL)
-                    self.sample_label_entries[i-skip_count].insert(0,name)
+                    print('setting')
+                    self.set_text(self.sample_label_entries[i-skip_count], name)
                     self.sample_pos_vars[i-skip_count].set(self.available_sample_positions[int(pos)-1])
                     self.set_taken_sample_positions()
                 else:
@@ -2304,6 +2378,14 @@ class Controller():
             param=cmd[0:-1].split('sleep(')[1]
             try:
                 num=float(param)
+                print('wait dialog')
+                print(self.wait_dialog)
+                try:
+                    title='Sleeping...'
+                    label='Sleeping...'
+                    self.wait_dialog.reset(title=title, label=label)
+                except:
+                    pass #If there isn't already a wait dialog up, don't create one.
                 elapsed=0
                 while elapsed<num-10:
                     time.sleep(10)
@@ -2413,7 +2495,7 @@ class Controller():
                 if valid_e:
                     print('here')
                     if int(e)<int(self.i)+15:
-                        self.log('Error: Because of geometric constraints on the instrument, the emission angle must be at least 15 degrees greater than the incidence angle.')
+                        self.log('Error: Because of geometric constraints on the instrument, the emission angle must be at least '+str(self.required_angular_separation)+' degrees different than the incidence angle.')
                         self.queue=[]
                         self.script_running=False
                         return False
@@ -2470,14 +2552,12 @@ class Controller():
                 valid_i=validate_int_input(i, self.min_i, self.max_i)
                 if valid_i:
                     if int(i)>int(self.e)-15:
-                        self.log('Error: Because of geometric constraints on the instrument, the emission angle must be at least 15 degrees greater than the incidence angle.')
+                        self.log('Error: Because of geometric constraints on the instrument, the emission angle must be at least '+str(self.required_angular_separation)+' degrees different than the incidence angle.')
                         return False
     
                     if not self.script_running:
                         self.queue=[]
                     self.queue.insert(0,{self.move_light:[i]})
-                    print('move light!')
-                    print(i)
                     self.move_light(i)
                 else:
                     self.log('Error: '+i+' is an invalid incidence angle.')
@@ -2508,17 +2588,25 @@ class Controller():
                 params[2]=int(params[2])
                 
             self.goniometer_view.set_goniometer_tilt(0)
+            
             self.goniometer_view.wireframes['i'].set_elevation(params[0])
             self.goniometer_view.wireframes['light'].set_elevation(params[0])
+            self.goniometer_view.wireframes['light guide'].set_elevation(params[0])
+            
             e_az=self.goniometer_view.wireframes['e'].az
             self.goniometer_view.wireframes['i'].set_azimuth(e_az+params[2])
             self.goniometer_view.wireframes['light'].set_azimuth(e_az+params[2])
+            self.goniometer_view.wireframes['light guide'].set_azimuth(e_az+params[2])
+            
             self.goniometer_view.wireframes['e'].set_elevation(params[1])
             self.goniometer_view.wireframes['detector'].set_elevation(params[1])
+            self.goniometer_view.wireframes['detector guide'].set_elevation(params[1])
+            
             self.goniometer_view.set_goniometer_tilt(20)
             
             self.goniometer_view.draw_3D_goniometer(self.goniometer_view.width, self.goniometer_view.height)
             self.goniometer_view.flip()
+            
         elif 'rotate_display' in cmd:
             angle=cmd.split('rotate_display(')[1].strip(')')
             valid=validate_int_input(angle, -360, 360)
@@ -2529,12 +2617,29 @@ class Controller():
                 angle=int(angle)
             
             self.goniometer_view.set_goniometer_tilt(0)
+            
             self.goniometer_view.wireframes['i'].rotate_az(angle)
             self.goniometer_view.wireframes['light'].rotate_az(angle)
+            self.goniometer_view.wireframes['light guide'].rotate_az(angle)
+            
             self.goniometer_view.wireframes['e'].rotate_az(angle)
             self.goniometer_view.wireframes['detector'].rotate_az(angle)
+            self.goniometer_view.wireframes['detector guide'].rotate_az(angle)
+            
             self.goniometer_view.set_goniometer_tilt(20)
             
+            self.goniometer_view.draw_3D_goniometer(self.goniometer_view.width, self.goniometer_view.height)
+            self.goniometer_view.flip()
+            
+        elif 'rotate_tray_display' in cmd:
+            angle=cmd.split('rotate_tray_display(')[1].strip(')')
+            valid=validate_int_input(angle, -360, 360)
+            if not valid:
+                self.log('Error: invalid geometry')
+                return 
+            else:
+                angle=int(angle)
+            self.goniometer_view.rotate_tray(angle)
             self.goniometer_view.draw_3D_goniometer(self.goniometer_view.width, self.goniometer_view.height)
             self.goniometer_view.flip()
             
@@ -3647,113 +3752,117 @@ class Controller():
         
         
 
-    def remove_i_e_pair(self,index):
+    def remove_geometry(self,index):
         self.incidence_labels.pop(index)
         self.incidence_entries.pop(index)
         #self.active_incidence_entries.pop(index)
         self.emission_entries.pop(index)
         #self.active_emission_entries.pop(index)
         self.emission_labels.pop(index)
-        self.i_e_removal_buttons.pop(index)
-        #self.active_i_e_pair_frames.pop(index)
-        self.i_e_pair_frames.pop(index).destroy()
+        self.geometry_removal_buttons.pop(index)
+        #self.active_geometry_frames.pop(index)
+        self.geometry_frames.pop(index).destroy()
 
 
-        for i, button in enumerate(self.i_e_removal_buttons):
-            button.configure(command=lambda x=i:self.remove_i_e_pair(x))
+        for i, button in enumerate(self.geometry_removal_buttons):
+            button.configure(command=lambda x=i:self.remove_geometry(x))
         if self.manual_automatic.get()==1:
-            self.add_i_e_pair_button.configure(state=NORMAL)
+            self.add_geometry_button.configure(state=NORMAL)
         if len(self.incidence_entries)==1:
-            self.i_e_removal_buttons[0].pack_forget()
+            self.geometry_removal_buttons[0].pack_forget()
             
-    def add_i_e_pair(self):
+    def add_geometry(self):
         try:
-            self.add_i_e_pair_button.pack_forget()
+            self.add_geometry_button.pack_forget()
         except:
-            self.add_i_e_pair_button=Button(self.individual_angles_frame, text='Add new', command=self.add_i_e_pair,width=10, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-            self.tk_buttons.append(self.add_i_e_pair_button)
-            self.add_i_e_pair_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor,state=DISABLED)
+            self.add_geometry_button=Button(self.individual_angles_frame, text='Add new', command=self.add_geometry,width=10, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
+            self.tk_buttons.append(self.add_geometry_button)
+            self.add_geometry_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor,state=DISABLED)
             
-        self.i_e_pair_frames.append(Frame(self.individual_angles_frame, bg=self.bg))
-        self.i_e_pair_frames[-1].pack(pady=(5,0))
-        self.incidence_labels.append(Label(self.i_e_pair_frames[-1],bg=self.bg,fg=self.textcolor,text='Incidence:',padx=self.padx,pady=self.pady))
-        self.incidence_labels[-1].pack(side=LEFT, padx=(5,0))
+        self.geometry_frames.append(Frame(self.individual_angles_frame, bg=self.bg))
+        self.geometry_frames[-1].pack(pady=(5,0))
         
-        self.incidence_entries.append(Entry(self.i_e_pair_frames[-1], width=10, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground))
+        self.incidence_labels.append(Label(self.geometry_frames[-1],bg=self.bg,fg=self.textcolor,text='i:',padx=self.padx,pady=self.pady))
+        self.incidence_labels[-1].pack(side=LEFT, padx=(5,0))
+        self.incidence_entries.append(Entry(self.geometry_frames[-1], width=10, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground))
         self.entries.append(self.incidence_entries[-1])
         self.incidence_entries[-1].pack(side=LEFT,padx=(0,10))
         
-        self.emission_labels.append(Label(self.i_e_pair_frames[-1], padx=self.padx,pady=self.pady,bg=self.bg, fg=self.textcolor,text='Emission:'))
+        self.emission_labels.append(Label(self.geometry_frames[-1], padx=self.padx,pady=self.pady,bg=self.bg, fg=self.textcolor,text='e:'))
         self.emission_labels[-1].pack(side=LEFT)
-            
-        self.emission_entries.append(Entry(self.i_e_pair_frames[-1], width=10, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground))
+        self.emission_entries.append(Entry(self.geometry_frames[-1], width=10, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground))
         self.entries.append(self.emission_entries[-1])
         self.emission_entries[-1].pack(side=LEFT, padx=(0,10))
         
-        self.i_e_removal_buttons.append(Button(self.i_e_pair_frames[-1], text='Remove', command=lambda x=len(self.i_e_removal_buttons):self.remove_i_e_pair(x),width=7, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd))
-        self.i_e_removal_buttons[-1].config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
+        self.azimuth_labels.append(Label(self.geometry_frames[-1],bg=self.bg,fg=self.textcolor,text='az:',padx=self.padx,pady=self.pady))
+        self.azimuth_labels[-1].pack(side=LEFT, padx=(5,0))
+        self.azimuth_entries.append(Entry(self.geometry_frames[-1], width=10, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground))
+        self.entries.append(self.azimuth_entries[-1])
+        self.azimuth_entries[-1].pack(side=LEFT,padx=(0,10))
+        
+        self.geometry_removal_buttons.append(Button(self.geometry_frames[-1], text='Remove', command=lambda x=len(self.geometry_removal_buttons):self.remove_geometry(x),width=7, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd))
+        self.geometry_removal_buttons[-1].config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
         if len(self.incidence_entries)>1:
-            for button in self.i_e_removal_buttons:
+            for button in self.geometry_removal_buttons:
                 button.pack(side=LEFT)
         
         if len(self.incidence_entries)>10:
-            self.add_i_e_pair_button.configure(state=DISABLED)
-        self.add_i_e_pair_button.pack(pady=(15,10))
+            self.add_geometry_button.configure(state=DISABLED)
+        self.add_geometry_button.pack(pady=(15,10))
         
-    def configure_pi(self,i=None, e=None, pos=None):
-        if i==None or e==None or pos==None:
+    def configure_pi(self,i=None, e=None, az=None, pos=None):
+        if i==None or e==None or az==None or pos==None:
             if self.sample_tray_index>-1:
-                self.pi_commander.configure(str(self.i),str(self.e),self.sample_tray_index)
+                self.pi_commander.configure(str(self.i),str(self.e),str(self.az), self.sample_tray_index)
             else:
-                self.pi_commander.configure(str(self.i),str(self.e),'wr')
+                self.pi_commander.configure(str(self.i),str(self.e),str(self.az), 'wr')
         else:
 
-            self.pi_commander.configure(str(i),str(e),pos)
+            self.pi_commander.configure(str(i),str(e),str(az), pos)
+            
         timeout_s=PI_BUFFER
         while timeout_s>0:
             if 'piconfigsuccess' in self.pi_listener.queue:
                 self.pi_listener.queue.remove('piconfigsuccess')
-
+                print('PI CONFIG')
                 tray_position_string=''
                 if self.sample_tray_index!=-1:
                     tray_position_string=self.available_sample_positions[self.sample_tray_index]
                 else:
                     tray_position_string='WR'
+                print('set')
                 self.goniometer_view.set_current_sample(tray_position_string)
 
-                if i!=None:self.i=i #redundant, this already happens elsewhere. I think this would probably be ther better place to put it though.
+                if i!=None:self.i=i #redundant, this already happens elsewhere. I think this would probably be the better place to put it though.
                 if e!=None:self.e=e #redundant, this already happens elsewhere
-                self.log('Raspberry pi configured.\n\ti = '+str(self.i)+'\n\te = '+str(self.e)+'\n\ttray position: '+tray_position_string)
+                if az!=None:self.az=az
+                
+                self.log('Raspberry pi configured.\n\ti = '+str(self.i)+'\n\te = '+str(self.e)+'\n\taz = '+str(self.az)+'\n\ttray position: '+tray_position_string)
                 break
-            #else:
-                #print('no queue')
-                #break
+
             time.sleep(INTERVAL)
             timeout_s-=INTERVAL
         if timeout_s<=0:
+            self.queue=[]
+            self.script_running=False
             if self.wait_dialog==None:
                 dialog=ErrorDialog(self,label='Error: Failed to configure Raspberry Pi.\nCheck connections and/or restart scripts.')
-                self.queue=[]
-                self.script_running=False
+
             else: #Everything in this else clause is nonsense.
-                print('I DO NOT THINK THIS EVER OCCURS IF IT DOES LOOK INTO IT')
-                if i==None or e==None:
-                    self.queue[0]={self.configure_pi:[self.i,self.e,self.sample_tray_index]} 
-                else:
-                    self.queue[0]={self.configure_pi:[i,e,pos]} 
-                self.complete_queue_item()#This means no retry option, makes previous line meaningless.
-                #self.wait_dialog.timeout(dialog_string='Error: Failed to configure Raspberry Pi.\nCheck connections and/or restart scripts.',log_string='Error: Failed to configure Raspberry Pi.')
                 self.wait_dialog.interrupt('Error: Failed to configure Raspberry Pi.\nCheck connections and/or restart scripts.')
                 
             self.i=None
             self.e=None
+            self.az=None
             self.set_manual_automatic(force=0)
             
             return
         else:
-            self.goniometer_view.move_light(int(self.i),config=True)
-            self.goniometer_view.move_detector(int(self.e),config=True)
+            self.goniometer_view.set_azimuth((int(self.az)), config=True)
+            self.goniometer_view.set_incidence(int(self.i),config=True)
+            self.goniometer_view.set_emission(int(self.e),config=True)
             self.complete_queue_item()
+            
             if len(self.queue)>0:
                 self.next_in_queue()
             else:
@@ -3773,8 +3882,8 @@ class Controller():
             self.individual_range.set(0)
             
             while len(self.incidence_entries)>1:
-                self.remove_i_e_pair(len(self.incidence_entries)-1)
-            self.add_i_e_pair_button.configure(state=DISABLED)
+                self.remove_geometry(len(self.incidence_entries)-1)
+            self.add_geometry_button.configure(state=DISABLED)
             self.add_sample_button.configure(state=DISABLED)
             for pos_menu in self.pos_menus:
                 pos_menu.configure(state=DISABLED)
@@ -3791,7 +3900,7 @@ class Controller():
             self.geommenu.entryconfigure(1,state=DISABLED, label='  Range (Automatic only)')
         else:
 
-            self.add_i_e_pair_button.configure(state=NORMAL)
+            self.add_geometry_button.configure(state=NORMAL)
             self.acquire_button.pack(padx=self.padx,pady=self.pady)
             self.spec_button.pack_forget()
             self.opt_button.pack_forget()
@@ -3801,10 +3910,6 @@ class Controller():
             for pos_menu in self.pos_menus:
                 pos_menu.configure(state=NORMAL)
             
-            #self.queue=[]
-            valid_i=validate_int_input(self.i,-60,60)
-            valid_e=validate_int_input(self.e,-75,75)
-            #if not valid_i or not valid_e:
 
             self.queue.insert(0,{self.configure_pi:[]})
             #This is if you are setting manual_automatic from commandline and already entered i, e, sample tray position.
@@ -3826,7 +3931,7 @@ class Controller():
                         
                     }
                 }
-                dialog=IntInputDialog(self,title='Setup Required',label='Setup required: Unknown goniometer state.\n\nPlease enter the current viewing geometry and tray position,\nor click \'Cancel\' to use the goniometer in manual mode.',values={'Incidence':[self.i,self.min_i,self.max_i],'Emission':[self.e,self.min_e,self.max_e],'Tray position':[self.sample_tray_index,0,self.num_samples-1]},buttons=buttons)
+                dialog=IntInputDialog(self,title='Setup Required',label='Setup required: Unknown goniometer state.\n\nPlease enter the current viewing geometry and tray position,\nor click \'Cancel\' to use the goniometer in manual mode.',values={'Incidence':[self.i,self.min_i,self.max_i],'Emission':[self.e,self.min_e,self.max_e],'Azimuth':[self.az, self.min_az, self.max_az], 'Tray position':[self.sample_tray_index,0,self.num_samples-1]},buttons=buttons)
                 
             menu.entryconfigure(0,label='  Manual')
             menu.entryconfigure(1,label='X Automatic')
@@ -3920,10 +4025,11 @@ class Controller():
         # entry.insert(0,name)
         # entry.icursor(pos)   
         
-    def validate_distance(self,i,e):
+    def validate_distance(self,i,e, az):
         try:
             i=int(i)
             e=int(e)
+            az=int(az)
         except:
             return False
         if np.abs(i-e)<self.required_angular_separation:
@@ -4165,7 +4271,7 @@ class Controller():
             
         if self.manual_automatic.get()==0:
             self.range_radio.configure(state='disabled')
-            self.add_i_e_pair_button.configure(state='disabled')
+            self.add_geometry_button.configure(state='disabled')
             self.add_sample_button.configure(state='disabled')
             for pos_menu in self.pos_menus:
                 menu.configure(state='disabled')
@@ -4174,11 +4280,12 @@ class Controller():
     def light_close(self):
         self.pi_commander.move_light(self.active_incidence_entries[0].get())
         handler=CloseHandler(self)
-        self.goniometer_view.move_light(int(self.active_incidence_entries[0].get()))
+        self.goniometer_view.set_incidence(int(self.active_incidence_entries[0].get()))
+        
     def detector_close(self):
         self.pi_commander.move_detector(self.active_emission_entries[0].get())
         handler=CloseHandler(self)
-        self.goniometer_view.move_detector(int(self.active_emission_entries[0].get()))
+        self.goniometer_view.set_emission(int(self.active_emission_entries[0].get()))
     def plot_right_click(self,event):
         return
         dist_to_edge=self.dist_to_edge(event)
@@ -4665,10 +4772,11 @@ class CommandHandler():
             self.interrupt('Success!')
             
     def set_text(self,widget, text):
+        state=widget.cget('state')
         widget.configure(state='normal')
         widget.delete(0,'end')
         widget.insert(0,text)
-        widget.configure(state='disabled')
+        widget.configure(state=state)
             
 
 class InstrumentConfigHandler(CommandHandler):
@@ -4944,11 +5052,9 @@ class ProcessHandler(CommandHandler):
         
     def wait(self):
         while True: #self.timeout_s>0: Never going to timeout
-            print('No timeout')
             if self.timeout_s%20==0:
                 print(self.timeout_s)
             if 'processsuccess' in self.listener.queue or 'processsuccessnocorrection' in self.listener.queue or 'processsuccessnolog' in self.listener.queue:
-                print('process success!')
                 warnings=''
                 if 'processsuccess' in self.listener.queue:
                     self.listener.queue.remove('processsuccess')
@@ -5106,9 +5212,6 @@ class MotionHandler(CommandHandler):
             time.sleep(INTERVAL)
             self.timeout_s-=INTERVAL
             
-            if self.timeout_s%10==0: 
-                print('printing timeout')
-                print(self.timeout_s)
         
         self.timeout()
     def success(self):
@@ -5828,11 +5931,8 @@ class IntInputDialog(Dialog):
             valid_sep=True
             if valid:
                 #self.values[val][0]=self.entries[val].get()
-                if val=='Incidence':
-                    valid_sep=self.controller.validate_distance(self.entries['Incidence'].get(),self.entries['Emission'].get())
-                        
-                elif val=='Emission':
-                    valid_sep=self.controller.validate_distance(self.entries['Incidence'].get(),self.entries['Emission'].get())
+                if val=='Incidence' or val=='Emission' or val=='Azimuth':
+                    valid_sep=self.controller.validate_distance(self.entries['Incidence'].get(),self.entries['Emission'].get(), self.entries['Azimuth'].get())
                         
                 elif val=='Tray position':
                     self.controller.sample_tray_index=int(self.entries[val].get())-1
@@ -5848,11 +5948,13 @@ class IntInputDialog(Dialog):
         if len(bad_vals)==0 and valid_sep:
             incidence=int(self.entries['Incidence'].get())
             emission=int(self.entries['Emission'].get())
-            if int(incidence)>int(emission)-15: 
-                valid_sep=False
-            else:
-                self.controller.e=emission
-                self.controller.i=incidence
+            azimuth=int(self.entries['Azimuth'].get())
+            
+
+            self.controller.e=emission
+            self.controller.i=incidence
+            self.controller.az=azimuth
+            
         if len(bad_vals)==0 and valid_sep:
             self.top.destroy()
             dict=self.buttons['ok']
@@ -5869,7 +5971,7 @@ class IntInputDialog(Dialog):
                 for val in bad_vals:
                     err_str+=val+' from '+str(self.mins[val])+' to '+str(self.maxes[val])+'\n'
             else:
-                err_str+='angular separation.\nEmission must be at least '+str(self.controller.required_angular_separation)+' degrees greater than incidence.'
+                err_str+='angular separation.\nEmission must be at least '+str(self.controller.required_angular_separation)+' degrees different than incidence.'
             dialog=ErrorDialog(self.controller,title='Error: Invalid Input',label=err_str)
         
             
@@ -6134,9 +6236,6 @@ class SpecListener(Listener):
                     elif 'rmfailure' in cmd:
                         self.queue.append('rmfailure')
                         
-                    # elif 'piconfigsuccess' in cmd:
-                    #     self.queue.append('piconfigsuccess')
-                        
                     elif 'unexpectedfile' in cmd:
                         if self.new_dialogs:
                             try:
@@ -6217,10 +6316,10 @@ class PiCommander(Commander):
     def __init__(self,write_command_loc,listener):
         super().__init__(write_command_loc,listener)
     
-    def configure(self,i,e,pos):
+    def configure(self,i,e,az,pos):
 
         self.remove_from_listener_queue(['piconfigsuccess'])
-        filename=self.encrypt('configure',[i,e,pos])
+        filename=self.encrypt('configure',[i,e,az,pos])
         self.send(filename)
         return filename
         
