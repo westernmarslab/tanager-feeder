@@ -24,6 +24,7 @@ class GoniometerView():
         self.master=self.controller.master
         self.notebook=notebook
         
+        self.collision=False
         self.embed=Frame(self.notebook,width=self.width,height=self.height)
         self.embed.pack(fill=BOTH,expand=True)
         
@@ -60,10 +61,23 @@ class GoniometerView():
         self.define_goniometer_wireframes()
         self.define_sample_tray_wireframes()
         self.tilt=0 #tilt of entire goniometer
-        self.incidence=20
-        self.emission=0
-        self.az=90
-        self.negative=False
+        
+#         self.wireframes['i'].az=90
+#         self.wireframes['i_base'].az=90
+#         self.wireframes['light'].az=90
+#         self.wireframes['light guide'].az=90
+#         self.wireframes['e'].az=0
+#         self.wireframes['e_base'].az=0
+#         self.wireframes['detector'].az=0
+#         self.wireframes['detector guide'].az=0
+        
+        self.motor_i=20
+        self.science_i=20
+        self.motor_az=90
+        self.science_az=90
+        self.science_e=0
+        self.motor_e=0
+        
         pygame.init()
 
         
@@ -356,14 +370,13 @@ class GoniometerView():
         light_wireframe.az=90
         light_guide_wireframe.az=90
         
-        i_wireframe.set_elevation(-20)
-        light_wireframe.set_elevation(-20)
-        light_guide_wireframe.set_elevation(-20)
-        self.incidence=-20
+        i_wireframe.set_elevation(20)
+        light_wireframe.set_elevation(20)
+        light_guide_wireframe.set_elevation(20)
         
-        i_wireframe.set_azimuth(40)
-        light_wireframe.set_azimuth(40)
-        light_guide_wireframe.set_azimuth(40)
+        i_wireframe.set_azimuth(220)
+        light_wireframe.set_azimuth(220)
+        light_guide_wireframe.set_azimuth(220)
         
         
         
@@ -383,6 +396,18 @@ class GoniometerView():
         i_radius=int(self.char_len/2)#250
         e_radius=int(i_radius*0.75)
         tray_radius=(i_radius*0.25)
+        
+        if self.collision:
+            for face in self.wireframes['i'].faces:
+                face.color=(150,50,50)
+            for face in self.wireframes['e'].faces:
+                face.color=(150,50,50)
+        else:
+            for face in self.wireframes['i'].faces:
+                face.color=(80,80,80)
+            for face in self.wireframes['e'].faces:
+                face.color=(80,80,80)
+            
         
         self.wireframes['i'].set_scale(i_radius)
         self.wireframes['i_base'].set_scale(i_radius)
@@ -441,12 +466,10 @@ class GoniometerView():
             self.draw_wireframes(draw_me)
             self.set_goniometer_tilt(20)
             
-            if self.negative:
-                i_str='i='+str(-1*int(self.incidence))
-            else:
-                i_str='i='+str(int(self.incidence))
-            e_str='e='+str(int(self.emission))
-            az_str='az='+str(int(self.az))
+
+            i_str='i='+str(int(self.science_i))
+            e_str='e='+str(int(self.science_e))
+            az_str='az='+str(int(self.science_az))
             sample_str=self.current_sample
  
             text_size=np.max([int(self.char_len/18),20])
@@ -618,68 +641,67 @@ class GoniometerView():
 #         
 #         #border around screen
 #         pygame.draw.rect(self.screen,pygame.Color('darkgray'),(2,2,self.width-6,self.height+15),2)
-
+    def check_collision(self, i, e, az):
+        collision=False
+        pos, dist=self.controller.get_closest_approach(i,e,az)
+        if dist<self.controller.required_angular_separation:
+            collision=True
+        if collision:
+            self.collision=True
+        else:
+            self.collision=False
         
-    def set_incidence(self, theta, config=False):
-        print('SET INCIDENCE TO '+str(theta))
-        #theta=-theta
-        if self.negative==True:
-            theta=-1*theta
-
-        delta_theta=5*np.sign(theta-self.incidence)
-        while np.abs(theta-self.incidence)>0:
-            self.incidence=self.incidence+delta_theta
+    def set_incidence(self, motor_i, config=False):
+        delta_theta=-1*5*np.sign(self.motor_i-motor_i)
+        while np.abs(self.motor_i-motor_i)>0:
+            self.motor_i=self.motor_i+delta_theta
+            if self.motor_az<180:
+                self.science_i=self.motor_i
+            else:
+                self.science_i=-1*self.motor_i
+            
             if not config:
                 time.sleep(0.005)
             else:
                 time.sleep(0.005)
+            
+            self.check_collision(self.science_i, self.science_e, self.science_az)
             self.set_goniometer_tilt(0)
-            self.wireframes['i'].set_elevation(-self.incidence)
-            self.wireframes['light'].set_elevation(-self.incidence)
-            self.wireframes['light guide'].set_elevation(-self.incidence)
+            
+            self.wireframes['i'].set_elevation(self.motor_i)
+            self.wireframes['light'].set_elevation(self.motor_i)
+            self.wireframes['light guide'].set_elevation(self.motor_i)
+            
             self.set_goniometer_tilt(20)
             self.draw_3D_goniometer(self.width,self.height)
             self.flip()
             
-    def set_azimuth(self, theta, config=False):
-        print('set azimuth')
-        goal=self.wireframes['detector'].az+theta
-        #if goal>=180: goal=goal-180
-        #delta_theta=5*np.sign(goal-self.wireframes['i'].az)
-        delta_theta=5*np.sign(goal-self.wireframes['i'].az-180)
-        #next=self.az #if the azimuth isn't changing, this gets used when self.az is reassigned to next
-        print('detector az:'+str(self.wireframes['detector'].az))
-        print('GOAL:'+str(goal))
-        while np.abs(goal-self.wireframes['i'].az-180)>=5:
-            print('diff: '+str(np.abs(goal-self.wireframes['i'].az-180)))
-            next=self.wireframes['i'].az+delta_theta
-            #if next>180: next=next-180
-            #if next<0: next=next+180
+    def set_azimuth(self, motor_az, config=False):
+        
+        delta_theta=5*np.sign(motor_az-self.motor_az)
+
+        while np.abs(motor_az-self.motor_az)>=5:
+
+            next_drawing_az=self.wireframes['i'].az+delta_theta
+
             if not config:
                 time.sleep(0.005)
             else:
                 time.sleep(.005)
+                
+            self.check_collision(self.science_i, self.science_e, self.science_az)
             self.set_goniometer_tilt(0)
-            self.wireframes['i'].set_azimuth(next)
-            self.wireframes['light'].set_azimuth(next)
-            self.wireframes['light guide'].set_azimuth(next)
+            self.wireframes['i'].set_azimuth(next_drawing_az)
+            self.wireframes['light'].set_azimuth(next_drawing_az)
+            self.wireframes['light guide'].set_azimuth(next_drawing_az)
             self.set_goniometer_tilt(20)
-            self.az=next-self.wireframes['detector'].az
-            #print(self.az)
-            if self.az>=0:
-                print('More than 180!')
-                self.negative=True
-#                 print(self.incidence)
-#                 self.incidence=-1*self.incidence
-#                 self.wireframes['i'].el=-1*self.wireframes['i'].el
-#                 self.wireframes['light'].el=-1*self.wireframes['i'].el
-#                 self.wireframes['light guide'].el=-1*self.wireframes['i'].el
-            if self.az<0: 
-                self.negative=False
-                self.az=self.az+180
-            #print(self.az)
-
-                #self.az=self.az-180
+            self.motor_az=self.wireframes['i'].az-self.wireframes['e'].az
+            if self.motor_az<180:
+                self.science_az=self.motor_az
+                self.science_i=self.motor_i
+            else:
+                self.science_az=self.motor_az-180
+                self.science_i=-1*self.motor_i
                 
             self.draw_3D_goniometer(self.width,self.height)
             self.flip()
@@ -690,18 +712,21 @@ class GoniometerView():
             self.draw_side_view(self.width,self.height)
             self.flip()
             
-    def set_emission(self, theta, config=False):
-        delta_theta=5*np.sign(theta-self.emission)
-        while np.abs(theta-self.emission)>0:
-            self.emission=self.emission+delta_theta
+    def set_emission(self, motor_e, config=False):
+        delta_theta=5*np.sign(motor_e-self.motor_e)
+        while np.abs(motor_e-self.motor_e)>0:
+            self.motor_e=self.motor_e+delta_theta
+            self.science_e=self.science_e+delta_theta
             if not config:
                 time.sleep(0.005)
             else:
                 time.sleep(.005)
+                
+            self.check_collision(self.science_i, self.science_e, self.science_az)
             self.set_goniometer_tilt(0)
-            self.wireframes['e'].set_elevation(self.emission)
-            self.wireframes['detector'].set_elevation(self.emission)
-            self.wireframes['detector guide'].set_elevation(self.emission)
+            self.wireframes['e'].set_elevation(self.motor_e)
+            self.wireframes['detector'].set_elevation(self.motor_e)
+            self.wireframes['detector guide'].set_elevation(self.motor_e)
             self.set_goniometer_tilt(20)
             self.draw_3D_goniometer(self.width,self.height)
             self.flip()

@@ -315,11 +315,12 @@ class Controller():
         
         self.min_az=0
         self.max_az=260
-        self.az=None #current emission angle
+        self.az=None #current azimuth angle
         self.final_az=None
         self.az_interval=None
         
         self.required_angular_separation=10
+        self.reversed_goniometer=False
         self.text_only=False #for running scripts.
         
         #cmds the user has entered into the console. Allows scrolling back and forth through commands by using up and down arrows.
@@ -729,7 +730,6 @@ class Controller():
         azimuth_increment_label=Label(azimuth_labels_frame,bg=self.bg,padx=self.padx,pady=self.pady,fg=self.textcolor,text='Increment:')
         azimuth_increment_label.pack(pady=(0,5),padx=(0,0))
     
-        
         azimuth_entries_frame=Frame(self.azimuth_frame,bg=self.bg,padx=self.padx,pady=self.pady)
         azimuth_entries_frame.pack(side=RIGHT)
         
@@ -1310,9 +1310,9 @@ class Controller():
                 i=self.active_incidence_entries[index].get()
                 e=self.active_emission_entries[index].get()
                 az=self.active_azimuth_entries[index].get()
-                valid_i=validate_int_input(i,-90,90)
-                valid_e=validate_int_input(e,-90,90)
-                valid_az=validate_int_input(az,-90,90)
+                valid_i=validate_int_input(i,self.min_i, self.max_i)
+                valid_e=validate_int_input(e,self.min_e,self.max_e)
+                valid_az=validate_int_input(az,self.min_az,self.max_az)
                 if not valid_i or not valid_e or not valid_az:
                     dialog=ErrorDialog(self,label='Error: Invalid viewing geometry:\n\nincidence = '+str(i)+'\nemission = '+str(e)+'\nazimuth = '+str(az),width=300, height=130)
                     return False
@@ -1667,6 +1667,266 @@ class Controller():
         widget.insert(0,text)
         widget.configure(state=state)
         
+    def safe_az_sweep(self, i,e,start_az, end_az):
+        az_array=np.arange(start_az, end_az,1)
+        if len(az_array)==0:
+            az_array=np.arange(start_az, end_az,-1)
+        np.append(az_array, end_az)
+        
+        for az in az_array:
+            if az<180:
+                pos, dist=self.get_closest_approach(i, e, az)
+            else:
+                pos, dist=self.get_closest_approach(-1*i, e, az-180)
+            print("az, pos, dist")
+            print(az)
+            print(pos)
+            print(dist)
+            if dist<self.required_angular_separation:
+                return False
+        return True
+    
+    def safe_e_sweep(self, i,az,start_e, end_e):
+        e_array=np.arange(start_e, end_e,1)
+        if len(e_array)==0:
+            e_array=np.arange(start_e, end_e,-1)
+        np.append(e_array, end_e)
+        
+        for e in e_array:
+            pos, dist=self.get_closest_approach(i, e, az)
+            if dist<self.required_angular_separation:
+                return False
+        return True
+    
+    def safe_i_sweep(self, e,az,start_i, end_i):
+        print('*************************I SWEEP****************************')
+        i_array=np.arange(start_i, end_i,1)
+        if len(i_array)==0:
+            i_array=np.arange(start_i, end_i,-1)
+        np.append(i_array, end_i)
+        
+        for i in i_array:
+            pos, dist=self.get_closest_approach(i, e, az)
+            if True:#e==20:
+                print(i)
+                print(pos)
+                print(dist)
+                print()
+            if dist<self.required_angular_separation:
+                return False
+        return True
+    
+    def get_movement_order(self, next_i, next_e, next_az, current=None):
+        
+        if current==None:
+            current=(self.i, self.e, self.az)
+        current_i=int(current[0])
+        current_e=int(current[1])
+        current_az=int(current[2])
+        
+        next_i=int(next_i)
+        next_e=int(next_e)
+        next_az=int(next_az)
+        
+        #try moving az, i, e. If that doesn't work, try az, e, i.
+        safe_az=self.safe_az_sweep(current_i, current_e, current_az, next_az)
+        if safe_az:
+            safe_i=self.safe_i_sweep(current_e, next_az, current_i, next_i)
+            if safe_i:
+                safe_e=self.safe_e_sweep(next_i, next_az, current_e, next_e)
+                if safe_e:
+                    print('1')
+                    return ['az','i','e']
+            safe_e=self.safe_e_sweep(current_i, next_az, current_e, next_e)
+            if safe_e:
+                safe_i=self.safe_i_sweep(next_e, next_az, current_i, next_i)
+                if safe_i:
+                    print('2')
+                    return ['az','e','i']
+
+        #try moving azimuth +180, i, e. If that doesn't work, try az, e, i.
+        print('WHY NOT?')
+        print(current_az)
+        print(next_az)
+        print(str(next_az+180))
+        safe_az=self.safe_az_sweep(current_i, current_e, current_az, next_az+180)
+        print('safe az? '+str(safe_az))
+        if safe_az:
+            safe_i=self.safe_i_sweep(current_e, next_az+180, current_i, -1*next_i)
+            print('safe i? '+str(safe_i))
+            if safe_i:
+                safe_e=self.safe_e_sweep(-1*next_i, next_az+180, current_e, next_e)
+                if safe_e:
+                    print('3')
+                    return ['az+180','-i','e']
+            safe_e=self.safe_e_sweep(current_i, next_az+180, current_e, next_e)
+            if safe_e:
+                safe_i=self.safe_i_sweep(next_e, next_az+180, current_i, -1*next_i)
+                if safe_i:
+                    print('4')
+                    return ['az+180','e','-i']
+        print('TRY BACKWARD')
+        safe_az=self.safe_az_sweep(current_i, current_e, current_az, next_az-180)
+        print('safe az? '+str(safe_az))
+        if safe_az:
+            safe_i=self.safe_i_sweep(current_e, next_az-180, current_i, -1*next_i)
+            print('safe i? '+str(safe_i))
+            if safe_i:
+                safe_e=self.safe_e_sweep(-1*next_i, next_az-180, current_e, next_e)
+                if safe_e:
+                    print('3 negative')
+                    return ['az-180','-i','e']
+            safe_e=self.safe_e_sweep(current_i, next_az+180, current_e, next_e)
+            if safe_e:
+                safe_i=self.safe_i_sweep(next_e, next_az+180, current_i, -1*next_i)
+                if safe_i:
+                    print('4 negative')
+                    return ['az-180','e','-i']
+        return 'END'
+
+        temp_i=-1*(current_e+np.sign(current_e)*self.required_angular_separation)  
+        print('TEMP I: '+str(temp_i))    
+        print('current i'+str(current_i))  
+        safe_temp_i=self.safe_i_sweep(current_e, current_az, current_i, temp_i)
+        print(safe_temp_i)
+        if not safe_temp_i:
+            temp_i=current_e+np.sign(current_e)*self.required_angular_separation
+        safe_temp_i=self.safe_i_sweep(current_e, current_az, current_i, temp_i)
+        print('TEMP I: '+str(temp_i))
+        print('current i'+str(current_i))  
+        print(safe_temp_i)
+        if safe_temp_i:
+            safe_az=self.safe_az_sweep(temp_i, current_e, current_az, next_az+180)
+            print('Safe az?'+str(safe_az))
+            if safe_az:
+                safe_i=self.safe_i_sweep(current_e, next_az+180, temp_i, -1*next_i)
+                if safe_i:
+                    safe_e=self.safe_e_sweep(-1*next_i, next_az+180, current_e, next_e)
+                    if safe_e:
+                        print('5')
+                        return ['temp i','az+180','-i','e']
+                safe_e=self.safe_e_sweep(temp_i, next_az+180, current_e, next_e)
+                if safe_e:
+                    safe_i=self.safe_i_sweep(next_e, next_az+180, temp_i, -1*next_i)
+                    if safe_i:
+                        print('6')
+                        return ['temp i', 'az+180','e','-i']
+            temp_az=current_az+180
+            safe_az=self.safe_az_sweep(temp_i, current_e, current_az, temp_az)
+            if safe_az:
+                print('a')
+                safe_e=self.safe_e_sweep(temp_i, temp_az, current_e, next_e)
+                if safe_e:
+                    print('b')
+                    safe_az=self.safe_az_sweep(temp_i, next_e, temp_az, next_az)
+                    if safe_az:  
+                        print('c')                     
+                        safe_i=self.safe_i_sweep(next_e, next_az, temp_i, next_i)
+                        if safe_i:
+                            print('YEP')
+                            return ['temp i', 'temp az', 'e','az','i']
+                    
+            safe_az=self.safe_az_sweep(temp_i, current_e, current_az, next_az)
+            if safe_az:
+                safe_i=self.safe_i_sweep(current_e, next_az, temp_i, next_i)
+                if safe_i:
+                    safe_e=self.safe_e_sweep(-1*next_i, next_az, current_e, next_e)
+                    if safe_e:
+                        print('9')
+                        return ['temp i','az+180','-i','e']
+                safe_e=self.safe_e_sweep(temp_i, next_az, current_e, next_e)
+                if safe_e:
+                    safe_i=self.safe_i_sweep(next_e, next_az, temp_i, next_i)
+                    if safe_i:
+                        print('10')
+                        return ['temp i', 'az+180','e','i']
+        
+        #try moving azimuth-180, i, e. If that doesn't work, try az-180, e, i.
+        safe_az=self.safe_az_sweep(current_i, current_e, current_az, next_az-180)
+        if safe_az:
+            safe_i=self.safe_i_sweep(current_e, next_az-180, current_i, next_i)
+            if safe_i:
+                safe_e=self.safe_e_sweep(-1*next_i, next_az-180, current_e, next_e)
+                if safe_e:
+                    print('7')
+                    return ['az-180','i','e']
+            safe_e=self.safe_e_sweep(current_i, next_az-180, current_e, next_e)
+            if safe_e:
+                safe_i=self.safe_i_sweep(next_e, next_az-180, current_i, next_i)
+                if safe_i:
+                    print('8')
+                    return ['az-180','e','i']
+        
+        print('ERROR: NO PATH FOUND')
+        return 'ERROR: NO PATH FOUND'
+        
+        
+        
+        
+        
+        movements=[]
+        end_reversed=False
+        switching=False
+        closest_pos, closest_approach=self.get_closest_approach(next_i, next_e, next_az)
+        
+        if next_i<next_e:
+            end_reversed=True
+            print('REVERSE')
+            if closest_pos[1]>0:
+                negative_az=True
+                print('NEGATIVE AZ NEEDED')
+
+            
+        if end_reversed and not self.reversed_goniometer:
+            switching=True
+            print('send i to safe geom?')
+            print(abs(current_i))
+            print(abs(current_e)+self.required_angular_separation)
+            if abs(current_i)>abs(current_e)+self.required_angular_separation: #if we can freely rotate
+                movements.append('az+180')
+            else:
+                movements.append('i to negative e + angular_separation')
+                current_i=-1*(current_e+np.sign(current_e)*self.required_angular_separation)
+                movements.append('az+180')
+                
+        elif self.reversed_goniometer and not end_reversed:
+            switching=True
+            if abs(current_i)>abs(current_e)+self.required_angular_separation: #if we can freely rotate
+                movements.append('az')
+            else:
+                movements.append('i to negative e + angular_separation')
+                current_i=-1*(current_e+np.sign(current_e)*self.required_angular_separation)
+                movements.append('az')
+        else:
+            movements.append('az')
+            
+
+        
+        if current_e>current_i:
+            if next_e>current_e:  
+                movements.append('e')
+                movements.append('i')
+            else:             
+                movements.append('i')
+                movements.append('e')
+        else:
+            if next_e<current_e:
+                movements.append('e')
+                movements.append('i')
+            else:
+                movements.append('i')
+                movements.append('e')
+                
+        if switching:
+            print('SWITCH')
+#             index_e=movements.index('e')
+#             index_i=movements.index('i')
+#             movements[index_e]='e'
+#             movements[index_i]='i'
+
+        return movements, end_reversed
+        
+        
     def next_geom(self, complete_last=True): 
         self.complete_queue_item()
         if complete_last:
@@ -1679,68 +1939,51 @@ class Controller():
         next_i=int(self.active_incidence_entries[0].get())
         next_e=int(self.active_emission_entries[0].get())
         next_az=int(self.active_azimuth_entries[0].get())
-
+ 
+        #Update goniometer position. Don't run the arms into each other
+        movements, reversed=self.get_movement_order(next_i, next_e, next_az)
         
+        if reversed: self.reversed_goniometer=True
+        else: self.reversed_goniometer=False
+        print('*********************')
+        print(movements)
+        if 'az+180' in movements:
+            self.queue.insert(movements.index('az+180'), {self.set_azimuth:[next_az+180]})
+        if 'az' in movements:
+            print('az')
+            self.queue.insert(movements.index('az'), {self.set_azimuth:[next_az]})
+        if 'i to negative e + angular_separation' in movements:
+            i=-1*(int(self.e)+np.sign(int(self.e))*self.required_angular_separation)
+            self.queue.insert(movements.index('az'), {self.set_incidence:[i]})
+        if 'i to e + angular_separation' in movements:
+            i=(int(self.e)+np.sign(int(self.e))*self.required_angular_separation)
+            self.queue.insert(movements.index('az'), {self.set_incidence:[i]})
+        self.queue.insert(movements.index('e'),{self.set_emission:[]}) #either 1 or 2
+        self.queue.insert(movements.index('i'),{self.set_incidence:[]}) #either 1 or 2
         
-        #Update goniometer position. Don't run the arms into each other.
-        print('CURRENT')
-        print(self.i)
-        print(self.e)
-        print(self.az)
-        print('NEXT')
-        print(next_i)
-        print(next_e)
-        print(next_az)
-        n=0
-        if int(next_i)<int(next_e):#(int(self.e)>int(self.i) and int(next_e)<int(next_i)) or (int(self.e)<int(self.i) and int(next_e)>int(next_i)): #If keeping az the same would result in swapping positions
-            print('DANGER!')
-            
-            
-#             self.queue.insert(n, {self.set_azimuth:[90]})            
+#         n=0
+#         if int(next_i)<int(next_e):#(int(self.e)>int(self.i) and int(next_e)<int(next_i)) or (int(self.e)<int(self.i) and int(next_e)>int(next_i)): #If keeping az the same would result in swapping positions
+#             self.queue.insert(n, {self.set_azimuth:[next_az+180]})
 #             n+=1
-            self.queue.insert(n, {self.set_azimuth:[next_az+180]})
-            n+=1
-        else:
-            self.queue.insert(n, {self.set_azimuth:[next_az]})
-            n+=1
-            #if self.
-#             if int(self.e)>int(self.i):
-#                 self.queue.insert(0,{self.set_emission:[self.max_e]})
+#         else:
+#             self.queue.insert(n, {self.set_azimuth:[next_az]})
+#             n+=1
+#                 
+#                 
+#         if int(self.e)>int(self.i): 
+#             if int(next_e)>int(self.e):  
+#                 self.queue.insert(n,{self.set_emission:[]})
+#                 self.queue.insert(n+1,{self.set_incidence:[]})
 #             else:
-#                 self.queue.insert(0,{self.set_emission:[self.min_e]})
-#             if int(next_i)>=0:
-#                 self.queue.insert(1, {self.set_azimuth:[90]})
-#                 self.queue.insert(2,{self.set_incidence:[self.max_i]})
-#                 self.queue.insert(3,{self.set_emission:[]})
-#                 self.queue.insert(4,{self.set_incidence:[]})
-#                 self.queue.insert(5, {self.set_azimuth:[]})
+#                 self.queue.insert(n,{self.set_incidence:[]})
+#                 self.queue.insert(n+1,{self.set_emission:[]})
+#         elif int(self.e)<int(self.i): 
+#             if int(next_e)<int(self.e):
+#                 self.queue.insert(n,{self.set_emission:[]})
+#                 self.queue.insert(n+1,{self.set_incidence:[]})
 #             else:
-#                 self.queue.insert(1, {self.set_azimuth:[90]})
-#                 self.queue.insert(2,{self.set_incidence:[self.max_i]})
-#                 self.queue.insert(3,{self.set_emission:[]})
-#                 self.queue.insert(4, {self.set_azimuth:[next_az+180]})
-#                 self.queue.insert(5,{self.set_incidence:[]})
-                
-                
-        if int(self.e)>int(self.i): #Keeping az the same does not result in swapping arm positions
-            if int(next_e)>int(self.e):  
-                self.queue.insert(n,{self.set_emission:[]})
-                self.queue.insert(n+1,{self.set_incidence:[]})
-                if n==0: self.queue.insert(n+2, {self.set_azimuth:[]})
-            else:
-                self.queue.insert(n,{self.set_incidence:[]})
-                self.queue.insert(n+1,{self.set_emission:[]})
-                if n==0: self.queue.insert(n+2, {self.set_azimuth:[]})
-        elif int(self.e)<int(self.i): #Keeping az the same does not result in swapping arm positions
-            if int(next_e)<int(self.e):
-                self.queue.insert(n,{self.set_emission:[]})
-                self.queue.insert(n+1,{self.set_incidence:[]})
-                if n==0: self.queue.insert(n+2, {self.set_azimuth:[]})
-            else:
-                self.queue.insert(n,{self.set_incidence:[]})
-                self.queue.insert(n+1,{self.set_emission:[]})
-                if n==0: self.queue.insert(n+2, {self.set_azimuth:[]})
-        
+#                 self.queue.insert(n,{self.set_incidence:[]})
+#                 self.queue.insert(n+1,{self.set_emission:[]})        
         
         self.next_in_queue()
     #def set_motion_order(self, next_i, next_e, next_az):
@@ -2650,6 +2893,7 @@ class Controller():
                 self.log(str(len(params)))
                 self.log('Error: invalid display setting. Enter set_display(i, e, az')
                 return 
+
             for n, angle in enumerate(params[0:2]):
                 valid=validate_int_input(angle, -90, 90)
                 if not valid:
@@ -2659,37 +2903,62 @@ class Controller():
                 else:
                     params[n]=int(params[n])
                     
-            valid=validate_int_input(params[2],0,180)
+            valid=validate_int_input(params[2],-90,270)
             if not valid:
-                print(params[2])
                 self.log('Error: invalid geometry')
                 return 
             else:
                 params[2]=int(params[2])
+            
+            i=params[0]
+            e=params[1]
+            az=params[2]
+            collision=False
+            valid_geom=self.validate_distance(i,e,az)
+            
+            pos, dist=self.get_closest_approach(i, e, az)
+            if dist<self.required_angular_separation:
+                collision=True
+            
+
+            
+            self.goniometer_view.set_incidence(i)
+            self.goniometer_view.set_emission(e)
+            self.goniometer_view.set_azimuth(az)
+            movements=self.get_movement_order(i,e,az, current=(self.goniometer_view.science_i,self.goniometer_view.science_e, self.goniometer_view.science_az))
+
+            print('*********************')
+            print(movements)
+            temp_queue=[]
+            for _ in range(len(movements)):
+                temp_queue.append({})
+            if 'az+180' in movements:
+                 
+                temp_queue.insert(movements.index('az+180'), {self.goniometer_view.set_azimuth:[az+180]})
+            if 'az-180' in movements:
+                temp_queue.insert(movements.index('az-180'), {self.goniometer_view.set_azimuth:[az-180]})
+            if 'az' in movements:
+                 
+                temp_queue[movements.index('az')]= {self.goniometer_view.set_azimuth:[az]}
+            if 'temp i' in movements:
+                temp_i=(int(self.goniometer_view.science_e)+np.sign(int(self.goniometer_view.science_e))*self.required_angular_separation)
+                temp_queue[movements.index('temp i')]= {self.goniometer_view.set_incidence:[temp_i]}
+            if 'e' in movements:
+                temp_queue[movements.index('e')]={self.goniometer_view.set_emission:[e]}
+                 
+            if 'i' in movements:
+                temp_queue[movements.index('i')]={self.goniometer_view.set_incidence:[i]}
+                 
+            if '-i' in movements:
+                temp_queue[movements.index('-i')]={self.goniometer_view.set_incidence:[i]}
+            
+            print(temp_queue)
+
+            for item in temp_queue:
+                for func in item:
+                    args=item[func]
+                    func(*args)
                 
-            self.goniometer_view.set_goniometer_tilt(0)
-            
-#             self.goniometer_view.wireframes['i'].set_elevation(params[0])
-#             self.goniometer_view.wireframes['light'].set_elevation(params[0])
-#             self.goniometer_view.wireframes['light guide'].set_elevation(params[0])
-            
-            #e_az=self.goniometer_view.wireframes['e'].az
-            self.goniometer_view.set_azimuth(params[2], config=True)
-            self.goniometer_view.set_incidence(params[0], config=True)
-            self.goniometer_view.set_emission(params[1], config=True)
-            
-#             self.goniometer_view.wireframes['i'].set_azimuth(e_az+params[2])
-#             self.goniometer_view.wireframes['light'].set_azimuth(e_az+params[2])
-#             self.goniometer_view.wireframes['light guide'].set_azimuth(e_az+params[2])
-            
-#             self.goniometer_view.wireframes['e'].set_elevation(params[1])
-#             self.goniometer_view.wireframes['detector'].set_elevation(params[1])
-#             self.goniometer_view.wireframes['detector guide'].set_elevation(params[1])
-#             
-#             self.goniometer_view.set_goniometer_tilt(20)
-#             
-#             self.goniometer_view.draw_3D_goniometer(self.goniometer_view.width, self.goniometer_view.height)
-#             self.goniometer_view.flip()
             
         elif 'rotate_display' in cmd:
             angle=cmd.split('rotate_display(')[1].strip(')')
@@ -4108,17 +4377,78 @@ class Controller():
         # entry.insert(0,name)
         # entry.icursor(pos)   
         
+    #get the point on the emission arm closest to intersecting the light source
+    #az is the difference between the two, as shown in the visualization
+    def get_closest_approach(self, i, e, az):
+        az_dist=np.sin(np.min([i, e])*3.14/180)*az
+        closest_pos=(i,e,az)
+        closest_dist=np.sqrt((i-e)**2+az_dist**2)
+        print('top point distance: '+str(closest_dist))
+        
+
+        if i<=0: #Can run into detector arm
+            #define a list of positions of the arm
+            arm_positions=[]
+            arm_bottom_e=90
+            arm_bottom_az=az-90 #-90 to 90 because i is negative.
+            
+            if e<=0: #azimuth is azimuth
+                arm_top_e=-1*e
+                arm_top_az=arm_bottom_az+90*np.sin(3.14*-e/180)
+            else:
+                arm_top_e=e
+                arm_top_az=arm_bottom_az-90*np.sin(3.14*e/180)
+                 
+            delta=(arm_top_e-arm_bottom_e)/10
+            if delta==0:
+                arm_es=np.ones(10)*arm_top_az
+            else:
+                arm_es=np.arange(arm_bottom_e, arm_top_e, delta)
+            
+            if arm_bottom_az==arm_top_az: 
+                arm_azes=np.ones(len(arm_es))*arm_top_az
+            else:
+                delta=(arm_bottom_az-arm_top_az)/10
+                arm_azes=np.arange(arm_bottom_az, arm_top_az, delta)
+                if len(arm_azes)==0:
+                    delta=-1*delta
+                    arm_azes=np.arange(arm_bottom_az, arm_top_az, delta)
+
+            closest_dist=np.sqrt((i-e)**2+(az_dist)**2)
+            closest_pos=[i, e, az]
+            for num, arm_e in enumerate(arm_es):
+                pos=[i,0,0]
+                pos[0]=-1*arm_e
+                pos[1]=arm_azes[num]
+                az_diff=np.sin(pos[0]*3.14/180)*pos[1]
+                dist=np.sqrt((i-pos[0])**2+az_diff**2)
+
+                if dist<closest_dist:
+                    closest_dist=dist
+                    closest_pos=pos
+        return closest_pos, closest_dist
+        
     def validate_distance(self,i,e, az):
+        print('Validating '+str(i)+', '+str(e)+', '+str(az))
         try:
             i=int(i)
             e=int(e)
             az=int(az)
         except:
             return False
-        if np.abs(i-e)<self.required_angular_separation:
+    
+#         if np.sqrt((i-e)**2+az**2)<self.required_angular_separation:
+#             print('False because of angular sep')
+#             return False
+        
+        closest_pos, closest_dist=self.get_closest_approach(i,e,az)
+        if closest_dist<self.required_angular_separation:
+            print('COLLISION')
             return False
         else:
-            return True
+            print('NO COLLISION')
+        
+        
         
     def clear(self):
         if self.manual_automatic.get()==0:
