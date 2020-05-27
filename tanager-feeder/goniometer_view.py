@@ -655,7 +655,7 @@ class GoniometerView():
         delta_theta=-1*5*np.sign(self.motor_i-motor_i)
         while np.abs(self.motor_i-motor_i)>0:
             self.motor_i=self.motor_i+delta_theta
-            if self.motor_az<180:
+            if self.motor_az<180 and self.motor_az>=0:
                 self.science_i=self.motor_i
             else:
                 self.science_i=-1*self.motor_i
@@ -678,10 +678,8 @@ class GoniometerView():
             
     def set_azimuth(self, motor_az, config=False):
         
-        delta_theta=5*np.sign(motor_az-self.motor_az)
-
-        while np.abs(motor_az-self.motor_az)>=5:
-
+        
+        def next_pos(delta_theta):
             next_drawing_az=self.wireframes['i'].az+delta_theta
 
             if not config:
@@ -696,15 +694,30 @@ class GoniometerView():
             self.wireframes['light guide'].set_azimuth(next_drawing_az)
             self.set_goniometer_tilt(20)
             self.motor_az=self.wireframes['i'].az-self.wireframes['e'].az
-            if self.motor_az<180:
+            if self.motor_az<180 and 0<=self.motor_az:
                 self.science_az=self.motor_az
                 self.science_i=self.motor_i
-            else:
+            elif self.motor_az>=180:
                 self.science_az=self.motor_az-180
+                self.science_i=-1*self.motor_i
+            elif self.motor_az<0:
+                self.science_az=self.motor_az+180
                 self.science_i=-1*self.motor_i
                 
             self.draw_3D_goniometer(self.width,self.height)
             self.flip()
+            
+        delta_theta=5*np.sign(motor_az-self.motor_az)
+        while np.abs(motor_az-self.motor_az)>=5:
+            next_pos(delta_theta)
+        
+        delta_theta=np.sign(motor_az-self.motor_az)
+        while np.abs(motor_az-self.motor_az)>=0.5:
+            next_pos(delta_theta)
+            
+#         delta_theta=0.5*np.sign(motor_az-self.motor_az)
+#         while np.abs(motor_az-self.motor_az)>0.5:
+#             next_pos()
             
             
     def set_current_sample(self, sample):
