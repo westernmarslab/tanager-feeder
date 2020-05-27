@@ -726,8 +726,7 @@ class GoniometerView():
             self.flip()
             
     def set_emission(self, motor_e, config=False):
-        delta_theta=5*np.sign(motor_e-self.motor_e)
-        while np.abs(motor_e-self.motor_e)>0:
+        def next_pos(delta_theta):
             self.motor_e=self.motor_e+delta_theta
             self.science_e=self.science_e+delta_theta
             if not config:
@@ -743,6 +742,16 @@ class GoniometerView():
             self.set_goniometer_tilt(20)
             self.draw_3D_goniometer(self.width,self.height)
             self.flip()
+            
+        delta_theta=5*np.sign(motor_e-self.motor_e)
+        while np.abs(motor_e-self.motor_e)>=5:
+            next_pos(delta_theta)
+            
+        delta_theta=np.sign(motor_e-self.motor_e)
+        while np.abs(motor_e-self.motor_e)>=1:
+            next_pos(delta_theta)
+            
+            
             
     def rotate_tray(self, degrees):
         tilt=self.tilt
