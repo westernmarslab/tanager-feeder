@@ -687,7 +687,8 @@ class GoniometerView():
 
             
     def set_azimuth(self, motor_az, config=False):
-        
+        if motor_az>270 or motor_az<-90:
+            raise Exception('MOTOR AZ OUTSIDE RANGE: '+str(motor_az))
         
         def next_pos(delta_theta):
             next_drawing_az=self.wireframes['i'].az+delta_theta

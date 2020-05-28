@@ -7,3 +7,4 @@ delme/
 AutoSpec.egg-info/
 .project
 .pydevproject
+movement_generator.py
