@@ -652,8 +652,9 @@ class GoniometerView():
             self.collision=False
         
     def set_incidence(self, motor_i, config=False):
-        delta_theta=-1*5*np.sign(self.motor_i-motor_i)
-        while np.abs(self.motor_i-motor_i)>0:
+        
+        
+        def next_pos(delta_theta):
             self.motor_i=self.motor_i+delta_theta
             if self.motor_az<180 and self.motor_az>=0:
                 self.science_i=self.motor_i
@@ -675,6 +676,15 @@ class GoniometerView():
             self.set_goniometer_tilt(20)
             self.draw_3D_goniometer(self.width,self.height)
             self.flip()
+        
+        delta_theta=-1*5*np.sign(self.motor_i-motor_i)
+        while np.abs(self.motor_i-motor_i)>=5:
+            next_pos(delta_theta)
+            
+        delta_theta=-1*np.sign(self.motor_i-motor_i)
+        while np.abs(self.motor_i-motor_i)>=1:
+            next_pos(delta_theta)
+
             
     def set_azimuth(self, motor_az, config=False):
         
