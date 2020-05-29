@@ -78,6 +78,7 @@ class GoniometerView():
         self.science_e=0
         self.motor_e=0
         
+        self.standard_delay=.003
         pygame.init()
 
         
@@ -662,7 +663,7 @@ class GoniometerView():
                 self.science_i=-1*self.motor_i
             
             if not config:
-                time.sleep(0.005)
+                time.sleep(self.standard_delay)
             else:
                 time.sleep(0.005)
             
@@ -676,6 +677,8 @@ class GoniometerView():
             self.set_goniometer_tilt(20)
             self.draw_3D_goniometer(self.width,self.height)
             self.flip()
+#             if self.collision:
+#                 raise Exception('Collision on incidence movement!')
         
         delta_theta=-1*5*np.sign(self.motor_i-motor_i)
         while np.abs(self.motor_i-motor_i)>=5:
@@ -694,7 +697,7 @@ class GoniometerView():
             next_drawing_az=self.wireframes['i'].az+delta_theta
 
             if not config:
-                time.sleep(0.005)
+                time.sleep(self.standard_delay)
             else:
                 time.sleep(.005)
                 
@@ -717,6 +720,8 @@ class GoniometerView():
                 
             self.draw_3D_goniometer(self.width,self.height)
             self.flip()
+#             if self.collision:
+#                 raise Exception('Collision on azimuth movement!')
             
         delta_theta=5*np.sign(motor_az-self.motor_az)
         while np.abs(motor_az-self.motor_az)>=5:
@@ -741,7 +746,7 @@ class GoniometerView():
             self.motor_e=self.motor_e+delta_theta
             self.science_e=self.science_e+delta_theta
             if not config:
-                time.sleep(0.005)
+                time.sleep(self.standard_delay)
             else:
                 time.sleep(.005)
                 
@@ -753,6 +758,8 @@ class GoniometerView():
             self.set_goniometer_tilt(20)
             self.draw_3D_goniometer(self.width,self.height)
             self.flip()
+#             if self.collision:
+#                 raise Exception('Collision on detector movement!')
             
         delta_theta=5*np.sign(motor_e-self.motor_e)
         while np.abs(motor_e-self.motor_e)>=5:

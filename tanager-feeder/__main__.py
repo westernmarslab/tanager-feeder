@@ -1,7 +1,6 @@
 #The controller runs the main thread controlling the program.
 #It opens a Tkinter GUI with options for instrument control parameters and sample configuration
 #The user can use the GUI to operate the goniometer motors and the spectrometer software.
-from test._test_multiprocessing import baz
 
 dev=False
 
@@ -1176,8 +1175,6 @@ class Controller():
                 cmd=script.readline().strip('\n')
                 continue
         self.queue.append({self.next_script_line:['end file']})
-        for item in self.queue:
-            print(item)
         self.next_in_queue()
 
     
@@ -1732,6 +1729,9 @@ class Controller():
                     movement_order[movement_order.index('az-180')]='az'
                     movement_order[movement_order.index('-i')]='i'
                 elif 'az+180' in movement_order:
+                    #print(movement_order)
+                    #print(check_allowed_for_motors('az+180'))
+                    raise Exception('Illegal motor pos '+str(current_motor_pos)+' az+180')
                     pass
                     #raise(Exception('YIKES super positive!'))
             elif current_motor_az<0 and movement_order!=None:
@@ -1742,13 +1742,48 @@ class Controller():
                     movement_order[movement_order.index('az+180')]='az'
                     movement_order[movement_order.index('-i')]='i'
                 elif 'az-180' in movement_order:
+#                     movement_order[movement_order.index]
+                    raise Exception('Illegal motor pos')
                     pass
+                    #pass
                     #raise(Exception('YIKES super negative!'))
                 
             return movement_order
         
+        def check_allowed_for_motors(motion_string):
+            if motion_string=='az': #going to try a direct path to the next science az
+                if current_motor_az>180 and next_science_az>90: #takes us to a very positive motor az
+                    return False
+                elif current_motor_az<0 and next_science_az<90: #takes us to a very negative motor az
+                    return False
+                else:
+                    return True
+                
+            elif motion_string=='az-180': #going to try turning left, passing through 0 before we reach az
+                if current_motor_az>180: return True
+                elif current_motor_az<0: return False
+                else:
+                    
+                    next_motor_az=0-(180-next_science_az)
+                    if next_motor_az>=-90:
+                        return True
+                    else:
+                        return False
+                    
+            elif motion_string=='az+180': #going to try turning right, passing through 180 before we reach az
+                if current_motor_az<90: return True
+                elif current_motor_az>=180: return False
+                else:
+                    next_motor_az=180+next_science_az
+                    if next_motor_az<=270:
+                        return True
+                    else:
+                        return False
+            else:
+                raise Exception('how to check? '+motion_string)
+        
         #try moving az, i, e. If that doesn't work, try az, e, i.
-        if not(current_motor_az>180 and next_science_az>90) and not(current_motor_az<0 and next_science_az<90): #First thing to consider is whether moving straight to azimuth position would be outside motor range
+        if check_allowed_for_motors('az'): #First thing to consider is whether moving straight to azimuth position would be outside motor range
             safe_az=self.safe_az_sweep(current_science_i, current_science_e, current_science_az, next_science_az)
             if safe_az:
                 safe_i=self.safe_i_sweep(current_science_e, next_science_az, current_science_i, next_science_i)
@@ -1766,7 +1801,7 @@ class Controller():
                             movement_order= ['az','e','i']
 
         #try moving azimuth +180, i, e. If that doesn't work, try az, e, i.
-        if movement_order==None and next_science_az<=90:
+        if movement_order==None and check_allowed_for_motors('az+180'):
             safe_az1=self.safe_az_sweep(current_science_i, current_science_e, current_science_az, 179)
             safe_az2=self.safe_az_sweep(-1*current_science_i, current_science_e, 0, next_science_az)
             if safe_az1 and safe_az2:
@@ -1783,9 +1818,14 @@ class Controller():
                         safe_i=self.safe_i_sweep(next_science_e, next_science_az, -1*current_science_i, next_science_i)
                         if safe_i:
                             print('4')
+                            
                             movement_order= ['az+180','e','-i']
                             
-        if movement_order==None and next_science_az>=90:
+
+                
+                
+                            
+        if movement_order==None and check_allowed_for_motors('az-180'):
             safe_az_1=self.safe_az_sweep(current_science_i, current_science_e, current_science_az, 0)
             safe_az_2=self.safe_az_sweep(-1*current_science_i, current_science_e, 179, next_science_az) #get_closest_approach reverses i for az<180
             if safe_az_1 and safe_az_2:
@@ -1793,17 +1833,17 @@ class Controller():
                 if safe_i:
                     safe_e=self.safe_e_sweep(next_science_i, next_science_az, current_science_e, next_science_e)
                     if safe_e:
-                        print('3 negative')
+                        print('5')
                         movement_order= ['az-180','-i','e']
-                if movement_order==None and next_science_az>=90:
+                if movement_order==None:
                     safe_e=self.safe_e_sweep(-1*current_science_i, next_science_az, current_science_e, next_science_e)
                     if safe_e:
                         safe_i=self.safe_i_sweep(next_science_e, next_science_az, -1*current_science_i, next_science_i)
                         if safe_i:
-                            print('4 negative')
+                            print('6')
                             movement_order= ['az-180','e','-i']
                             
-
+        #Try a temporary i position
         if movement_order==None:
             if current_science_e>=0:
                 temp_i=-1*(current_science_e+2*self.required_angular_separation)
@@ -1818,23 +1858,25 @@ class Controller():
                 safe_temp_i=self.safe_i_sweep(current_science_e, current_science_az, current_science_i, temp_i)
             
             if safe_temp_i:
+                if check_allowed_for_motors('az'):
                 #try moving az, i, e
-                safe_az=self.safe_az_sweep(temp_i, current_science_e, current_science_az, next_science_az)
-                if safe_az:
-                    safe_i=self.safe_i_sweep(current_science_e, next_science_az, temp_i, next_science_i)
-                    if safe_i:
-                        safe_e=self.safe_e_sweep(next_science_i, next_science_az, current_science_e, next_science_e)
-                        if safe_e:
-                            print('9')
-                            movement_order=[temp_i_str, 'az','i','e']
-                    else:
-                        safe_e=self.safe_e_sweep(temp_i, next_science_az, current_science_e, next_science_e)
-                        if safe_e:
-                            safe_i=self.safe_i_sweep(next_science_e, next_science_az, temp_i, next_science_i)
-                            if safe_i:
-                                print('10')
-                                movement_order=[temp_i_str,'az','e','i']
-                if movement_order==None:
+                    safe_az=self.safe_az_sweep(temp_i, current_science_e, current_science_az, next_science_az)
+                    if safe_az:
+                        safe_i=self.safe_i_sweep(current_science_e, next_science_az, temp_i, next_science_i)
+                        if safe_i:
+                            safe_e=self.safe_e_sweep(next_science_i, next_science_az, current_science_e, next_science_e)
+                            if safe_e:
+                                print('7')
+                                movement_order=[temp_i_str, 'az','i','e']
+                        else:
+                            safe_e=self.safe_e_sweep(temp_i, next_science_az, current_science_e, next_science_e)
+                            if safe_e:
+                                safe_i=self.safe_i_sweep(next_science_e, next_science_az, temp_i, next_science_i)
+                                if safe_i:
+                                    print('8')
+                                    movement_order=[temp_i_str,'az','e','i']
+                                    
+                if movement_order==None and check_allowed_for_motors('az+180'):
                     #try moving azimuth +180, i, e. If that doesn't work, try az+180, e, i.
                     safe_az1=self.safe_az_sweep(temp_i, current_science_e, current_science_az, 179)
                     safe_az2=self.safe_az_sweep(-1*temp_i, current_science_e, 0, next_science_az)
@@ -1843,16 +1885,17 @@ class Controller():
                         if safe_i:
                             safe_e=self.safe_e_sweep(next_science_i, next_science_az, current_science_e, next_science_e)
                             if safe_e:
-                                print('5')
+                                print('9')
                                 movement_order= [temp_i_str, 'az+180','-i','e']
-                        safe_e=self.safe_e_sweep(-1*temp_i, next_science_az, current_science_e, next_science_e)
-                        if safe_e:
-                            safe_i=self.safe_i_sweep(next_science_e, next_science_az, -1*temp_i, next_science_i)
-                            if safe_i:
-                                print('6')
-                                movement_order= [temp_i_str, 'az+180','e','-i']
+                        if movement_order==None:
+                            safe_e=self.safe_e_sweep(-1*temp_i, next_science_az, current_science_e, next_science_e)
+                            if safe_e:
+                                safe_i=self.safe_i_sweep(next_science_e, next_science_az, -1*temp_i, next_science_i)
+                                if safe_i:
+                                    print('10')
+                                    movement_order= [temp_i_str, 'az+180','e','-i']
                                 
-                if movement_order==None:
+                if movement_order==None and check_allowed_for_motors('az-180'):
                     safe_az1=self.safe_az_sweep(temp_i, current_science_e, current_science_az, 0)
                     safe_az2=self.safe_az_sweep(-1*temp_i, current_science_e, 179, next_science_az)
                     if safe_az1 and safe_az2:
@@ -1860,75 +1903,120 @@ class Controller():
                         if safe_i:
                             safe_e=self.safe_e_sweep(next_science_i, next_science_az, current_science_e, next_science_e)
                             if safe_e:
-                                print('7')
+                                print('11')
                                 movement_order= [temp_i_str,'az-180','-i','e']
-                        safe_e=self.safe_e_sweep(-1*temp_i, next_science_az, current_science_e, next_science_e)
-                        if safe_e:
-                            safe_i=self.safe_i_sweep(next_science_e, next_science_az, -1*temp_i, next_science_i)
-                            if safe_i:
-                                print('8')
-                                movement_order= [temp_i_str, 'az-180','e','-i']
-                                
-                if movement_order==None:
+                        if movement_order==None:
+                            safe_e=self.safe_e_sweep(-1*temp_i, next_science_az, current_science_e, next_science_e)
+                            if safe_e:
+                                safe_i=self.safe_i_sweep(next_science_e, next_science_az, -1*temp_i, next_science_i)
+                                if safe_i:
+                                    print('12')
+                                    movement_order= [temp_i_str, 'az-180','e','-i']
+                                    
+        if movement_order==None:
+            #Try movning to az 90, temp i at 20, move e, move i
+            i_negative=False
+            if current_motor_az>=0 and current_motor_az<180:
+                safe_temp_az=self.safe_az_sweep(current_science_i, current_science_e, current_science_az, 90)
+                
+            elif current_motor_az<0:
+                safe_temp_az_1=self.safe_az_sweep(current_science_i, current_science_e, current_science_az, 179)
+                safe_temp_az_2=self.safe_az_sweep(-1*current_science_i, current_science_e,0,90)
+                safe_temp_az=safe_temp_az_1 and safe_temp_az_2
+                i_negative=True
+            elif current_motor_az>=180:
+                safe_temp_az_1=self.safe_az_sweep(current_science_i, current_science_e, current_science_az, 0)
+                safe_temp_az_2=self.safe_az_sweep(-1*current_science_i, current_science_e, 179, 90)
+                safe_temp_az=safe_temp_az_1 and safe_temp_az_2
+                i_negative=True
+            if safe_temp_az:
+                if i_negative:
+                    safe_temp_i=self.safe_i_sweep(current_science_e, 90,-1*current_science_i,20)
+                else:
+                    safe_temp_i=self.safe_i_sweep(current_science_e, 90,current_science_i,20)
+                if safe_temp_i:
+                    safe_e=self.safe_e_sweep(20,90,current_science_e, next_science_e)
+                    if safe_e:
+                        safe_i=self.safe_i_sweep(next_science_e, 90, 20, next_science_i)
+                        if safe_i:
+                            safe_az=self.safe_az_sweep(next_science_i, next_science_e, 90, next_science_az)
+                            if safe_az:
+                                print('13')
+                                movement_order=['az 90','i 20','e','i','az']
+                            
+        if movement_order==None:
 #                   1. setting temp e to out of the way (i+20)
 #                   2. rotating az to 90
 #                   3. set i to abs(e)+20
 #                   3. set e
 #                   4. set az, i to -i
 #                   5. set i
-                    temp_e_str='temp e'
-                        
-                    temp_e=np.abs(current_science_i)+2*self.required_angular_separation
-                    if current_science_e<current_science_i and current_science_az<90:
-                        temp_e=-1*temp_e
-                    elif current_science_e>current_science_i and current_science_az>90:
-                        temp_e=-1*temp_e
-                 
-                    safe_temp_e=self.safe_e_sweep(current_science_i, current_science_az, current_science_e, temp_e)
+            temp_e_str='temp e'
+                
+            temp_e=np.abs(current_science_i)+2*self.required_angular_separation
+            if current_science_e<current_science_i and current_science_az<90:
+                temp_e=-1*temp_e
+            elif current_science_e>current_science_i and current_science_az>90:
+                temp_e=-1*temp_e
+                
+            
+            safe_temp_e=self.safe_e_sweep(current_science_i, current_science_az, current_science_e, temp_e)
 
-                    if not safe_temp_e:
-                        temp_e_str='-temp e'
-                        temp_e=-1*temp_e
-                        safe_temp_e=self.safe_e_sweep(current_science_i, current_science_az, current_science_e, temp_e)
 
-                    if safe_temp_e:
-                        i_negative=False
-                        if current_motor_az>=0 and current_motor_az<180:
-                            safe_temp_az=self.safe_az_sweep(current_science_i, temp_e, current_science_az, 90)
-                        elif current_motor_az<0:
-                            safe_temp_az_1=self.safe_az_sweep(current_science_i, temp_e, current_science_az, 179)
-                            safe_temp_az_2=self.safe_az_sweep(-1*current_science_i, temp_e,0,90)
-                            safe_temp_az=safe_temp_az_1 and safe_temp_az_2
-                            i_negative=True
-                        elif current_motor_az>=180:
-                            safe_temp_az_1=self.safe_az_sweep(current_science_i, temp_e, current_science_az, 0)
-                            safe_temp_az_2=self.safe_az_sweep(-1*current_science_i, temp_e, 179, 90)
-                            safe_temp_az=safe_temp_az_1 and safe_temp_az_2
-                            i_negative=True
-                        if safe_temp_az:
-                            temp_i_pos=np.abs(current_science_e)+2*self.required_angular_separation
-                            if i_negative:
-                                safe_temp_i=self.safe_i_sweep(current_science_e, 90,-1*current_science_i,temp_i_pos)
-                            else:
-                                safe_temp_i=self.safe_i_sweep(current_science_e, 90,current_science_i,temp_i_pos)
-                            if safe_temp_i:
-                                safe_e=self.safe_e_sweep(temp_i_pos, 90, current_science_e, next_science_e)
-                                if safe_e:
-                                    safe_az_1=self.safe_az_sweep(temp_i_pos,next_science_e, 90, 179)
-                                    safe_az_2=self.safe_az_sweep(-1*temp_i_pos, next_science_e, 0, next_science_az)
-                                    if safe_az_1 and safe_az_2:
-                                        safe_i=self.safe_i_sweep(next_science_e, next_science_az, -1*temp_i_pos, next_science_i)
-                                        if safe_i:
-                                            movement_order=[temp_e_str,'az 90','temp i pos','e','az+180','-i']
-                                             
-                                if movement_order==None:
-                                    safe_az_1=self.safe_az_sweep(temp_i_pos, next_science_e, 90, 0)
-                                    safe_az_2=self.safe_az_sweep(-1*temp_i_pos, next_science_e, 179, next_science_az)
-                                    if safe_az_1 and safe_az_2:
-                                        safe_i=self.safe_i_sweep(next_science_e, next_science_az, -1*temp_i_pos, next_science_i)
-                                        if safe_i:
-                                        
-                                            movement_order=[temp_e_str,'az 90','temp i pos','e','az-180','-i']
+            if not safe_temp_e:
+                temp_e_str='-temp e'
+                temp_e=-1*temp_e
+                safe_temp_e=self.safe_e_sweep(current_science_i, current_science_az, current_science_e, temp_e)
+            
+
+            if safe_temp_e:
+                i_negative=False
+                if current_motor_az>=0 and current_motor_az<180:
+                    safe_temp_az=self.safe_az_sweep(current_science_i, temp_e, current_science_az, 90)
+
+                elif current_motor_az<0:
+                    safe_temp_az_1=self.safe_az_sweep(current_science_i, temp_e, current_science_az, 179)
+                    safe_temp_az_2=self.safe_az_sweep(-1*current_science_i, temp_e,0,90)
+                    safe_temp_az=safe_temp_az_1 and safe_temp_az_2
+                    i_negative=True
+                elif current_motor_az>=180:
+                    safe_temp_az_1=self.safe_az_sweep(current_science_i, temp_e, current_science_az, 0)
+                    safe_temp_az_2=self.safe_az_sweep(-1*current_science_i, temp_e, 179, 90)
+                    safe_temp_az=safe_temp_az_1 and safe_temp_az_2
+                    i_negative=True
+                if safe_temp_az:
+                    temp_i_pos=np.abs(next_science_e)+2*self.required_angular_separation
+                    if i_negative:
+                        safe_temp_i=self.safe_i_sweep(temp_e, 90,-1*current_science_i,temp_i_pos)
+                    else:
+                        safe_temp_i=self.safe_i_sweep(temp_e, 90,current_science_i,temp_i_pos)
+                    if safe_temp_i:
+                        safe_e=self.safe_e_sweep(temp_i_pos, 90, temp_e, next_science_e)
+                        if safe_e:
+                            safe_az=self.safe_az_sweep(temp_i_pos, next_science_e, 90, next_science_az)
+                            if safe_az:
+                                    safe_i=self.safe_i_sweep(next_science_e, next_science_az, temp_i_pos, next_science_i)
+                                    if safe_i:
+                                        print('14')
+                                        movement_order=[temp_e_str,'az 90','temp i pos','e','az','i']
+                            
+                            if movement_order==None and next_science_az<=90:
+                                safe_az_1=self.safe_az_sweep(temp_i_pos,next_science_e, 90, 179)
+                                safe_az_2=self.safe_az_sweep(-1*temp_i_pos, next_science_e, 0, next_science_az)
+                                if safe_az_1 and safe_az_2:
+                                    safe_i=self.safe_i_sweep(next_science_e, next_science_az, -1*temp_i_pos, next_science_i)
+                                    if safe_i:
+                                        print('15')
+                                        movement_order=[temp_e_str,'az 90','temp i pos','e','az+180','-i']
+                                     
+                            if movement_order==None and next_science_az>=90:
+                                safe_az_1=self.safe_az_sweep(temp_i_pos, next_science_e, 90, 0)
+                                safe_az_2=self.safe_az_sweep(-1*temp_i_pos, next_science_e, 179, next_science_az)
+                                if safe_az_1 and safe_az_2:
+                                    safe_i=self.safe_i_sweep(next_science_e, next_science_az, -1*temp_i_pos, next_science_i)
+                                    if safe_i:
+                                        print('16')
+                                        movement_order=[temp_e_str,'az 90','temp i pos','e','az-180','-i']
 #                                         else:
 #                                             safe_az=self.safe_az_sweep(temp_i_pos,next_science_e, 90, next_science_az)
 #                                             if safe_az:
@@ -1941,7 +2029,7 @@ class Controller():
 #                                                 print(str(current_motor_i)+' '+str(current_motor_e)+' '+str(current_motor_az))
 #                                                 print(str(next_i)+' '+str(next_e)+' '+str(next_az))
         if movement_order!=None:
-            if 'temp e' not in movement_order and '-temp e' not in movement_order:
+            if 'temp e' not in movement_order and '-temp e' not in movement_order and 'az 90' not in movement_order:
                 movement_order=convert_based_on_motor_pos(movement_order)
         return movement_order
 
@@ -1963,10 +2051,7 @@ class Controller():
 
             
         return movement_order
-        
-        
-        print('ERROR: NO PATH FOUND')
-        return 'ERROR: NO PATH FOUND'
+
         
         
         
@@ -2965,13 +3050,8 @@ class Controller():
             if dist<self.required_angular_separation:
                 collision=True
                 
-#             self.goniometer_view.set_azimuth(az)
-#             self.goniometer_view.set_incidence(i)
-#             self.goniometer_view.set_emission(e)
-#             return
-            
 
-            
+#             
 #             self.goniometer_view.set_incidence(i)
 #             self.goniometer_view.set_emission(e)
 #             self.goniometer_view.set_azimuth(az)
@@ -2994,6 +3074,8 @@ class Controller():
                     temp_queue.insert(movements.index('az-180'), {self.goniometer_view.set_azimuth:[az-180]})
                 if 'az' in movements:
                     temp_queue[movements.index('az')]= {self.goniometer_view.set_azimuth:[az]}
+                if 'i 20' in movements:
+                    temp_queue[movements.index('i 20')]={self.goniometer_view.set_incidence:[20]}
                 if 'temp i' in movements:
 
                     current_science_e=current_motor[1]
@@ -3004,8 +3086,6 @@ class Controller():
                         
                     if current_motor[2]>=180 or current_motor[2]<0:
                         temp_i=-1*temp_i
-                    print('CURRENT MOTOR I: '+str(current_motor[0]))
-                    print('TEMP I: '+str(temp_i))
                         
                     temp_queue[movements.index('temp i')]= {self.goniometer_view.set_incidence:[temp_i]}
                 if '-temp i' in movements:
@@ -3017,8 +3097,6 @@ class Controller():
                         
                     if current_motor[2]>=180 or current_motor[2]<0:
                         temp_i=-1*temp_i
-                    print('CURRENT MOTOR I: '+str(current_motor[0]))
-                    print('TEMP I: '+str(temp_i))
                         
                     temp_queue[movements.index('-temp i')]= {self.goniometer_view.set_incidence:[temp_i]}
 
@@ -3044,7 +3122,7 @@ class Controller():
 #                         
                     temp_queue[movements.index('-temp e')]= {self.goniometer_view.set_emission:[temp_e]}
                 if 'temp i pos' in movements:
-                    temp_i_pos=np.abs(current_motor[1])+2*self.required_angular_separation
+                    temp_i_pos=np.abs(e)+2*self.required_angular_separation
                         
                     temp_queue[movements.index('temp i pos')]= {self.goniometer_view.set_incidence:[temp_i_pos]}
                     
@@ -3057,11 +3135,15 @@ class Controller():
                 if '-i' in movements:
                     temp_queue[movements.index('-i')]={self.goniometer_view.set_incidence:[-1*i]}
                 
-    
                 for item in temp_queue:
                     for func in item:
                         args=item[func]
                         func(*args)
+#             if movements==None:
+#                 self.goniometer_view.set_azimuth(az)
+#                 self.goniometer_view.set_incidence(i)
+#                 self.goniometer_view.set_emission(e)
+#                 return
                     
             if len(self.queue)>0:
                 self.next_in_queue()
@@ -4017,8 +4099,6 @@ class Controller():
     def actually_plot(self, filename):
         if len(self.queue)>0:
             print('There is a queue here if and only if we are transferring data from a remote location.')
-            for item in self.queue:
-                print(item)
             self.complete_queue_item()
         title=self.plot_title_entry.get()
         caption=''#self.plot_caption_entry.get()
@@ -4511,13 +4591,17 @@ class Controller():
         
     #get the point on the emission arm closest to intersecting the light source
     #az is the difference between the two, as shown in the visualization
-    def get_closest_approach(self, i, e, az):
+    def get_closest_approach(self, i, e, az, print_me=False):
         def cos(theta):
             return np.cos(theta*3.14159/180)
         def sin(theta):
             return np.sin(theta*3.14159/180)
         def arccos(ratio):
             return np.arccos(ratio)*180/3.14159
+        def arctan2(y,x):
+            return np.arctan2(y,x)*180/3.14159
+        def arctan(ratio):
+            return np.arctan(ratio)*180/3.14159
         
         i, e, az=self.motor_pos_to_science_pos(i, e, az)
         
@@ -4527,23 +4611,33 @@ class Controller():
 #         for az=0: full component in same or opposite
 #         az=90: no component in same or opposite
 #         component in same plane is cos(az) or, if az > 90, cos(180-az)
-        
-        def get_angular_distance(i, e, az):
-#             print('*******************************')
-#             print('i, e, az, lat1 lat2 long, dist')
-#             print(str(i)+' '+str(e)+' '+str(az))
+        def get_lat1_lat2_delta_long(i,e,az):
             if np.sign(i)==np.sign(e):
                 delta_long=az
             else:
                 delta_long=180-az
             lat1=90-np.abs(i)
             lat2=90-np.abs(e)
-            
-#             print(str(lat1)+' '+str(lat2)+' '+str(delta_long))
+            return lat1, lat2, delta_long
+        
+        def get_angular_distance(i, e, az):
+
+#             if np.sign(i)==np.sign(e):
+#                 delta_long=az
+#             else:
+#                 delta_long=180-az
+#             lat1=90-np.abs(i)
+#             lat2=90-np.abs(e)
+            lat1, lat2, delta_long=get_lat1_lat2_delta_long(i, e, az)
             
             dist=np.abs(arccos(sin(lat1)*sin(lat2)+cos(lat1)*cos(lat2)*cos(delta_long)))
 #             print(dist)
             return dist
+        
+        def get_initial_bearing(e):
+            lat2=90-np.abs(e)
+            bearing=arctan2(cos(lat2), sin(lat2))
+            return bearing
         
         closest_dist=get_angular_distance(i,e,az)
         closest_pos=(i,e,az)
@@ -4556,40 +4650,84 @@ class Controller():
             
             if e<=0: #azimuth is azimuth
                 arm_top_e=-1*e
-                arm_top_az=arm_bottom_az+90*sin(-e)
+                arm_top_az=arm_bottom_az+90#*sin(-e)
             else:
                 arm_top_e=e
-                arm_top_az=arm_bottom_az-90*sin(e)
-             
-            points=20    
-            delta=(arm_top_e-arm_bottom_e)/points
-            if delta==0:
-                arm_es=np.ones(points+1)*arm_top_az
-            else:
-                arm_es=np.arange(arm_bottom_e, arm_top_e, delta)
-                arm_es=np.append(arm_es, arm_top_e)
+                arm_top_az=arm_bottom_az-90#*sin(e)
             
-            if arm_bottom_az==arm_top_az:
-                arm_azes=np.ones(points+1)*arm_top_az
+            bearing=get_initial_bearing(arm_top_e)
+            if print_me:
+                print('bearing: '+str(bearing))
+            points=np.arange(0,90,10)
+            points=np.append(points, 90)
+            arm_lat=[]
+            arm_delta_long=[]
+            if print_me:
+                print(points)
+            for point in points:
+                tan_lat=cos(bearing)*sin(point)/np.sqrt(cos(point)**2+sin(bearing)**2*sin(point)**2)
+                lat=arctan(tan_lat)
+                arm_lat.append(lat)
+                tan_long=sin(bearing)*sin(point)/cos(point)
+                long=arctan(tan_long)
+                arm_delta_long.append(long)
+            arm_delta_long=np.array(arm_delta_long)
+            if e<=0:
+                arm_azes=arm_bottom_az+arm_delta_long
             else:
-                delta=(arm_bottom_az-arm_top_az)/points
-                arm_azes=np.arange(arm_bottom_az, arm_top_az, delta)
-                if len(arm_azes)==0:
-                    delta=-1*delta
-                    arm_azes=np.arange(arm_bottom_az, arm_top_az, delta)
-                arm_azes=np.append(arm_azes, arm_top_az)
+                arm_azes=arm_bottom_az-arm_delta_long
+            if print_me:
+                print('arm lat:')
+                print(arm_lat)
+                print('arm long: ')
+                print(arm_delta_long)
 
-            for num, arm_e in enumerate(arm_es):
-                pos=[i, -1*arm_e, arm_azes[num]]
-                dist=get_angular_distance(i,-1*arm_e,arm_azes[num])
-                if False:#i==-20 and e==-20 and az==30:
-                    print('************')
-                    print(str(i)+','+str(-1*arm_e)+', '+str(arm_azes[num]))
-                    print(dist)
+             
+#             points=20    
+#             delta=(arm_top_e-arm_bottom_e)/points
+#             if delta==0:
+#                 arm_es=np.ones(points+1)*arm_top_az
+#             else:
+#                 arm_es=np.arange(arm_bottom_e, arm_top_e, delta)
+#                 arm_es=np.append(arm_es, arm_top_e)
+#             
+#             if arm_bottom_az==arm_top_az:
+#                 arm_azes=np.ones(points+1)*arm_top_az
+#             else:
+#                 delta=(arm_bottom_az-arm_top_az)/points
+#                 arm_azes=np.arange(arm_bottom_az, arm_top_az, delta)
+#                 if len(arm_azes)==0:
+#                     delta=-1*delta
+#                     arm_azes=np.arange(arm_bottom_az, arm_top_az, delta)
+#                 arm_azes=np.append(arm_azes, arm_top_az)
+#                 
+#             if i==-20 and e==25 and az==154:
+#                 print(arm_azes)
+#                 print(arm_es)
 
+            for num, lat in enumerate(arm_lat):
+                arm_e=90-lat
+                pos=[i, -1*arm_e, arm_bottom_az+arm_delta_long[num]]
+                if print_me:
+                    print(i)
+                    print(arm_e)
+                dist=get_angular_distance(i,-1*arm_e, arm_azes[num])
                 if dist<closest_dist:
                     closest_dist=dist
                     closest_pos=pos
+
+
+#             for num, arm_e in enumerate(arm_es):
+#                 pos=[i, -1*arm_e, arm_azes[num]]
+#                 dist=get_angular_distance(i,-1*arm_e,arm_azes[num])
+#                 if i==-20 and e==25 and az==154:
+#                     print('************')
+#                     print(str(i)+','+str(-1*arm_e)+', '+str(arm_azes[num]))
+#                     print(dist)
+# 
+#                 if dist<closest_dist:
+#                     closest_dist=dist
+#                     closest_pos=pos
 
 
         return closest_pos, closest_dist
@@ -4602,7 +4740,7 @@ class Controller():
         except:
             return False
         
-        closest_pos, closest_dist=self.get_closest_approach(i,e,az)
+        closest_pos, closest_dist=self.get_closest_approach(i,e,az, print_me=False)
         if closest_dist<self.required_angular_separation:
             print('COLLISION')
             print(i)
