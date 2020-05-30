@@ -1814,9 +1814,17 @@ class Controller():
                 if 'az' in movement_order:
                     movement_order[movement_order.index('az')]='az+180'
                     movement_order[movement_order.index('i')]='-i'
+                    if 'temp i' in movement_order:
+                        movement_order[movement_order.index('temp i')]='reverse temp i'
+                    if '-temp i' in movement_order:
+                        movement_order[movement_order.index('-temp i')]='reverse temp i'
                 elif 'az-180' in movement_order:
                     movement_order[movement_order.index('az-180')]='az'
                     movement_order[movement_order.index('-i')]='i'
+                    if 'temp i' in movement_order:
+                        movement_order[movement_order.index('temp i')]='reverse temp i'
+                    if '-temp i' in movement_order:
+                        movement_order[movement_order.index('-temp i')]='reverse temp i'
                 elif 'az+180' in movement_order:
                     #print(movement_order)
                     #print(check_allowed_for_motors('az+180'))
@@ -1827,9 +1835,18 @@ class Controller():
                 if 'az' in movement_order:
                     movement_order[movement_order.index('az')]='az-180'
                     movement_order[movement_order.index('i')]='-i'
+                    if '-temp i' in movement_order:
+                        movement_order[movement_order.index('-temp i')]='reverse temp i'
+                    if 'temp i' in movement_order:
+                        movement_order[movement_order.index('temp i')]='reverse temp i'
                 elif 'az+180' in movement_order:
                     movement_order[movement_order.index('az+180')]='az'
                     movement_order[movement_order.index('-i')]='i'
+                    if '-temp i' in movement_order:
+                        movement_order[movement_order.index('-temp i')]='reverse temp i'
+                    if 'temp i' in movement_order:
+                        movement_order[movement_order.index('temp i')]='reverse temp i'
+                    
                 elif 'az-180' in movement_order:
 #                     movement_order[movement_order.index]
                     raise Exception('Illegal motor pos')
@@ -2211,7 +2228,6 @@ class Controller():
             if 'temp e' not in movement_order and '-temp e' not in movement_order and 'az 90' not in movement_order and 'az 270' not in movement_order:
                 movement_order=convert_based_on_motor_pos(movement_order)
                 
-                
             movements=[]
             for movement in movement_order:
                 if movement=='az':
@@ -2230,21 +2246,26 @@ class Controller():
                     movements.append({'e':temp_e})
                 elif 'temp i' == movement:
                     movements.append({'i':temp_i})
+                elif '-temp i'==movement:
+                    movements.append({'i':temp_i})
                 elif 'temp i pos' == movement:
                     movements.append({'i':temp_i_pos})
                 elif 'i 20' == movement:
                     movements.append({'i':20})
+                elif 'i -20'==movement:
+                    movements.append({'i':-20})
                 elif movement=='i':
                     movements.append({'i':next_science_i})
                 elif movement=='-i':
                     movements.append({'i':-1*next_science_i})
                 elif movement=='e':
                     movements.append({'e':next_science_e})
+                elif movement=='reverse temp i':
+                    movements.append({'i':-1*temp_i})
                 else:
                     print('MISING MOVEMENT: '+movement)
         else: movements=None
                 
-
         return movements
 
         #Try moving to 90 degree azimuth, moving e, moving i
@@ -3289,6 +3310,8 @@ class Controller():
                     elif 'i' in movement:
                         next_motor_i=movement['i']
                         temp_queue.append({self.goniometer_view.set_incidence:[next_motor_i]})
+                    else:
+                        print('UNEXPECTED: '+str(movement))
                         
                 for item in temp_queue:
                     for func in item:
