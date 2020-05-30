@@ -677,8 +677,8 @@ class GoniometerView():
             self.set_goniometer_tilt(20)
             self.draw_3D_goniometer(self.width,self.height)
             self.flip()
-#             if self.collision:
-#                 raise Exception('Collision on incidence movement!')
+            if self.collision:
+                print('COLLISION SETTING INCIDENCE')
         
         delta_theta=-1*5*np.sign(self.motor_i-motor_i)
         while np.abs(self.motor_i-motor_i)>=5:
@@ -720,8 +720,8 @@ class GoniometerView():
                 
             self.draw_3D_goniometer(self.width,self.height)
             self.flip()
-#             if self.collision:
-#                 raise Exception('Collision on azimuth movement!')
+            if self.collision:
+                print('COLLISION SETTING AZIMUTH')
             
         delta_theta=5*np.sign(motor_az-self.motor_az)
         while np.abs(motor_az-self.motor_az)>=5:
@@ -758,8 +758,8 @@ class GoniometerView():
             self.set_goniometer_tilt(20)
             self.draw_3D_goniometer(self.width,self.height)
             self.flip()
-#             if self.collision:
-#                 raise Exception('Collision on detector movement!')
+            if self.collision:
+                print('COLLISION SETTING EMISSION')
             
         delta_theta=5*np.sign(motor_e-self.motor_e)
         while np.abs(motor_e-self.motor_e)>=5:

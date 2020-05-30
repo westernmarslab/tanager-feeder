@@ -302,19 +302,22 @@ class Controller():
         
         self.min_i=-70
         self.max_i=70
-        self.i=None
+        self.science_i=None
+        self.motor_i=None
         self.final_i=None
         self.i_interval=None
         
         self.min_e=-70
         self.max_e=70
-        self.e=None #current emission angle
+        self.science_e=None #current emission angle
+        self.motor_e=None
         self.final_e=None
         self.e_interval=None
         
         self.min_az=0
         self.max_az=260
-        self.az=None #current azimuth angle
+        self.science_az=None #current azimuth angle
+        self.motor_az=None
         self.final_az=None
         self.az_interval=None
         
@@ -843,6 +846,84 @@ class Controller():
         if opsys=='Windows':
             self.master.wm_state('zoomed')
         self.master.mainloop()
+    
+
+            
+    @property
+    def science_i(self):
+        return self.__science_i
+        
+    @science_i.setter
+    def science_i(self, value):
+        if value==None: self.__science_i=value
+        else:
+            try:
+                self.__science_i=int(value)
+            except:
+                raise Exception("Invalid science i value")
+    @property
+    def motor_i(self):
+        return self.__motor_i
+        
+    @motor_i.setter
+    def motor_i(self, value):
+        if value==None: self.__motor_i=value
+        else:
+            try:
+                self.__motor_i=int(value)
+            except:
+                raise Exception("Invalid motor i value")
+            
+    @property
+    def science_e(self):
+        return self.__science_e
+        
+    @science_e.setter
+    def science_e(self, value):
+        if value==None: self.__science_e=value
+        else:
+            try:
+                self.__science_e=int(value)
+            except:
+                raise Exception("Invalid science e value")
+            
+    @property
+    def motor_e(self):
+        return self.__motor_e
+        
+    @motor_e.setter
+    def motor_e(self, value):
+        if value==None: self.__motor_e=value
+        else:
+            try:
+                self.__motor_e=int(value)
+            except:
+                raise Exception("Invalid motor e value")
+                
+    @property
+    def science_az(self):
+        return self.__science_az
+        
+    @science_az.setter
+    def science_az(self, value):
+        if value==None: self.__science_az=value
+        else:
+            try:
+                self.__science_az=int(value)
+            except:
+                raise Exception("Invalid science az value")
+    @property
+    def motor_az(self):
+        return self.__motor_az
+        
+    @motor_az.setter
+    def motor_az(self, value):
+        if value==None: self.__motor_az=value
+        else:
+            try:
+                self.__motor_az=int(value)
+            except:
+                raise Exception("Invalid motor az value")
         
     def scrollbar_check(self):
         time.sleep(0.5)
@@ -1250,7 +1331,7 @@ class Controller():
             if valid_i:
                 if str(self.i)!=self.incidence_entries[0].get():
                     self.angles_change_time=time.time()
-                self.i=int(self.incidence_entries[0].get())
+                self.motor_i=int(self.incidence_entries[0].get())
                 
             else:
                 warnings+='The incidence angle is invalid (Min:'+str(-90)+', Max:'+str(90)+').\n\n'
@@ -1259,7 +1340,7 @@ class Controller():
             if valid_e:
                 if str(self.e)!=self.emission_entries[0].get():
                     self.angles_change_time=time.time()
-                self.e=int(self.emission_entries[0].get())
+                self.motor_e=int(self.emission_entries[0].get())
             else:
                 warnings+='The emission angle is invalid (Min:'+str(-90)+', Max:'+str(90)+').\n\n'
                 
@@ -1614,47 +1695,55 @@ class Controller():
                     script_queue.pop(0)
             self.queue=self.queue+script_queue
 
-    #animates goniometer arms moving
+    #updates motor and science angle values, animates goniometer arms moving
     def set_and_animate_geom(self, complete_queue_item=False):
-            try:
-                self.set_geom()
-            except:
-                return
-            valid_i=validate_int_input(self.i,self.min_i,self.max_i)
-            if valid_i:
-                if self.manual_automatic.get()==0:#manual, no animation
-                    self.goniometer_view.set_incidence(int(self.i),config=True)
-                else:
-                    self.goniometer_view.set_incidence(int(self.i))
+        try:
+            next_science_i=int(self.active_incidence_entries[0].get())
+            next_science_e=int(self.active_emission_entries[0].get())
+            next_science_az=int(self.active_azimuth_entries[0].get())
             
-            valid_e=validate_int_input(self.e,self.min_e,self.max_e)
-            if valid_e:
-                if self.manual_automatic.get()==0:#manual, fast animation
-                    self.goniometer_view.set_emission(int(self.e),config=True)
-                else:
-                    self.goniometer_view.set_emission(int(self.e))
-            
-            valid_az=validate_int_input(self.az,self.min_az,self.max_az)
-            if valid_az:
-                if self.manual_automatic.get()==0:#manual, fast animation
-                    self.goniometer_view.set_emission(int(self.az),config=True)
-                else:
-                    self.goniometer_view.set_emission(int(self.az))
-
-            if complete_queue_item:
-                self.complete_queue_item()
-                if len(self.queue)>0:
-                    self.next_in_queue()
-                        
-    def set_geom(self):
-        if self.i==None or self.e==None or self.az==None:
-            self.angles_change_time=time.time()
-        elif int(self.i)!=int(self.active_incidence_entries[0].get()) or int(self.e)!=int(self.active_emission_entries[0].get()) or int(self.az)!=self.active_azimuth_entries[0].get():
-            self.angles_change_time=time.time()
-        self.i=int(self.active_incidence_entries[0].get())
-        self.e=int(self.active_emission_entries[0].get())
-        self.az=int(self.active_azimuth_entries[0].get())
+            if self.science_i==None or self.science_e==None or self.science_az==None:
+                self.angles_change_time=time.time()
+            elif self.science_i!=next_science_i or self.science_e!=next_science_e or self.science_az!=next_science_az:
+                self.angles_change_time=time.time()
+        except:
+            raise Exception('EXCEPTION IN GETTING NEXT SCIENCE GEOM')
         
+        valid_i=validate_int_input(next_science_i,self.min_i,self.max_i)
+        valid_e=validate_int_input(next_science_e,self.min_e, self.max_e)
+        valid_az=validate_int_input(next_science_az, self.min_az, self.max_az)
+        
+        if not (valid_i and valid_e and valid_az): return
+        
+        motor_positions=self.get_movements()
+        temp_queue=[]
+        
+        for movement in movements:
+            if 'az' in movement:
+                next_motor_az=movement['az']
+                temp_queue.append({self.goniometer_view.set_azimuth:[next_motor_az]})
+            elif 'e' in movement:
+                next_motor_e=movement['e']
+                temp_queue.append({self.goniometer_view.set_emission:[next_motor_e]})
+            elif 'i' in movement:
+                next_motor_i=movement['i']
+                temp_queue.append({self.goniometer_view.set_incidence:[next_motor_i]})
+                
+        for item in temp_queue:
+            for func in item:
+                args=item[func]
+                func(*args)
+        
+
+
+
+        if complete_queue_item:
+            self.complete_queue_item()
+            if len(self.queue)>0:
+                self.next_in_queue()
+                        
+
+
 
         
     def set_text(self, widget, text):
@@ -1703,7 +1792,7 @@ class Controller():
                 return False
         return True
     
-    def get_movement_order(self, next_science_i, next_science_e, next_science_az, current_motor=None):
+    def get_movements(self, next_science_i, next_science_e, next_science_az, current_motor=None):
         
         if current_motor==None:
             current_motor=(self.i, self.e, self.az)
@@ -1752,7 +1841,7 @@ class Controller():
         
         def check_allowed_for_motors(motion_string):
             if motion_string=='az': #going to try a direct path to the next science az
-                if current_motor_az>180 and next_science_az>90: #takes us to a very positive motor az
+                if current_motor_az>=180 and next_science_az>90: #takes us to a very positive motor az
                     return False
                 elif current_motor_az<0 and next_science_az<90: #takes us to a very negative motor az
                     return False
@@ -1760,10 +1849,8 @@ class Controller():
                     return True
                 
             elif motion_string=='az-180': #going to try turning left, passing through 0 before we reach az
-                if current_motor_az>180: return True
-                elif current_motor_az<0: return False
+                if current_motor_az<0: return False
                 else:
-                    
                     next_motor_az=0-(180-next_science_az)
                     if next_motor_az>=-90:
                         return True
@@ -1771,8 +1858,7 @@ class Controller():
                         return False
                     
             elif motion_string=='az+180': #going to try turning right, passing through 180 before we reach az
-                if current_motor_az<90: return True
-                elif current_motor_az>=180: return False
+                if current_motor_az>=180: return False
                 else:
                     next_motor_az=180+next_science_az
                     if next_motor_az<=270:
@@ -1943,6 +2029,99 @@ class Controller():
                             if safe_az:
                                 print('13')
                                 movement_order=['az 90','i 20','e','i','az']
+                        if movement_order==None and next_science_az>=90:
+                            safe_i=self.safe_i_sweep(next_science_e, 90,20, -1*next_science_i)
+                            if safe_i:
+                                safe_az_1=self.safe_az_sweep(-1*next_science_i, next_science_e, 90,0)
+                                safe_az_2=self.safe_az_sweep(next_science_i, next_science_e, 179,next_science_az)
+                                if safe_az_1 and safe_az_2:
+                                    print('14')
+                                    movement_order=['az 90','i 20','e','-i','az-180']
+                        if movement_order==None and next_science_az<=90:
+                            safe_i=self.safe_i_sweep(next_science_e, 90,20, -1*next_science_i)
+                            if safe_i:
+                                safe_az_1=self.safe_az_sweep(-1*next_science_i, next_science_e, 90,179)
+                                safe_az_2=self.safe_az_sweep(next_science_i, next_science_e, 0,next_science_az)
+                                if safe_az_1 and safe_az_2:
+                                    print('15')
+                                    movement_order=['az 90','i 20','e','-i','az+180']
+                                    
+        if movement_order==None and current_motor_az>=90:
+            #Try movning to az -90, temp i at 20, move e, move i
+            i_negative=False
+            if current_motor_az>=0 and current_motor_az<180:
+                safe_temp_az_1=self.safe_az_sweep(current_science_i, current_science_e, current_science_az, 179)
+                safe_temp_az_2=self.safe_az_sweep(-1*current_science_i, current_science_e, 0,90)
+                safe_temp_az=safe_temp_az_1 and safe_temp_az_2
+                i_negative=True
+                
+            elif current_motor_az>180:
+                safe_temp_az=self.safe_az_sweep(current_science_i, current_science_e, current_science_az, 90)
+                
+            if safe_temp_az:
+                if i_negative:
+                    safe_temp_i=self.safe_i_sweep(current_science_e, 90,-1*current_science_i,20)
+                else:
+                    safe_temp_i=self.safe_i_sweep(current_science_e, 90,current_science_i,20)
+                if safe_temp_i:
+                    safe_e=self.safe_e_sweep(20,90,current_science_e, next_science_e)
+                    if safe_e:
+#                         safe_i=self.safe_i_sweep(next_science_e, 90,20, next_science_i)
+#                         if safe_i and next_science_az<=90:
+#                             safe_az_1=self.safe_az_sweep(next_science_i, next_science_e, 90,next_science_az)
+#                             if safe_az_1 and safe_az_2:
+#                                 print('21')
+#                                 movement_order=['az 270','i -20','e','-i','az+180']
+
+                        if movement_order==None:
+                            safe_i=self.safe_i_sweep(next_science_e, 90, 20, -1*next_science_i)
+                            if safe_i:
+                                safe_az_1=self.safe_az_sweep(-1*next_science_i, next_science_e, 90, 0)
+                                safe_az_2=self.safe_az_sweep(next_science_i,next_science_e,179,next_science_az)
+                                safe_az=safe_az_1 and safe_az_2
+                                if safe_az:
+                                    print('16')
+                                    movement_order=['az 270','i -20','e','i','az']
+        
+#         if movement_order==None and current_motor_az<180:
+#             #Try movning to az -90, temp i at 20, move e, move i
+#             i_negative=False
+#             if current_motor_az>=0 and current_motor_az<180:
+#                 safe_temp_az_1=self.safe_az_sweep(current_science_i, current_science_e, current_science_az, 0)
+#                 safe_temp_az_2=self.safe_az_sweep(-1*current_science_i, current_science_e, 179,90)
+#                 safe_temp_az=safe_temp_az_1 and safe_temp_az_2
+#                 i_negative=True
+#                 
+#             elif current_motor_az<0:
+#                 safe_temp_az=self.safe_az_sweep(current_science_i, current_science_e, current_science_az, 90)
+#                 
+#             if safe_temp_az:
+#                 print('MOTOR AZ -90')
+#                 if i_negative:
+#                     safe_temp_i=self.safe_i_sweep(current_science_e, 90,-1*current_science_i,20)
+#                 else:
+#                     safe_temp_i=self.safe_i_sweep(current_science_e, 90,current_science_i,20)
+#                 if safe_temp_i:
+#                     safe_e=self.safe_e_sweep(20,90,current_science_e, next_science_e)
+#                     if safe_e:
+#                         safe_i=self.safe_i_sweep(next_science_e, 90,20, next_science_i)
+#                         if safe_i and next_science_az>=90:
+#                             safe_az_1=self.safe_az_sweep(next_science_i, next_science_e, 90,next_science_az)
+#                             if safe_az_1 and safe_az_2:
+#                                 print('19')
+#                                 movement_order=['az 90','i 20','e','i','az-180']
+# 
+#                         if movement_order==None:
+#                             safe_i=self.safe_i_sweep(next_science_e, 90, 20, -1*next_science_i)
+#                             if safe_i:
+#                                 safe_az_1=self.safe_az_sweep(-1*next_science_i, next_science_e, 90, 179)
+#                                 safe_az_2=self.safe_az_sweep(next_science_i,0,next_science_az )
+#                                 safe_az=safe_az_1 and safe_az_2
+#                                 if safe_az:
+#                                     print('20')
+#                                     movement_order=['az 90','i 20','e','-i','az']
+
+
                             
         if movement_order==None:
 #                   1. setting temp e to out of the way (i+20)
@@ -1997,7 +2176,7 @@ class Controller():
                             if safe_az:
                                     safe_i=self.safe_i_sweep(next_science_e, next_science_az, temp_i_pos, next_science_i)
                                     if safe_i:
-                                        print('14')
+                                        print('17')
                                         movement_order=[temp_e_str,'az 90','temp i pos','e','az','i']
                             
                             if movement_order==None and next_science_az<=90:
@@ -2006,7 +2185,7 @@ class Controller():
                                 if safe_az_1 and safe_az_2:
                                     safe_i=self.safe_i_sweep(next_science_e, next_science_az, -1*temp_i_pos, next_science_i)
                                     if safe_i:
-                                        print('15')
+                                        print('18')
                                         movement_order=[temp_e_str,'az 90','temp i pos','e','az+180','-i']
                                      
                             if movement_order==None and next_science_az>=90:
@@ -2015,7 +2194,7 @@ class Controller():
                                 if safe_az_1 and safe_az_2:
                                     safe_i=self.safe_i_sweep(next_science_e, next_science_az, -1*temp_i_pos, next_science_i)
                                     if safe_i:
-                                        print('16')
+                                        print('19')
                                         movement_order=[temp_e_str,'az 90','temp i pos','e','az-180','-i']
 #                                         else:
 #                                             safe_az=self.safe_az_sweep(temp_i_pos,next_science_e, 90, next_science_az)
@@ -2029,9 +2208,44 @@ class Controller():
 #                                                 print(str(current_motor_i)+' '+str(current_motor_e)+' '+str(current_motor_az))
 #                                                 print(str(next_i)+' '+str(next_e)+' '+str(next_az))
         if movement_order!=None:
-            if 'temp e' not in movement_order and '-temp e' not in movement_order and 'az 90' not in movement_order:
+            if 'temp e' not in movement_order and '-temp e' not in movement_order and 'az 90' not in movement_order and 'az 270' not in movement_order:
                 movement_order=convert_based_on_motor_pos(movement_order)
-        return movement_order
+                
+                
+            movements=[]
+            for movement in movement_order:
+                if movement=='az':
+                    movements.append({'az':next_science_az})
+                elif movement=='az+180':
+                    movements.append({'az':next_science_az+180})
+                elif movement=='az-180':
+                    movements.append({'az':next_science_az-180})
+                elif movement=='az 90':
+                    movements.append({'az':90})
+                elif movement=='az 270':
+                    movements.append({'az':270})
+                elif 'temp e' ==movement:
+                    movements.append({'e':temp_e})
+                elif '-temp e' == movement:
+                    movements.append({'e':temp_e})
+                elif 'temp i' == movement:
+                    movements.append({'i':temp_i})
+                elif 'temp i pos' == movement:
+                    movements.append({'i':temp_i_pos})
+                elif 'i 20' == movement:
+                    movements.append({'i':20})
+                elif movement=='i':
+                    movements.append({'i':next_science_i})
+                elif movement=='-i':
+                    movements.append({'i':-1*next_science_i})
+                elif movement=='e':
+                    movements.append({'e':next_science_e})
+                else:
+                    print('MISING MOVEMENT: '+movement)
+        else: movements=None
+                
+
+        return movements
 
         #Try moving to 90 degree azimuth, moving e, moving i
         if movement_order==None:
@@ -2070,10 +2284,8 @@ class Controller():
         next_az=int(self.active_azimuth_entries[0].get())
  
         #Update goniometer position. Don't run the arms into each other
-        movements, reversed=self.get_movement_order(next_i, next_e, next_az)
+        movements =self.get_movements(next_i, next_e, next_az)
         
-        if reversed: self.reversed_goniometer=True
-        else: self.reversed_goniometer=False
 
         if 'az+180' in movements:
             self.queue.insert(movements.index('az+180'), {self.set_azimuth:[next_az+180]})
@@ -3057,13 +3269,31 @@ class Controller():
 #             self.goniometer_view.set_azimuth(az)
 #             return
             current_motor=(self.goniometer_view.motor_i,self.goniometer_view.motor_e, self.goniometer_view.motor_az)
-            movements=self.get_movement_order(i,e,az, current_motor=current_motor)
+            movements=self.get_movements(i,e,az, current_motor=current_motor)
             current_science_i=self.goniometer_view.science_i
             current_science_e=self.goniometer_view.science_e
             current_science_az=self.goniometer_view.science_az
 
             if movements==None:
                 print('NO PATH FOUND')
+            elif True:
+                temp_queue=[]
+        
+                for movement in movements:
+                    if 'az' in movement:
+                        next_motor_az=movement['az']
+                        temp_queue.append({self.goniometer_view.set_azimuth:[next_motor_az]})
+                    elif 'e' in movement:
+                        next_motor_e=movement['e']
+                        temp_queue.append({self.goniometer_view.set_emission:[next_motor_e]})
+                    elif 'i' in movement:
+                        next_motor_i=movement['i']
+                        temp_queue.append({self.goniometer_view.set_incidence:[next_motor_i]})
+                        
+                for item in temp_queue:
+                    for func in item:
+                        args=item[func]
+                        func(*args)
             else:
                 temp_queue=[]
                 for _ in range(len(movements)):
@@ -3076,6 +3306,8 @@ class Controller():
                     temp_queue[movements.index('az')]= {self.goniometer_view.set_azimuth:[az]}
                 if 'i 20' in movements:
                     temp_queue[movements.index('i 20')]={self.goniometer_view.set_incidence:[20]}
+                if 'i -20' in movements:
+                    temp_queue[movements.index('i -20')]={self.goniometer_view.set_incidence:[-20]}
                 if 'temp i' in movements:
 
                     current_science_e=current_motor[1]
@@ -3102,6 +3334,10 @@ class Controller():
 
                 if 'az 90' in movements:
                     temp_queue[movements.index('az 90')]={self.goniometer_view.set_azimuth:[90]}
+                    
+                if 'az 270' in movements:
+                    temp_queue[movements.index('az 270')]={self.goniometer_view.set_azimuth:[270]}
+                                                          
                 if 'temp e' in movements:
                     temp_e=np.abs(current_science_i)+2*self.required_angular_separation
                     if current_science_e<current_science_i and current_science_az<90:
@@ -4399,9 +4635,9 @@ class Controller():
             
             return
         else:
-            self.goniometer_view.set_azimuth((int(self.az)), config=True)
-            self.goniometer_view.set_incidence(int(self.i),config=True)
-            self.goniometer_view.set_emission(int(self.e),config=True)
+            self.goniometer_view.set_azimuth(self.motor_az, config=True)
+            self.goniometer_view.set_incidence(self.motor_i,config=True)
+            self.goniometer_view.set_emission(self.motor_e,config=True)
             self.complete_queue_item()
             
             if len(self.queue)>0:
@@ -4472,7 +4708,7 @@ class Controller():
                         
                     }
                 }
-                dialog=IntInputDialog(self,title='Setup Required',label='Setup required: Unknown goniometer state.\n\nPlease enter the current viewing geometry and tray position,\nor click \'Cancel\' to use the goniometer in manual mode.',values={'Incidence':[self.i,self.min_i,self.max_i],'Emission':[self.e,self.min_e,self.max_e],'Azimuth':[self.az, self.min_az, self.max_az], 'Tray position':[self.sample_tray_index,0,self.num_samples-1]},buttons=buttons)
+                dialog=IntInputDialog(self,title='Setup Required',label='Setup required: Unknown goniometer state.\n\nPlease enter the current viewing geometry and tray position,\nor click \'Cancel\' to use the goniometer in manual mode.',values={'Incidence':[self.motor_i,self.min_i,self.max_i],'Emission':[self.motor_e,self.min_e,self.max_e],'Azimuth':[self.motor_az, self.min_az, self.max_az], 'Tray position':[self.sample_tray_index,0,self.num_samples-1]},buttons=buttons)
                 
             menu.entryconfigure(0,label='  Manual')
             menu.entryconfigure(1,label='X Automatic')
@@ -4591,6 +4827,9 @@ class Controller():
         
     #get the point on the emission arm closest to intersecting the light source
     #az is the difference between the two, as shown in the visualization
+    #References: https://www.movable-type.co.uk/scripts/latlong.html
+    #            https://en.wikipedia.org/wiki/Great-circle_navigation
+    #            http://astrophysicsformulas.com/astronomy-formulas-astrophysics-formulas/angular-distance-between-two-points-on-a-sphere
     def get_closest_approach(self, i, e, az, print_me=False):
         def cos(theta):
             return np.cos(theta*3.14159/180)
@@ -4658,7 +4897,7 @@ class Controller():
             bearing=get_initial_bearing(arm_top_e)
             if print_me:
                 print('bearing: '+str(bearing))
-            points=np.arange(0,90,10)
+            points=np.arange(0,90,3)
             points=np.append(points, 90)
             arm_lat=[]
             arm_delta_long=[]
@@ -5934,14 +6173,14 @@ class MotionHandler(CommandHandler):
 
         if 'emission' in self.label:
             self.controller.angles_change_time=time.time()
-            self.controller.e=self.destination
+            self.controller.motor_e=self.destination
             try:
                 self.controller.log('Goniometer moved to an emission angle of '+str(self.destination)+' degrees.')
             except:
                 self.controller.log('Emission set')
         elif 'incidence' in self.label:
             self.controller.angles_change_time=time.time()
-            self.controller.i=self.destination
+            self.controller.motor_i=self.destination
             try:
                 self.controller.log('Goniometer moved to an incidence angle of '+str(self.destination)+' degrees.')
             except:
@@ -5949,7 +6188,7 @@ class MotionHandler(CommandHandler):
                 
         elif 'azimuth' in self.label:
             self.controller.angles_change_time=time.time()
-            self.controller.az=self.destination
+            self.controller.motor_az=self.destination
             try:
                 self.controller.log('Goniometer moved to an azimuth angle of '+str(self.destination)+' degrees.')
             except:
@@ -6257,7 +6496,7 @@ class SpectrumHandler(CommandHandler):
             info_string='Spectrum saved.'
             label=self.controller.sample_label_entries[self.controller.current_sample_gui_index].get()
         
-        info_string+='\n\tSpectra averaged: ' +str(self.controller.spec_config_count)+'\n\ti: '+str(self.controller.i)+'\n\te: '+str(self.controller.e)+'\n\tfilename: '+self.controller.spec_save_path+'\\'+self.controller.spec_basename+lastnumstr+'.asd'+'\n\tLabel: '+label+'\n'
+        info_string+='\n\tSpectra averaged: ' +str(self.controller.spec_config_count)+'\n\ti: '+str(self.controller.i)+'\n\te: '+str(self.controller.e)+'\n\taz: '+str(self.controller.az)+'\n\tfilename: '+self.controller.spec_save_path+'\\'+self.controller.spec_basename+lastnumstr+'.asd'+'\n\tLabel: '+label+'\n'
         #If it was a garbage spectrum, we don't need all of the information about it. Instead, just delete it and log that it happened.
         if 'garbage' in self.wait_dialog.label:
                 
@@ -6678,10 +6917,10 @@ class IntInputDialog(Dialog):
             emission=int(self.entries['Emission'].get())
             azimuth=int(self.entries['Azimuth'].get())
             
-
-            self.controller.e=emission
-            self.controller.i=incidence
-            self.controller.az=azimuth
+            
+            self.controller.science_e=emission
+            self.controller.science_i=incidence
+            self.controller.science_az=azimuth
             
         if len(bad_vals)==0 and valid_sep:
             self.top.destroy()
