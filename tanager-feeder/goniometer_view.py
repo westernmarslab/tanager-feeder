@@ -78,7 +78,7 @@ class GoniometerView():
         self.science_e=0
         self.motor_e=0
         
-        self.standard_delay=.003
+        self.standard_delay=.0001
         pygame.init()
 
         
@@ -675,8 +675,8 @@ class GoniometerView():
             self.wireframes['light guide'].set_elevation(self.motor_i)
             
             self.set_goniometer_tilt(20)
-            self.draw_3D_goniometer(self.width,self.height)
-            self.flip()
+#             self.draw_3D_goniometer(self.width,self.height)
+#             self.flip()
             if self.collision:
                 print('COLLISION SETTING INCIDENCE')
         
@@ -718,8 +718,8 @@ class GoniometerView():
                 self.science_az=self.motor_az+180
                 self.science_i=-1*self.motor_i
                 
-            self.draw_3D_goniometer(self.width,self.height)
-            self.flip()
+#             self.draw_3D_goniometer(self.width,self.height)
+#             self.flip()
             if self.collision:
                 print('COLLISION SETTING AZIMUTH')
             
@@ -756,8 +756,8 @@ class GoniometerView():
             self.wireframes['detector'].set_elevation(self.motor_e)
             self.wireframes['detector guide'].set_elevation(self.motor_e)
             self.set_goniometer_tilt(20)
-            self.draw_3D_goniometer(self.width,self.height)
-            self.flip()
+#             self.draw_3D_goniometer(self.width,self.height)
+#             self.flip()
             if self.collision:
                 print('COLLISION SETTING EMISSION')
             

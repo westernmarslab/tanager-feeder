@@ -2083,12 +2083,12 @@ class Controller():
                 if safe_temp_i:
                     safe_e=self.safe_e_sweep(20,90,current_science_e, next_science_e)
                     if safe_e:
-#                         safe_i=self.safe_i_sweep(next_science_e, 90,20, next_science_i)
-#                         if safe_i and next_science_az<=90:
-#                             safe_az_1=self.safe_az_sweep(next_science_i, next_science_e, 90,next_science_az)
-#                             if safe_az_1 and safe_az_2:
-#                                 print('21')
-#                                 movement_order=['az 270','i -20','e','-i','az+180']
+                        safe_i=self.safe_i_sweep(next_science_e, 90,20, -1*next_science_i)
+                        if safe_i and next_science_az<=90:
+                            safe_az=self.safe_az_sweep(next_science_i, next_science_e, 90,next_science_az)
+                            if safe_az:
+                                print('16')
+                                movement_order=['az 270','i -20','e','-i','az+180']
 
                         if movement_order==None:
                             safe_i=self.safe_i_sweep(next_science_e, 90, 20, -1*next_science_i)
@@ -2097,7 +2097,7 @@ class Controller():
                                 safe_az_2=self.safe_az_sweep(next_science_i,next_science_e,179,next_science_az)
                                 safe_az=safe_az_1 and safe_az_2
                                 if safe_az:
-                                    print('16')
+                                    print('17')
                                     movement_order=['az 270','i -20','e','i','az']
         
 #         if movement_order==None and current_motor_az<180:
@@ -2193,7 +2193,7 @@ class Controller():
                             if safe_az:
                                     safe_i=self.safe_i_sweep(next_science_e, next_science_az, temp_i_pos, next_science_i)
                                     if safe_i:
-                                        print('17')
+                                        print('18')
                                         movement_order=[temp_e_str,'az 90','temp i pos','e','az','i']
                             
                             if movement_order==None and next_science_az<=90:
@@ -2202,8 +2202,16 @@ class Controller():
                                 if safe_az_1 and safe_az_2:
                                     safe_i=self.safe_i_sweep(next_science_e, next_science_az, -1*temp_i_pos, next_science_i)
                                     if safe_i:
-                                        print('18')
+                                        print('19')
                                         movement_order=[temp_e_str,'az 90','temp i pos','e','az+180','-i']
+                                if movement_order==None:
+                                    safe_i=self.safe_i_sweep(next_science_e, next_science_az, temp_i_pos, -1*next_science_i)
+                                    if safe_i:
+                                        safe_az_1=self.safe_az_sweep(-1*next_science_i, next_science_e, 90,179)
+                                        safe_az_2=self.safe_az_sweep(next_science_i, next_science_e, 0,next_science_az)
+                                        if safe_az_1 and safe_az_2:
+                                            print('20')
+                                            movement_order=[temp_e_str,'az 90','temp i pos','e','-i','az+180']
                                      
                             if movement_order==None and next_science_az>=90:
                                 safe_az_1=self.safe_az_sweep(temp_i_pos, next_science_e, 90, 0)
@@ -2211,19 +2219,26 @@ class Controller():
                                 if safe_az_1 and safe_az_2:
                                     safe_i=self.safe_i_sweep(next_science_e, next_science_az, -1*temp_i_pos, next_science_i)
                                     if safe_i:
-                                        print('19')
+                                        print('21')
                                         movement_order=[temp_e_str,'az 90','temp i pos','e','az-180','-i']
-#                                         else:
-#                                             safe_az=self.safe_az_sweep(temp_i_pos,next_science_e, 90, next_science_az)
-#                                             if safe_az:
-#                                                 safe_i=self.safe_i_sweep(next_science_e, next_science_az, temp_i_pos, next_science_i)
-#                                                 if safe_i:
-#                                                     movement_order=['temp e','az 90','temp i pos','e','az','i']
-#                                                     print(movement_order)
-#                                             else:
-#                                                 print("NO PATH FOUND FROM ")
-#                                                 print(str(current_motor_i)+' '+str(current_motor_e)+' '+str(current_motor_az))
-#                                                 print(str(next_i)+' '+str(next_e)+' '+str(next_az))
+                                if movement_order==None:
+                                    safe_i=self.safe_i_sweep(next_science_e, next_science_az, temp_i_pos, -1*next_science_i)
+                                    if safe_i:
+                                        safe_az_1=self.safe_az_sweep(-1*next_science_i, next_science_e, 90,0)
+                                        safe_az_2=self.safe_az_sweep(next_science_i, next_science_e, 179,next_science_az)
+                                        if safe_az_1 and safe_az_2:
+                                            print('22')
+                                            movement_order=[temp_e_str,'az 90','temp i pos','e','-i','az-180']
+                                    
+                                        
+                            if movement_order==None:
+                                safe_az=self.safe_az_sweep(temp_i_pos,next_science_e, 90, next_science_az)
+                                if safe_az:
+                                    safe_i=self.safe_i_sweep(next_science_e, next_science_az, temp_i_pos, next_science_i)
+                                    if safe_i:
+                                        print('23')
+                                        movement_order=['temp e','az 90','temp i pos','e','az','i']
+
         if movement_order!=None:
             if 'temp e' not in movement_order and '-temp e' not in movement_order and 'az 90' not in movement_order and 'az 270' not in movement_order:
                 movement_order=convert_based_on_motor_pos(movement_order)
