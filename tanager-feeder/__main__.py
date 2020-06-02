@@ -1613,12 +1613,9 @@ class Controller():
             if action==self.take_spectrum:
                 setup=self.setup_RS3_config({self.take_spectrum:[True, False,garbage]})
             elif action==self.wr or action==self.acquire:
-                #print(action)
                 setup=self.setup_RS3_config({action:[True, False]})
             elif action==self.opt:
-                print('SETUP')
                 setup=self.setup_RS3_config({self.opt:[True, False]})
-                print(setup)
             else:
                 raise Exception()
             #If things were not already set up (instrument config, etc) then the compy will take care of that and call take_spectrum again after it's done.
@@ -1717,8 +1714,6 @@ class Controller():
                 temp_queue.append({self.goniometer_view.set_incidence:[next_motor_i]})
                 
         self.queue=temp_queue+self.queue
-        print('set and animate geom queue')
-        print(self.queue)
         
 
 
@@ -1816,8 +1811,6 @@ class Controller():
                     if '-temp i' in movement_order:
                         movement_order[movement_order.index('-temp i')]='reverse temp i'
                 elif 'az+180' in movement_order:
-                    #print(movement_order)
-                    #print(check_allowed_for_motors('az+180'))
                     raise Exception('Illegal motor pos '+str(current_motor_pos)+' az+180')
                     pass
                     #raise(Exception('YIKES super positive!'))
@@ -2273,24 +2266,6 @@ class Controller():
                 
         return movements
 
-        #Try moving to 90 degree azimuth, moving e, moving i
-        if movement_order==None:
-            safe_az=self.safe_az_sweep(current_science_i, current_science_e, current_science_az, 90)
-            if safe_az:
-                safe_i=self.safe_i_sweep(current_science_e, current_science_az, current_science_i, 10)
-                if safe_i:
-                        safe_az=self.safe_az_sweep(10, next_science_e, 90, next_science_az) #won't give desired path if e.g. next science az is 0 and want to go through 180.
-                        if safe_az:
-                            safe_i=self.safe_i_sweep(next_science_e, next_science_az, self.max_i, next_science_i)
-                            if safe_i:
-                                safe_e=self.safe_e_sweep(10,next_science_az, 10, next_science_e)
-                                if safe_e:
-                                    print('Weirdo')
-                                    movement_order=['az motor 90', 'i 10', 'e 10','az','i','e']
-                            
-
-            
-        return movement_order
 
         
         
@@ -2325,11 +2300,8 @@ class Controller():
                 temp_queue.append({self.set_incidence:[next_motor_i]})
             else:
                 print('UNEXPECTED: '+str(movement))
-        
-        print('next geom queue')
-        print(self.queue)
+
         self.queue=temp_queue+self.queue
-        print(self.queue)
         
 
 
@@ -2436,8 +2408,6 @@ class Controller():
 
         
     def move_tray(self, pos, type='position'):
-        print('MOVE TRAY')
-        print(pos)
         steps=False
         if type=='steps':steps=True
         if type=='position':
@@ -3014,7 +2984,6 @@ class Controller():
             #First clear all existing sample names
             while len(self.sample_frames)>1:
                 self.remove_sample(-1)
-            print('clearing')
             self.set_text(self.sample_label_entries[0],'')
             
             #Then add in samples in order specified in params. Each param should be a sample name and pos.
@@ -3114,7 +3083,6 @@ class Controller():
             param=cmd[0:-1].split('sleep(')[1]
             try:
                 num=float(param)
-                print(self.wait_dialog)
                 try:
                     title='Sleeping...'
                     label='Sleeping...'
@@ -3432,7 +3400,7 @@ class Controller():
             valid_e=validate_int_input(params[1], self.min_science_e, self.max_science_e)
             valid_az=validate_int_input(params[2],self.min_science_az,self.max_science_az)
             
-            if not valid_i or not valid_e or not_valid_az:
+            if not valid_i or not valid_e or not valid_az:
                 self.log('Error: invalid geometry')
                 return    
         
@@ -3445,6 +3413,11 @@ class Controller():
             valid_geom=self.validate_distance(i,e, az)
             if not valid_geom:
                 self.log('Error: Geometric constraints on the instrument make this position impossible to reach.')
+                if len(self.queue)>0:
+                    self.next_in_queue()
+                else:
+                    self.script_running=False
+                    self.queue=[]
                 return
                 
 
@@ -3589,7 +3562,6 @@ class Controller():
                     
                     i+=1
                     delme='delme'+str(i)
-                    print(dir+delme)
                     
                 os.mkdir(dir+delme)
                 os.rmdir(dir+delme)
@@ -3718,11 +3690,9 @@ class Controller():
         input_directory=self.input_dir_entry.get()
         if input_directory[-1]=='\\':
             input_directory=input_directory[:-1]
-            print('MODIFYING input DIRECTORY')
-            print(input_directory)
+
     
         if self.proc_local.get()==1:
-            print('local 1')
             self.plot_local_remote='local'
 
             check=self.check_local_file(self.output_dir_entry.get(),output_file,self.process_cmd)
@@ -3733,7 +3703,6 @@ class Controller():
             self.spec_commander.process(input_directory,'spec_share_loc','proc_temp.csv')
 
         else:
-            print('remote 1')
             self.plot_local_remote='remote'
             output_directory=self.output_dir_entry.get()             
             check=self.check_remote_folder(output_directory,self.process_cmd)
@@ -3758,11 +3727,9 @@ class Controller():
         
         
     def finish_process(self,output_file):
-        print('finishing processing')
         self.complete_queue_item()
         #We're going to transfer the data file and log file to the final destination. To transfer the log file, first decide on a name to call it. This will be based on the dat file name. E.g. foo.csv would have foo_log.txt associated with it.
         final_data_destination=self.output_file_entry.get()
-        print(final_data_destination)
         if '.' not in final_data_destination:
             final_data_destination=final_data_destination+'.csv'
         data_base='.'.join(final_data_destination.split('.')[0:-1])
@@ -3934,7 +3901,6 @@ class Controller():
                 update_entries(left, right)
                 populate_listbox(centers)
                 update_plot_menu(['e','i','g','e,i','theta'])
-                print(self.use_max_for_centers.get())
                 
             elif self.analyze_var.get()=='reflectance':
                 left, right, reflectance,artifact_warning=tab.calculate_avg_reflectance(self.left_slope_entry.get(),self.right_slope_entry.get())
@@ -6099,6 +6065,7 @@ class ProcessHandler(CommandHandler):
         if (self.controller.opsys=='Linux' or self.controller.opsys=='Mac') and self.controller.plot_local_remote=='local':
             if dir[-1]!='/':dir+='/'
         else:
+            dir=dir.replace('/','\\')
             if dir[-1]!='\\': dir+='\\'
         self.outputfile=dir+self.outputfile
         self.wait_dialog.set_buttons({})
@@ -6125,7 +6092,6 @@ class ProcessHandler(CommandHandler):
 
                 self.controller.log('Files processed. '+warnings.replace('\n',' ' )+'\n\t'+self.outputfile)
                 if self.controller.proc_local_remote=='local': #Move on to finishing the process by transferring the data from temp to final destination
-                    print('local!')
                     try:
                         self.controller.complete_queue_item()
                         self.controller.next_in_queue()
@@ -6290,7 +6256,7 @@ class MotionHandler(CommandHandler):
             self.controller.angles_change_time=time.time()
             self.controller.motor_az=self.destination
             try:
-                self.controller.log('Goniometer moved to an azimuth angle of '+str(self.science_az)+' degrees.')
+                self.controller.log('Goniometer moved to an azimuth angle of '+str(self.controller.science_az)+' degrees.')
             except:
                 self.controller.log('Azimuth set')
             
@@ -7442,7 +7408,6 @@ class SpecCommander(Commander):
         return filename
         
     def white_reference(self):
-        print('clear queue')
         self.remove_from_listener_queue(['nonumspectra','noconfig','wrsuccess','wrfailedfileexists','wrfailed'])
         filename=self.encrypt('wr')
         self.send(filename)

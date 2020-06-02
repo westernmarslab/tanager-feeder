@@ -747,7 +747,7 @@ class GoniometerView():
             degrees_moved=0
             degrees_to_rotate=np.abs(next_degrees-current_degrees)
             while degrees_moved<degrees_to_rotate:
-                self.rotate_tray(delta_theta)
+                self.rotate_tray(-1*delta_theta)
                 degrees_moved+=np.abs(delta_theta)
                 self.draw_3D_goniometer(self.width,self.height)
                 self.flip()
