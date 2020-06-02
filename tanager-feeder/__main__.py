@@ -300,22 +300,28 @@ class Controller():
         #One wait dialog open at a time. CommandHandlers check whether to use an existing one or make a new one.
         self.wait_dialog=None
         
-        self.min_i=-70
-        self.max_i=70
+        self.min_science_i=-70
+        self.max_science_i=70
+        self.min_motor_i=-90
+        self.max_motor_i=90
         self.science_i=None
         self.motor_i=None
         self.final_i=None
         self.i_interval=None
         
-        self.min_e=-70
-        self.max_e=70
+        self.min_science_e=-70
+        self.max_science_e=70
+        self.min_motor_e=-90
+        self.max_motor_e=90
         self.science_e=None #current emission angle
         self.motor_e=None
         self.final_e=None
         self.e_interval=None
         
-        self.min_az=0
-        self.max_az=260
+        self.min_science_az=0
+        self.max_science_az=179
+        self.min_motor_az=-90
+        self.max_motor_az=270
         self.science_az=None #current azimuth angle
         self.motor_az=None
         self.final_az=None
@@ -871,6 +877,12 @@ class Controller():
         else:
             try:
                 self.__motor_i=int(value)
+                try:
+                    science_i, science_e, science_az=self.motor_pos_to_science_pos(self.__motor_i, self.motor_e, self.motor_az)
+                    self.science_i=science_i
+                    self.science_az=science_az
+                except:
+                    self.science_i=self.__motor_i
             except:
                 raise Exception("Invalid motor i value")
             
@@ -897,6 +909,7 @@ class Controller():
         else:
             try:
                 self.__motor_e=int(value)
+                self.science_e=self.__motor_e
             except:
                 raise Exception("Invalid motor e value")
                 
@@ -922,6 +935,17 @@ class Controller():
         else:
             try:
                 self.__motor_az=int(value)
+                try:
+                    science_i, science_e, science_az=self.motor_pos_to_science_pos(self.motor_i, self.motor_e, self.__motor_az)
+                    self.science_i=science_i
+                    self.science_az=science_az
+                except:
+                    if 0<=value and 180>value:
+                        self.science_az=value
+                    elif value<0:
+                        self.science_az=value+180
+                    else:
+                        self.science_az=value-180
             except:
                 raise Exception("Invalid motor az value")
         
@@ -1237,6 +1261,10 @@ class Controller():
         self.script_running=True
         self.script_failed=False
         script_file = askopenfilename(initialdir=self.script_loc,title='Select script')
+        if script_file=='':
+            self.script_running=False
+            self.queue=[]
+            return
         self.queue=[]
         with open(self.local_config_loc+'script_config.txt','w') as script_config:
             dir=''
@@ -1388,9 +1416,9 @@ class Controller():
                 i=self.active_incidence_entries[index].get()
                 e=self.active_emission_entries[index].get()
                 az=self.active_azimuth_entries[index].get()
-                valid_i=validate_int_input(i,self.min_i, self.max_i)
-                valid_e=validate_int_input(e,self.min_e,self.max_e)
-                valid_az=validate_int_input(az,self.min_az,self.max_az)
+                valid_i=validate_int_input(i,self.min_science_i, self.max_science_i)
+                valid_e=validate_int_input(e,self.min_science_e,self.max_science_e)
+                valid_az=validate_int_input(az,self.min_science_az,self.max_science_az)
                 if not valid_i or not valid_e or not valid_az:
                     dialog=ErrorDialog(self,label='Error: Invalid viewing geometry:\n\nincidence = '+str(i)+'\nemission = '+str(e)+'\nazimuth = '+str(az),width=300, height=130)
                     return False
@@ -1407,6 +1435,7 @@ class Controller():
             now=int(time.time())
             incidence=self.incidence_entries[0].get()
             emission=self.emission_entries[0].get()
+            azimuth=self.azimuth_entries[0].get()
             
             if self.manual_automatic.get()==0:
                 warnings=self.check_viewing_geom_for_manual_operation()
@@ -1429,9 +1458,10 @@ class Controller():
                         if self.angles_change_time==None:
                             pass
                         elif self.opt_time<self.angles_change_time:
-                            valid_i=validate_int_input(incidence,self.min_i,self.max_i)
-                            valid_e=validate_int_input(emission,self.min_e,self.max_e)
-                            if valid_i and valid_e:
+                            valid_i=validate_int_input(incidence,self.min_science_i,self.max_science_i)
+                            valid_e=validate_int_input(emission,self.min_science_e,self.max_science_e)
+                            valid_az=validate_int_input(azimuth, self.min_science_az,self.max_science_az)
+                            if valid_i and valid_e and valid_az:
                                 label+='The insturment has not been optimized at this geometry.\n\n'
                 
 
@@ -1459,58 +1489,14 @@ class Controller():
     
                     if self.angles_change_time!=None and self.wr_time!=None and func!=self.opt:
                         if self.angles_change_time>self.wr_time+1:
-                            valid_i=validate_int_input(incidence,self.min_i,self.max_i)
-                            valid_e=validate_int_input(emission,self.min_e,self.max_e)
+                            valid_i=validate_int_input(incidence,self.min_science_i,self.max_science_i)
+                            valid_e=validate_int_input(emission,self.min_science,self.max_science_e)
+                            valid_az=validate_int_input(azimuth, self.min_science_az, self.max_science_az)
                             if valid_i and valid_e:
                                 label+=' No white reference has been taken at this viewing geometry.\n\n'
                         # elif str(emission)!=str(self.e) or str(incidence)!=str(self.i):
                         #     label+=' No white reference has been taken at this viewing geometry.\n\n'
-                        
-                if False:#self.angles_failsafe.get():
-                    valid_i=validate_int_input(incidence,self.min_i,self.max_i)
-                    valid_e=validate_int_input(emission,self.min_e,self.max_e)
-                    valid_separation=self.validate_distance(incidence,emission)
 
-                    if not valid_i:
-                        label+='The incidence angle is invalid (Min:'+str(self.min_i)+', Max:'+str(self.max_i)+').\n\n'
-                    if not valid_e:
-                        label+='The emission angle is invalid (Min:'+str(self.min_e)+', Max:'+str(self.max_e)+').\n\n'
-                    if valid_e and valid_i:
-                        if not valid_separation:
-                            label+='Incidence and emission need to be at least '+str(self.required_angular_separation)+' degrees apart.\n\n'
-                        
-                if False:#self.anglechangefailsafe.get():
-                    anglechangealert=False
-                    if self.angles_change_time==None and emission!='' and incidence !='':
-                        label+='This is the first time emission and incidence angles are being set,\n'
-                        anglechangealert=True
-                    elif self.e==None and emission!='':
-                        label+='This is the first time the emission angle is being set,\n'
-                        anglechangealert=True
-                        if str(incidence)!=str(self.i) and incidence!='' and self.i!=None:
-                            label+='and the incidence angle has changed since last spectrum,\n'
-                        anglechangealert=True
-                    elif self.i==None and incidence!='':
-                        label+='This is the first time the incidence angle is being set,\n'
-                        anglechangealert=True
-                        if str(emission)!=str(self.e) and emission !='' and self.e!=None:
-                            label+='and the emission angle has changed since last spectrum,\n' 
-                        anglechangealert=True
-                    if anglechangealert==False and emission!=str(self.e) and str(emission) !='' and str(incidence) !=str(self.i) and incidence!='':
-                        if self.e!=None and self.i!=None:
-                            label+='The emission and incidence angles have changed since last spectrum,\n'
-                            anglechangealert=True
-                    elif anglechangealert==False and str(emission)!=str(self.e) and emission !='':
-                        label+='The emission angle has changed since last spectrum,\n'
-                        anglechangealert=True
-                    elif anglechangealert==False and str(incidence)!=str(self.i) and incidence!='':
-                        label+='The incidence angle has changed since last spectrum,\n' 
-                        anglechangealert=True
-                        
-                    if anglechangealert:#and onlyanglechange:
-                        label+='so the goniometer arm(s) may need to change to match.\n\n'
-                        pass
-                   
             if self.labelfailsafe.get() and func!=self.opt and func!=self.wr:
                 if self.sample_label_entries[self.current_sample_gui_index].get()=='':
                     label +='This sample has no label.\n\n'
@@ -1649,10 +1635,10 @@ class Controller():
                     label='White Reference'
                 else:
                     label=self.sample_label_entries[self.current_sample_gui_index].get()
-                self.spec_commander.take_spectrum(self.spec_save_path, self.spec_basename, startnum_str,label ,self.i, self.e)
+                self.spec_commander.take_spectrum(self.spec_save_path, self.spec_basename, startnum_str,label ,self.science_i, self.science_e, self.science_az)
                 handler=SpectrumHandler(self)
             else:
-                self.spec_commander.take_spectrum(self.spec_save_path, self.spec_basename, startnum_str, 'GARBAGE',self.i, self.e)
+                self.spec_commander.take_spectrum(self.spec_save_path, self.spec_basename, startnum_str, 'GARBAGE',self.science_i, self.science_e, self.science_az)
                 handler=SpectrumHandler(self,title='Collecting garbage...',label='Collecting garbage spectrum...')
                 
         elif action==self.wr:
@@ -1709,11 +1695,12 @@ class Controller():
         except:
             raise Exception('EXCEPTION IN GETTING NEXT SCIENCE GEOM')
         
-        valid_i=validate_int_input(next_science_i,self.min_i,self.max_i)
-        valid_e=validate_int_input(next_science_e,self.min_e, self.max_e)
-        valid_az=validate_int_input(next_science_az, self.min_az, self.max_az)
+        valid_i=validate_int_input(next_science_i,self.min_science_i,self.max_science_i)
+        valid_e=validate_int_input(next_science_e,self.min_science_e, self.max_science_e)
+        valid_az=validate_int_input(next_science_az, self.min_science_az, self.max_science_az)
         
-        if not (valid_i and valid_e and valid_az): return
+        if not (valid_i and valid_e and valid_az): 
+            raise Exception('Invalid geometry: '+str(next_science_i)+' '+str(next_science_e)+' '+str(next_science_az))
         
         motor_positions=self.get_movements()
         temp_queue=[]
@@ -1729,10 +1716,9 @@ class Controller():
                 next_motor_i=movement['i']
                 temp_queue.append({self.goniometer_view.set_incidence:[next_motor_i]})
                 
-        for item in temp_queue:
-            for func in item:
-                args=item[func]
-                func(*args)
+        self.queue=temp_queue+self.queue
+        print('set and animate geom queue')
+        print(self.queue)
         
 
 
@@ -1795,7 +1781,7 @@ class Controller():
     def get_movements(self, next_science_i, next_science_e, next_science_az, current_motor=None):
         
         if current_motor==None:
-            current_motor=(self.i, self.e, self.az)
+            current_motor=(self.motor_i, self.motor_e, self.motor_az)
             
         current_motor_i=int(current_motor[0])
         current_motor_e=int(current_motor[1])
@@ -1808,6 +1794,10 @@ class Controller():
         current_science_i, current_science_e, current_science_az=self.motor_pos_to_science_pos(current_motor_i, current_motor_e, current_motor_az)
         
         movement_order=None
+        
+        #Check whether the final position is valid. If not, don't search for a path, just return None.
+        valid_final=self.validate_distance(next_science_i, next_science_e, next_science_az)
+        if not valid_final: return None
         
         def convert_based_on_motor_pos(movement_order):
             if current_motor_az>=180 and movement_order!=None:
@@ -2322,133 +2312,136 @@ class Controller():
         #Update goniometer position. Don't run the arms into each other
         movements =self.get_movements(next_i, next_e, next_az)
         
-
-        if 'az+180' in movements:
-            self.queue.insert(movements.index('az+180'), {self.set_azimuth:[next_az+180]})
-        if 'az' in movements:
-            self.queue.insert(movements.index('az'), {self.set_azimuth:[next_az]})
-        if 'i to negative e + angular_separation' in movements:
-            i=-1*(int(self.e)+np.sign(int(self.e))*self.required_angular_separation)
-            self.queue.insert(movements.index('az'), {self.set_incidence:[i]})
-        if 'i to e + angular_separation' in movements:
-            i=(int(self.e)+np.sign(int(self.e))*self.required_angular_separation)
-            self.queue.insert(movements.index('az'), {self.set_incidence:[i]})
-        self.queue.insert(movements.index('e'),{self.set_emission:[]}) #either 1 or 2
-        self.queue.insert(movements.index('i'),{self.set_incidence:[]}) #either 1 or 2
+        temp_queue=[]
+        for movement in movements:
+            if 'az' in movement:
+                next_motor_az=movement['az']
+                temp_queue.append({self.set_azimuth:[next_motor_az]})
+            elif 'e' in movement:
+                next_motor_e=movement['e']
+                temp_queue.append({self.set_emission:[next_motor_e]})
+            elif 'i' in movement:
+                next_motor_i=movement['i']
+                temp_queue.append({self.set_incidence:[next_motor_i]})
+            else:
+                print('UNEXPECTED: '+str(movement))
         
-#         n=0
-#         if int(next_i)<int(next_e):#(int(self.e)>int(self.i) and int(next_e)<int(next_i)) or (int(self.e)<int(self.i) and int(next_e)>int(next_i)): #If keeping az the same would result in swapping positions
-#             self.queue.insert(n, {self.set_azimuth:[next_az+180]})
-#             n+=1
-#         else:
-#             self.queue.insert(n, {self.set_azimuth:[next_az]})
-#             n+=1
-#                 
-#                 
-#         if int(self.e)>int(self.i): 
-#             if int(next_e)>int(self.e):  
-#                 self.queue.insert(n,{self.set_emission:[]})
-#                 self.queue.insert(n+1,{self.set_incidence:[]})
-#             else:
-#                 self.queue.insert(n,{self.set_incidence:[]})
-#                 self.queue.insert(n+1,{self.set_emission:[]})
-#         elif int(self.e)<int(self.i): 
-#             if int(next_e)<int(self.e):
-#                 self.queue.insert(n,{self.set_emission:[]})
-#                 self.queue.insert(n+1,{self.set_incidence:[]})
-#             else:
-#                 self.queue.insert(n,{self.set_incidence:[]})
-#                 self.queue.insert(n+1,{self.set_emission:[]})        
+        print('next geom queue')
+        print(self.queue)
+        self.queue=temp_queue+self.queue
+        print(self.queue)
+        
+
+
+        
+      
         
         self.next_in_queue()
     #def set_motion_order(self, next_i, next_e, next_az):
 
     #Move light will either read i from the GUI (default, i=None), or if this is a text command then i will be passed as a parameter.
     #When from the commandline, i may not be an incidence angle at all but a number of steps to move. In this case, type will be 'steps'.
-    def set_incidence(self, i=None, type='angle', negative=False):
+    def set_incidence(self, next_motor_i=None, type='angle', negative=False):
         steps=True
         timeout=0
+        next_motor_i=int(next_motor_i)
         
         if type=='angle':
             steps=False #We will need to tell the motionhandler whether we're specifying steps or an angle
             
             #First check whether we actually need to move at all.
-            if i==None:
-                i=int(self.active_incidence_entries[0].get())
-            if i==self.i: #No change in incidence angle, no need to move
-                self.log('Goniometer remaining at an incidence angle of '+str(i)+' degrees.')
+            if next_motor_i==None:
+                next_science_i=int(self.active_incidence_entries[0].get())
+                if self.motor_az>=180 or self.motor_az<0:
+                    next_motor_i=-1*next_science_i
+                else:
+                    next_motor_i=next_science_i
+                raise Exception('No protection against unsafe incidence movement')
+                    
+            if next_motor_i==self.motor_i: #No change in incidence angle, no need to move
+                self.log('Goniometer remaining at an incidence angle of '+str(self.science_i)+' degrees.')
                 self.complete_queue_item()
                 if len(self.queue)>0:
                     self.next_in_queue()
                 return #If we're staying in the same spot, just return!
-            timeout=np.abs(int(i)-int(self.i))*8+PI_BUFFER
+            timeout=np.abs(next_motor_i-self.motor_i)*8+PI_BUFFER
         else:
-            timeout=np.abs(int(i))/15+PI_BUFFER
+            timeout=np.abs(next_motor_i)/15+PI_BUFFER
             
-        self.pi_commander.set_incidence(i,type)
-        handler=MotionHandler(self,label='Setting incidence...',timeout=timeout,steps=steps, destination=i)
+        self.pi_commander.set_incidence(next_motor_i,type)
+        handler=MotionHandler(self,label='Setting incidence...',timeout=timeout,steps=steps, destination=next_motor_i)
 
         if type=='angle': #Only change the visualization if an angle is specified. Specifiying steps is for setting up the 
-            self.goniometer_view.set_incidence(int(i))
+            self.goniometer_view.set_incidence(next_motor_i)
                 
-            
-    def set_emission(self, e=None, type='angle'):
+    def set_emission(self, next_motor_e=None, type='angle'):
         steps=True
         timeout=0
+        next_motor_e=int(next_motor_e)
         
         if type=='angle':
             steps=False #We will need to tell the motionhandler whether we're specifying steps or an angle
             
+            
+            if next_motor_e==None:
+                next_motor_e=int(self.active_emission_entries[0].get()) #for emission, motor e and science e are the same.
+                raise Exception('No protection against unsafe emission movement')
+                
             #First check whether we actually need to move at all.
-            if e==None:
-                e=int(self.active_emission_entries[0].get())
-            if e==self.e: #No change in incidence angle, no need to move
-                self.log('Goniometer remaining at an emission angle of '+str(e)+' degrees.')
+            if next_motor_e==self.motor_e: #No change in incidence angle, no need to move
+                self.log('Goniometer remaining at an emission angle of '+str(self.science_e)+' degrees.')
                 self.complete_queue_item()
                 if len(self.queue)>0:
                     self.next_in_queue()
                 return #If we're staying in the same spot, just return!
-            timeout=np.abs(int(e)-int(self.e))*8+PI_BUFFER
+            timeout=np.abs(int(next_motor_e)-int(self.motor_e))*8+PI_BUFFER
         else:
-            timeout=np.abs(int(i))/15+PI_BUFFER
+            timeout=np.abs(int(next_motor_e))/15+PI_BUFFER
             
-        self.pi_commander.set_emission(e,type)
-        handler=MotionHandler(self,label='Setting emission...',timeout=timeout,steps=steps, destination=e)
+        self.pi_commander.set_emission(next_motor_e,type)
+        handler=MotionHandler(self,label='Setting emission...',timeout=timeout,steps=steps, destination=next_motor_e)
 
         if type=='angle': #Only change the visualization if an angle is specified. Specifiying steps is for setting up the 
-            self.goniometer_view.set_emission(int(e))
+            self.goniometer_view.set_emission(int(next_motor_e))
             
-    def set_azimuth(self, az=None, type='angle'):
+    def set_azimuth(self, next_motor_az=None, type='angle'):
         steps=True
         timeout=0
+        next_motor_az=int(next_motor_az)
         
         if type=='angle':
             steps=False #We will need to tell the motionhandler whether we're specifying steps or an angle
 
+            
+            if next_motor_az==None:
+                next_motor_az=int(self.active_azimuth_entries[0].get()) #no protection against running arms into each other.
+                raise Exception('No protection against unsafe azimuth movement')
+                
             #First check whether we actually need to move at all.
-            if az==None:
-                az=int(self.active_azimuth_entries[0].get())
-            if az==self.az: #No change in incidence angle, no need to move
-                self.log('Goniometer remaining at an azimuth angle of '+str(az)+' degrees.')
+            if next_motor_az==self.motor_az: #No change in incidence angle, no need to move
+                self.log('Goniometer remaining at an azimuth angle of '+str(self.science_az)+' degrees.')
                 self.complete_queue_item()
                 if len(self.queue)>0:
                     self.next_in_queue()
                 return #If we're staying in the same spot, just return!
-            timeout=np.abs(int(az)-int(self.az))*8+PI_BUFFER
+            timeout=np.abs(next_motor_az-self.motor_az)*8+PI_BUFFER
         else:
-            timeout=np.abs(int(i))/15+PI_BUFFER
+            timeout=np.abs(next_motor_az)/15+PI_BUFFER
             
-        self.pi_commander.set_azimuth(az,type)
-        handler=MotionHandler(self,label='Setting azimuth...',timeout=timeout,steps=steps, destination=az)
+        self.pi_commander.set_azimuth(next_motor_az,type)
+        handler=MotionHandler(self,label='Setting azimuth...',timeout=timeout,steps=steps, destination=next_motor_az)
 
         if type=='angle': #Only change the visualization if an angle is specified. Specifiying steps is for setting up the 
-            self.goniometer_view.set_azimuth(int(az))
+            self.goniometer_view.set_azimuth(next_motor_az)
 
         
     def move_tray(self, pos, type='position'):
+        print('MOVE TRAY')
+        print(pos)
         steps=False
         if type=='steps':steps=True
-        self.goniometer_view.set_current_sample('Moving...')
+        if type=='position':
+            self.goniometer_view.set_current_sample(pos)
         self.pi_commander.move_tray(pos, type)
         handler=MotionHandler(self,label='Moving sample tray...',timeout=30+BUFFER, new_sample_loc=pos, steps=steps)
         
@@ -2463,23 +2456,24 @@ class Controller():
         incidence_warn_str=''
         
         first_i=self.light_start_entry.get()
-        valid=validate_int_input(first_i,self.min_i,self.max_i)
+        valid=validate_int_input(first_i,self.min_science_i,self.max_science_i)
         if not valid: 
-            incidence_err_str='Incidence must be a number from '+str(self.min_i)+' to '+str(self.max_i)+'.\n'
+            incidence_err_str='Incidence must be a number from '+str(self.min_science_i)+' to '+str(self.max_science_i)+'.\n'
         else:
             first_i=int(first_i)
+            
         final_i=self.light_end_entry.get()
-        valid=validate_int_input(final_i,self.min_i,self.max_i)
+        valid=validate_int_input(final_i,self.min_science_i,self.max_science_i)
         
         if not valid: 
-            incidence_err_str='Incidence must be a number from '+str(self.min_i)+' to '+str(self.max_i)+'.\n'
+            incidence_err_str='Incidence must be a number from '+str(self.min_science_i)+' to '+str(self.max_science_i)+'.\n'
         else:
             final_i=int(final_i)
             
         i_interval=self.light_increment_entry.get()
-        valid=validate_int_input(i_interval,0,2*self.max_i)
+        valid=validate_int_input(i_interval,0,2*self.max_science_i)
         if not valid:
-            incidence_err_str+='Incidence interval must be a number from 0 to '+str(2*self.max_i) +'.\n'
+            incidence_err_str+='Incidence interval must be a number from 0 to '+str(2*self.max_science_i) +'.\n'
         else:
             i_interval=int(i_interval)
         incidences=[]
@@ -2503,23 +2497,23 @@ class Controller():
         emission_warn_str=''
         
         first_e=self.detector_start_entry.get()
-        valid=validate_int_input(first_e,self.min_e,self.max_e)
+        valid=validate_int_input(first_e,self.min_science_e,self.max_science_e)
         if not valid: 
-            emission_err_str='Emission must be a number from '+str(self.min_e)+' to '+str(self.max_e)+'.\n'
+            emission_err_str='Emission must be a number from '+str(self.min_science_e)+' to '+str(self.max_science_e)+'.\n'
         else:
             first_e=int(first_e)
         final_e=self.detector_end_entry.get()
-        valid=validate_int_input(final_e,self.min_e,self.max_e)
+        valid=validate_int_input(final_e,self.min_science_e,self.max_science_e)
         
         if not valid: 
-            emission_err_str='Emission must be a number from '+str(self.min_e)+' to '+str(self.max_e)+'.\n'
+            emission_err_str='Emission must be a number from '+str(self.min_science_e)+' to '+str(self.max_science_e)+'.\n'
         else:
             final_e=int(final_e)
             
         e_interval=self.detector_increment_entry.get()
-        valid=validate_int_input(e_interval,0,2*self.max_e)
+        valid=validate_int_input(e_interval,0,2*self.max_science_e)
         if not valid:
-            emission_err_str+='Emission interval must be a number from 0 to '+str(2*self.max_e) +'.\n'
+            emission_err_str+='Emission interval must be a number from 0 to '+str(2*self.max_science_e) +'.\n'
         else:
             e_interval=int(e_interval)
         emissions=[]
@@ -2549,23 +2543,23 @@ class Controller():
         azimuth_warn_str=''
         
         first_az=self.azimuth_start_entry.get()
-        valid=validate_int_input(first_az,self.min_az,self.max_az)
+        valid=validate_int_input(first_az,self.min_science_az,self.max_science_az)
         if not valid: 
-            azimuth_err_str='Azimuth must be a number from '+str(self.min_az)+' to '+str(self.max_az)+'.\n'
+            azimuth_err_str='Azimuth must be a number from '+str(self.min_science_az)+' to '+str(self.max_science_az)+'.\n'
         else:
             first_az=int(first_az)
         final_az=self.azimuth_end_entry.get()
-        valid=validate_int_input(final_az,self.min_az,self.max_az)
+        valid=validate_int_input(final_az,self.min_science_az,self.max_science_az)
         
         if not valid: 
-            azimuth_err_str='Azimuth must be a number from '+str(self.min_az)+' to '+str(self.max_az)+'.\n'
+            azimuth_err_str='Azimuth must be a number from '+str(self.min_science_az)+' to '+str(self.max_science_az)+'.\n'
         else:
             final_az=int(final_az)
             
         az_interval=self.azimuth_increment_entry.get()
-        valid=validate_int_input(az_interval,0,2*self.max_az)
+        valid=validate_int_input(az_interval,0,2*self.max_science_az)
         if not valid:
-            azimuth_err_str+='Azimuth interval must be a number from 0 to '+str(2*self.max_az) +'.\n'
+            azimuth_err_str+='Azimuth interval must be a number from 0 to '+str(2*self.max_science_az) +'.\n'
         else:
             az_interval=int(az_interval)
         azimuths=[]
@@ -2794,22 +2788,27 @@ class Controller():
                     params=cmd[0:-1].split('goniometer.configure(MANUAL')[1].split(',')[1:]
                     params.append(1)
                 else:
-                    self.log('Error: invalid arguments for mode, i, e, sample_num: '+str(params)+'\nExample input: goniometer.configure(AUTOMATIC, 0, 20, wr)')
+                    self.log('Error: invalid arguments for mode, i, e, az, sample_num: '+str(params)+'\nExample input: goniometer.configure(AUTOMATIC, 0, 20, wr)')
                     self.queue=[]
                     self.script_running=False
-                valid_i=validate_int_input(params[0],self.min_i,self.max_i)
-                valid_e=validate_int_input(params[1],self.min_e,self.max_e)
+                    
+                valid_i=validate_int_input(params[0],self.min_motor_i,self.max_motor_i)
+                valid_e=validate_int_input(params[1],self.min_motor_e,self.max_motor_e)
+                valid_az=valideate_int_input(params[2],self.min_motor_az, self.max_motor_az)
+                
 
                 valid_sample=validate_int_input(params[2],1,int(self.num_samples))
                 if params[2]=='wr':
                     valid_sample=True
-                if valid_i and valid_e and valid_sample:
-                    self.i=params[0]
-                    self.e=params[1]
-                    if params[2]=='wr':
+                if valid_i and valid_e and valid_az and valid_sample:
+                    self.motor_i=params[0]
+                    self.motor_e=params[1]
+                    self.motor_az=params[2]
+                    
+                    if params[3]=='wr':
                         self.sample_tray_index=-1
                     else:
-                        self.sample_tray_index=int(params[2])-1 #this is used as an index where available_sample_positions[4]=='Sample 5' so it should be one less than input.
+                        self.sample_tray_index=int(params[3])-1 #this is used as an index where available_sample_positions[4]=='Sample 5' so it should be one less than input.
                     
                     if 'AUTOMATIC' in cmd:
                         self.set_manual_automatic(force=1, known_goniometer_state=True)
@@ -2819,12 +2818,14 @@ class Controller():
                     self.incidence_entries[0].insert(0,params[0])
                     self.emission_entries[0].delete(0,'end')
                     self.emission_entries[0].insert(0,params[1])
-                    self.configure_pi(params[0],params[1],params[2], params[3])
+                    self.azimuth_entries[0].insert(0,params[2])
+                    self.configure_pi(params[0],params[1],params[2],params[3], params[4])
 
                 else:
-                    self.log('Error: invalid arguments for mode, i, e, sample_num: '+str(params)+'\nExample input: goniometer.configure(AUTOMATIC, 0, 20, wr)')
+                    self.log('Error: invalid arguments for mode, i, e, az, sample_num: '+str(params)+'\nExample input: goniometer.configure(AUTOMATIC, 0, 20, 90, wr)')
                     self.queue=[]
                     self.script_running=False
+                    
             except Exception as e:
                 self.log('Error: Could not parse command '+cmd)
                 self.queue=[]
@@ -2850,20 +2851,25 @@ class Controller():
             if len(params)!=2 and len(params)!=3:
                 self.log('Error: could not parse command '+cmd)
             elif self.manual_automatic.get()==0: #manual mode
-                valid_i=validate_int_input(params[0],-90,90)
-                valid_e=validate_int_input(params[1],-90,90)
-                if not valid_i or not valid_e:
-                    self.log('Error: i='+params[0]+', e='+params[1]+' is not a valid viewing geometry.')
+                valid_i=validate_int_input(params[0],self.min_motor_i,self.max_motor_i)
+                valid_e=validate_int_input(params[1],self.min_motor_i,self.max_motor_i)
+                valid_az=validate_int_input(params[2], self.min_motor_az, self.max_motor_az)
+                if not valid_i or not valid_e or not valid_az:
+                    self.log('Error: i='+params[0]+', e='+params[1]+', az='+params[2]+' is not a valid viewing geometry.')
                 else:
                     self.incidence_entries[0].delete(0,'end')
                     self.incidence_entries[0].insert(0,params[0])
                     self.emission_entries[0].delete(0,'end')
                     self.emission_entries[0].insert(0,params[1])
+                    self.azimuth_entries[0].delete(0,'end')
+                    self.azimuth_entries[0].insert(0,params[2])
             else: #automatic mode
-                valid_i=validate_int_input(params[0],self.min_i,self.max_i)
-                valid_e=validate_int_input(params[1],self.min_e,self.max_e)
-                if not valid_i or not valid_e:
-                    self.log('Error: i='+params[0]+', e='+params[1]+' is not a valid viewing geometry.')
+                valid_i=validate_int_input(params[0],self.min_motor_i,self.max_motor_i)
+                valid_e=validate_int_input(params[1],self.min_motor_e,self.max_motor_e)
+                valid_az=validate_int_input(params[2], self.min_motor_az, self.max_motor_az)
+                
+                if not valid_i or not valid_e or not valid_az:
+                    self.log('Error: i='+params[0]+', e='+params[1]+', az='+params[1]+' is not a valid viewing geometry.')
                 else:
                     index=0
                     if len(params)==3:
@@ -2876,35 +2882,44 @@ class Controller():
                         self.incidence_entries[index].insert(0,params[0])
                         self.emission_entries[index].delete(0,'end')
                         self.emission_entries[index].insert(0,params[1])
+                        self.azimuth_entires[index].delete(0,'end')
+                        self.azimuth_entries[index].insert(0,params[2])
         elif 'add_geom(' in cmd: #params are i, e. Will not overwrite existing geom.
             params=cmd[0:-1].split('add_geom(')[1].split(',')
             if len(params)!=2:
                 self.log('Error: could not parse command '+cmd)
             elif self.manual_automatic.get()==0: #manual mode
-                valid_i=validate_int_input(params[0],-90,90)
-                valid_e=validate_int_input(params[1],-90,90)
-                if not valid_i or not valid_e:
-                    self.log('Error: i='+params[0]+', e='+params[1]+' is not a valid viewing geometry.')
-                elif self.emission_entries[0].get()=='' and self.incidence_entries[0].get()=='':
+                valid_i=validate_int_input(params[0],self.min_science_i,self.max_science_i)
+                valid_e=validate_int_input(params[1],self.min_science_e,self.max_science_e)
+                valid_az=validate_int_input(params[2], self.min_science_az, self.max_science_az)
+                
+                if not valid_i or not valid_e or not valid_az:
+                    self.log('Error: i='+params[0]+', e='+params[1]+', az='+params[2]+' is not a valid viewing geometry.')
+                elif self.emission_entries[0].get()=='' and self.incidence_entries[0].get()=='' and self.azimuth_entries[0].get()=='':
                     self.incidence_entries[0].insert(0,params[0])
                     self.emission_entries[0].insert(0,params[1])
+                    self.azimuth_entries[0].insert(0,params[2])
                 else:
                     self.log('Error: Cannot add second geometry in manual mode.')
             else: #automatic mode
                 if self.individual_range.get()==1:
                     self.log('Error: Cannot add geometry in range mode. Use setup_geom_range() instead')
                 else:
-                    valid_i=validate_int_input(params[0],self.min_i,self.max_i)
-                    valid_e=validate_int_input(params[1],self.min_e,self.max_e)
-                    if not valid_i or not valid_e:
-                        self.log('Error: i='+params[0]+', e='+params[1]+' is not a valid viewing geometry.')
+                    valid_i=validate_int_input(params[0],self.min_science_i,self.max_science_i)
+                    valid_e=validate_int_input(params[1],self.min_science_e,self.max_science_e)
+                    valid_az=validate_int_input(params[2],self.min_science_az, self.max_science_az)
+                    
+                    if not valid_i or not valid_e or not valid_az:
+                        self.log('Error: i='+params[0]+', e='+params[1]+', az='+params[2]+' is not a valid viewing geometry.')
                     elif self.emission_entries[0].get()=='' and self.incidence_entries[0].get()=='':
                         self.incidence_entries[0].insert(0,params[0])
                         self.emission_entries[0].insert(0,params[1])
+                        self.azimuth_entries[0].insert(0,params[2])
                     else:
                         self.add_geometry()
                         self.incidence_entries[-1].insert(0,params[0])
                         self.emission_entries[-1].insert(0,params[1])
+                        self.azimuth_entries[-1].insert(0,params[2])
             
                     
 
@@ -2950,6 +2965,22 @@ class Controller():
                         self.log('Error: Unable to parse final emission angle')
                         self.queue=[]
                         self.script_running=False
+                elif 'az_start' in param:
+                    try:
+                        self.azimuth_start_entry.delete(0,'end')
+                        self.azimuth_start_entry.insert(0,get_val(param))
+                    except:
+                        self.log('Error: Unable to parse initial azimuth angle')
+                        self.queue=[]
+                        self.script_running=False
+                elif 'az_end' in param:
+                    try:
+                        self.azimuth_end_entry.delete(0,'end')
+                        self.azimuth_end_entry.insert(0,get_val(param))
+                    except:
+                        self.log('Error: Unable to parse final azimuth angle')
+                        self.queue=[]
+                        self.script_running=False
                 elif 'i_increment' in param:
                     try:
                         self.light_increment_entry.delete(0,'end')
@@ -2964,6 +2995,14 @@ class Controller():
                         self.detector_increment_entry.insert(0,get_val(param))
                     except:
                         self.log('Error: Unable to parse emission angle increment.')
+                        self.queue=[]
+                        self.script_running=False
+                elif 'az_increment' in param:
+                    try:
+                        self.azimuth_increment_entry.delete(0,'end')
+                        self.azimuth_increment_entry.insert(0,get_val(param))
+                    except:
+                        self.log('Error: Unable to parse azimuth angle increment.')
                         self.queue=[]
                         self.script_running=False
             if len(self.queue)>0:
@@ -2998,12 +3037,11 @@ class Controller():
                     skip_count+=1
 
                 if valid_pos:
-                    print('setting')
                     self.set_text(self.sample_label_entries[i-skip_count], name)
                     self.sample_pos_vars[i-skip_count].set(self.available_sample_positions[int(pos)-1])
                     self.set_taken_sample_positions()
                 else:
-                    self.log('Error: '+pos+' is an invalid sample position. Use the format set_samples({name}={position}) e.g. set_samples(Basalt=1). Do not repeat sample positions.')
+                    self.log('Error: '+pos+' is an invalid sample position. Use the format set_samples({position}={1}) e.g. set_samples(1=Basalt). Do not repeat sample positions.')
                     skip_count+=1
                 
             if len(self.queue)>0:
@@ -3179,8 +3217,8 @@ class Controller():
                 if valid_steps:
                     if not self.script_running:
                         self.queue=[]
-                    self.queue.insert(0,{self.move_detector:[steps,'steps']})
-                    self.move_detector(steps,'steps')
+                    self.queue.insert(0,{self.set_emission:[steps,'steps']})
+                    self.set_emission(steps,'steps')
                 else:
                     self.log('Error: '+str(steps) +' is not a valid number of steps. Enter an integer from -1000 to 1000.')
                     self.queue=[]
@@ -3188,27 +3226,84 @@ class Controller():
                     return False  
             else:
                 e=param
-                valid_e=validate_int_input(e, self.min_e, self.max_e)
+                valid_e=validate_int_input(e, self.min_science_e, self.max_science_e)
                 if valid_e:
-                    print('here')
-                    if int(e)<int(self.i)+15:
-                        self.log('Error: Because of geometric constraints on the instrument, the emission angle must be at least '+str(self.required_angular_separation)+' degrees different than the incidence angle.')
+                    e=int(param)
+                    valid_geom=self.validate_distance(self.science_i, e, self.science_az)
+                    if not valid_geom:
+                        self.log('Error: Because of geometric constraints on the instrument, angular separation must be at least '+str(self.required_angular_separation)+' degrees')
                         self.queue=[]
                         self.script_running=False
                         return False
     
                     if not self.script_running:
                         self.queue=[]
-                    self.queue.insert(0,{self.move_detector:[e]})
-                    self.move_detector(e)
-                    print('moving detector!')
+                    self.queue.insert(0,{self.set_emission:[e]})
+                    self.set_emission(e)
                 else:
-                    self.log('Error: '+e+' is an invalid emission angle.')
+                    self.log('Error: '+str(e)+' is an invalid emission angle.')
+                    self.queue=[]
+                    self.script_running=False
+                    return False
+
+        elif 'set_azimuth(' in cmd: 
+            if self.manual_automatic.get()==0:
+                self.log('Error: Not in automatic mode')
+                self.queue=[]
+                self.script_running=False
+                return False
+            try:
+                param=cmd.split('set_azimuth(')[1][:-1]
+                
+            except:
+                self.log('Error: could not parse command '+cmd)
+                self.queue=[]
+                self.script_running=False
+                return False
+                
+            if 'steps' in param:
+                try:
+                    steps=int(param.split('=')[-1])
+                    valid_steps=validate_int_input(steps,-1000,1000)
+
+                except:
+                    self.log('Error: could not parse command '+cmd)
+                    self.queue=[]
+                    self.script_running=False
+                    return False
+                if valid_steps:
+                    if not self.script_running:
+                        self.queue=[]
+                    self.queue.insert(0,{self.set_emission:[steps,'steps']})
+                    self.set_emission(steps,'steps')
+                else:
+                    self.log('Error: '+str(steps) +' is not a valid number of steps. Enter an integer from -1000 to 1000.')
+                    self.queue=[]
+                    self.script_running=False
+                    return False  
+            else:
+                az=param
+                valid_az=validate_int_input(az, self.min_science_az, self.max_science_az)
+                if valid_az:
+                    valid_geom=self.validate_distance(self.science_i, self.science_e, int(az))
+                    if not valid_geom:
+                        self.log('Error: Because of geometric constraints on the instrument, angular separation must be at least '+str(self.required_angular_separation)+' degrees')
+                        self.queue=[]
+                        self.script_running=False
+                        return False
+    
+                    if not self.script_running:
+                        self.queue=[]
+                    self.queue.insert(0,{self.set_azimuth:[az]})
+                    self.set_azimuth(az)
+                else:
+                    self.log('Error: '+str(az)+' is an invalid azimuth angle.')
                     self.queue=[]
                     self.script_running=False
                     return False
                     
-                
+        
+        #Accepts incidence angle in degrees, converts to motor position. OR accepts motor steps to move.
         elif 'set_incidence(' in cmd: 
             if self.manual_automatic.get()==0:
                 self.log('Error: Not in automatic mode')
@@ -3237,7 +3332,7 @@ class Controller():
                 if valid_steps:
                     if not self.script_running:
                         self.queue=[]
-                    self.queue.insert(0,{self.move_light:[steps,'steps']})
+                    self.queue.insert(0,{self.set_incidence:[steps,'steps']})
                     self.move_light(steps,'steps')
                 else:
                     self.log('Error: '+str(steps) +' is not a valid number of steps. Enter an integer from -1000 to 1000.')
@@ -3245,25 +3340,85 @@ class Controller():
                     self.script_running=False
                     return False  
             else:
-                i=param
-                valid_i=validate_int_input(i, self.min_i, self.max_i)
+                next_science_i=param
+                valid_i=validate_int_input(next_science_i, self.min_science_i, self.max_science_i)
                 if valid_i:
-                    if int(i)>int(self.e)-15:
-                        self.log('Error: Because of geometric constraints on the instrument, the emission angle must be at least '+str(self.required_angular_separation)+' degrees different than the incidence angle.')
+                    next_science_i=int(next_science_i)
+                    valid_geom=self.validate_distance(next_science_i, self.science_e, self.science_az)
+                    if not valid_geom:
+                        self.log('Error: Because of geometric constraints on the instrument, angular distance must be at least '+str(self.required_angular_separation) +' degreees.')
                         return False
     
                     if not self.script_running:
                         self.queue=[]
-                    self.queue.insert(0,{self.move_light:[i]})
-                    self.move_light(i)
+                    
+                    if self.motor_az>=180 or self.motor_az<0:
+                        next_motor_i=-1*next_science_i
+                    else:
+                        next_motor_i=next_science_i
+                        
+                    self.queue.insert(0,{self.set_incidence:[next_motor_i]})
+                    self.set_incidence(next_motor_i)
                 else:
                     self.log('Error: '+i+' is an invalid incidence angle.')
                     self.queue=[]
                     self.script_running=False
                     return False
+                
         elif 'set_motor_azimuth' in cmd:
+            if self.manual_automatic.get()==0:
+                self.log('Error: Not in automatic mode')
+                self.queue=[]
+                self.script_running=False
+                return False
             az=int(cmd.split('set_motor_azimuth(')[1].strip(')'))
-            self.goniometer_view.set_azimuth(az)
+            valid_az=validate_int_input(az, self.min_motor_az, self.max_motor_az)
+            
+            if valid_az:
+                next_science_i, next_science_e, next_science_az=self.motor_pos_to_science_pos(self.motor_i, self.motor_e, int(az))
+                valid_geom=self.validate_distance(next_science_i, next_science_e, next_science_az)
+                if valid_geom:
+                    pass
+#                     safe_path=None
+#                     if self.motor_az<180 and self.motor_az>=0:
+#                         if az>=180:
+#                             safe_path_1=self.safe_az_sweep(self.science_i, self.science_e, self.science_az, 179)
+#                             safe_path_2=self.safe_az_sweep(-1*self.science_i, self.science_e,0,az-180)
+#                         elif az<0:
+#                             safe_path_1=self.safe_az_sweep(self.science_i, self.science_e, self.science_az, 0)
+#                             safe_path_2=self.safe_az_sweep(-1*self.science_i, self.science_e,179,az+180)
+#                         else:
+#                             safe_path=self.safe_az_sweep(self.science_i, self.science_e, self.science_az,az)
+#                             
+#                     safe_path=self.safe_az_sweep()
+                else:
+                    self.log('Error: Because of geometric constraints on the instrument, angular separation must be at least '+str(self.required_angular_separation)+' degrees')
+                    self.queue=[]
+                    self.script_running=False
+                    return False
+                    
+
+                if not self.script_running:
+                    self.queue=[]
+                self.queue.insert(0,{self.set_azimuth:[az]})
+                self.set_azimuth(az)
+            else:
+                self.log('Error: '+str(az)+' is an invalid azimuth angle.')
+                self.queue=[]
+                self.script_running=False
+                return False
+            
+        elif 'set_goniometer' in cmd:
+            params=cmd.split('set_display(')[1].strip(')').split(',')
+            if len(params)!=4:
+                self.log(str(len(params)))
+                self.log('Error: invalid display setting. Enter set_display(i, e, az, sample_position')
+                return 
+            
+            valid_i=validate_int_input(params[0], self.min_science_i, self.max_science_i)
+            valid_e=validate_int_input(params[1], self.min_science_e, self.max_science_e)
+            valid_az=validate_int_input(params[2],self.min_science_az,self.max_science_az)
+            
             
         elif 'set_display' in cmd:
             params=cmd.split('set_display(')[1].strip(')').split(',')
@@ -3272,47 +3427,39 @@ class Controller():
                 self.log('Error: invalid display setting. Enter set_display(i, e, az')
                 return 
 
-            for n, angle in enumerate(params[0:2]):
-                valid=validate_int_input(angle, -90, 90)
-                if not valid:
-                    print(angle)
-                    self.log('Error: invalid geometry')
-                    return 
-                else:
-                    params[n]=int(params[n])
-                    
-            valid=validate_int_input(params[2],-90,270)
-            if not valid:
+
+            valid_i=validate_int_input(params[0], self.min_science_i, self.max_science_i)
+            valid_e=validate_int_input(params[1], self.min_science_e, self.max_science_e)
+            valid_az=validate_int_input(params[2],self.min_science_az,self.max_science_az)
+            
+            if not valid_i or not valid_e or not_valid_az:
                 self.log('Error: invalid geometry')
-                return 
-            else:
-                params[2]=int(params[2])
+                return    
+        
             
-            i=params[0]
-            e=params[1]
-            az=params[2]
-            collision=False
-            valid_geom=self.validate_distance(i,e,az)
             
-            pos, dist=self.get_closest_approach(i, e, az)
-            if dist<self.required_angular_separation:
-                collision=True
+            i=int(params[0])
+            e=int(params[1])
+            az=int(params[2])
+            
+            valid_geom=self.validate_distance(i,e, az)
+            if not valid_geom:
+                self.log('Error: Geometric constraints on the instrument make this position impossible to reach.')
+                return
                 
 
-#             
-#             self.goniometer_view.set_incidence(i)
-#             self.goniometer_view.set_emission(e)
-#             self.goniometer_view.set_azimuth(az)
-#             return
             current_motor=(self.goniometer_view.motor_i,self.goniometer_view.motor_e, self.goniometer_view.motor_az)
             movements=self.get_movements(i,e,az, current_motor=current_motor)
+            
             current_science_i=self.goniometer_view.science_i
             current_science_e=self.goniometer_view.science_e
             current_science_az=self.goniometer_view.science_az
 
             if movements==None:
                 print('NO PATH FOUND')
-            elif True:
+                self.controller.log('Error: Cannot find a path from current geometry to i= '+str(i)+', e='+str(e)+', az='+str(az))
+                
+            else:
                 temp_queue=[]
         
                 for movement in movements:
@@ -3332,92 +3479,7 @@ class Controller():
                     for func in item:
                         args=item[func]
                         func(*args)
-            else:
-                temp_queue=[]
-                for _ in range(len(movements)):
-                    temp_queue.append({})
-                if 'az+180' in movements:
-                    temp_queue.insert(movements.index('az+180'), {self.goniometer_view.set_azimuth:[az+180]})
-                if 'az-180' in movements:
-                    temp_queue.insert(movements.index('az-180'), {self.goniometer_view.set_azimuth:[az-180]})
-                if 'az' in movements:
-                    temp_queue[movements.index('az')]= {self.goniometer_view.set_azimuth:[az]}
-                if 'i 20' in movements:
-                    temp_queue[movements.index('i 20')]={self.goniometer_view.set_incidence:[20]}
-                if 'i -20' in movements:
-                    temp_queue[movements.index('i -20')]={self.goniometer_view.set_incidence:[-20]}
-                if 'temp i' in movements:
 
-                    current_science_e=current_motor[1]
-                    if current_science_e>=0:
-                        temp_i=-1*(current_science_e+2*self.required_angular_separation)
-                    else:
-                        temp_i=-1*(current_science_e-2*self.required_angular_separation)
-                        
-                    if current_motor[2]>=180 or current_motor[2]<0:
-                        temp_i=-1*temp_i
-                        
-                    temp_queue[movements.index('temp i')]= {self.goniometer_view.set_incidence:[temp_i]}
-                if '-temp i' in movements:
-                    current_science_e=current_motor[1]
-                    if current_science_e>=0:
-                        temp_i=(current_science_e+2*self.required_angular_separation)
-                    else:
-                        temp_i=(current_science_e-2*self.required_angular_separation)
-                        
-                    if current_motor[2]>=180 or current_motor[2]<0:
-                        temp_i=-1*temp_i
-                        
-                    temp_queue[movements.index('-temp i')]= {self.goniometer_view.set_incidence:[temp_i]}
-
-                if 'az 90' in movements:
-                    temp_queue[movements.index('az 90')]={self.goniometer_view.set_azimuth:[90]}
-                    
-                if 'az 270' in movements:
-                    temp_queue[movements.index('az 270')]={self.goniometer_view.set_azimuth:[270]}
-                                                          
-                if 'temp e' in movements:
-                    temp_e=np.abs(current_science_i)+2*self.required_angular_separation
-                    if current_science_e<current_science_i and current_science_az<90:
-                        temp_e=-1*temp_e
-                    elif current_science_e>current_science_i and current_science_az>90:
-                        temp_e=-1*temp_e
-
-                        
-                    temp_queue[movements.index('temp e')]= {self.goniometer_view.set_emission:[temp_e]}
-                if '-temp e' in movements:
-                    temp_e=-1*np.abs(current_science_i)-2*self.required_angular_separation
-                    if current_science_e<current_science_i and current_science_az<90:
-                        temp_e=-1*temp_e
-                    elif current_science_e>current_science_i and current_science_az>90:
-                        temp_e=-1*temp_e
- 
-# 
-#                         
-                    temp_queue[movements.index('-temp e')]= {self.goniometer_view.set_emission:[temp_e]}
-                if 'temp i pos' in movements:
-                    temp_i_pos=np.abs(e)+2*self.required_angular_separation
-                        
-                    temp_queue[movements.index('temp i pos')]= {self.goniometer_view.set_incidence:[temp_i_pos]}
-                    
-                if 'e' in movements:
-                    temp_queue[movements.index('e')]={self.goniometer_view.set_emission:[e]}
-                     
-                if 'i' in movements:
-                    temp_queue[movements.index('i')]={self.goniometer_view.set_incidence:[i]}
-                     
-                if '-i' in movements:
-                    temp_queue[movements.index('-i')]={self.goniometer_view.set_incidence:[-1*i]}
-                
-                for item in temp_queue:
-                    for func in item:
-                        args=item[func]
-                        func(*args)
-#             if movements==None:
-#                 self.goniometer_view.set_azimuth(az)
-#                 self.goniometer_view.set_incidence(i)
-#                 self.goniometer_view.set_emission(e)
-#                 return
                     
             if len(self.queue)>0:
                 self.next_in_queue()
@@ -4626,37 +4688,36 @@ class Controller():
         self.add_geometry_button.pack(pady=(15,10))
         
     def configure_pi(self,i=None, e=None, az=None, pos=None):
-        if i==None or e==None or az==None or pos==None:
-            if self.sample_tray_index>-1:
-                self.pi_commander.configure(str(self.i),str(self.e),str(self.az), self.sample_tray_index)
-            else:
-                self.pi_commander.configure(str(self.i),str(self.e),str(self.az), 'wr')
-        else:
+        if i==None: i=self.motor_i
+        if e==None: e=self.motor_e
+        if az==None: az=self.motor_az
+        if pos==None: pos=self.sample_tray_index
 
-            self.pi_commander.configure(str(i),str(e),str(az), pos)
+        
+        self.pi_commander.configure(str(i),str(e),str(az), pos)
             
         timeout_s=PI_BUFFER
         while timeout_s>0:
             if 'piconfigsuccess' in self.pi_listener.queue:
                 self.pi_listener.queue.remove('piconfigsuccess')
-                print('PI CONFIG')
                 tray_position_string=''
-                if self.sample_tray_index!=-1:
-                    tray_position_string=self.available_sample_positions[self.sample_tray_index]
+                if pos!=-1:
+                    tray_position_string=self.available_sample_positions[int(pos)-1]
                 else:
                     tray_position_string='WR'
-                print('set')
                 self.goniometer_view.set_current_sample(tray_position_string)
 
-                if i!=None:self.i=i #redundant, this already happens elsewhere. I think this would probably be the better place to put it though.
-                if e!=None:self.e=e #redundant, this already happens elsewhere
-                if az!=None:self.az=az
+                if i!=None:self.motor_i=i 
+                if e!=None:self.motor_e=e 
+                if az!=None:self.motor_az=az
                 
-                self.log('Raspberry pi configured.\n\ti = '+str(self.i)+'\n\te = '+str(self.e)+'\n\taz = '+str(self.az)+'\n\ttray position: '+tray_position_string)
+                
+                self.log('Raspberry pi configured.\n\ti = '+str(self.motor_i)+'\n\te = '+str(self.motor_e)+'\n\taz = '+str(self.motor_az)+'\n\ttray position: '+tray_position_string)
                 break
 
             time.sleep(INTERVAL)
             timeout_s-=INTERVAL
+            
         if timeout_s<=0:
             self.queue=[]
             self.script_running=False
@@ -4666,9 +4727,9 @@ class Controller():
             else: #Everything in this else clause is nonsense.
                 self.wait_dialog.interrupt('Error: Failed to configure Raspberry Pi.\nCheck connections and/or restart scripts.')
                 
-            self.i=None
-            self.e=None
-            self.az=None
+            self.motor_i=None
+            self.motor_e=None
+            self.motor_az=None
             self.set_manual_automatic(force=0)
             
             return
@@ -4746,7 +4807,7 @@ class Controller():
                         
                     }
                 }
-                dialog=IntInputDialog(self,title='Setup Required',label='Setup required: Unknown goniometer state.\n\nPlease enter the current viewing geometry and tray position,\nor click \'Cancel\' to use the goniometer in manual mode.',values={'Incidence':[self.motor_i,self.min_i,self.max_i],'Emission':[self.motor_e,self.min_e,self.max_e],'Azimuth':[self.motor_az, self.min_az, self.max_az], 'Tray position':[self.sample_tray_index,0,self.num_samples-1]},buttons=buttons)
+                dialog=IntInputDialog(self,title='Setup Required',label='Setup required: Unknown goniometer state.\n\nPlease enter the current viewing geometry and tray position,\nor click \'Cancel\' to use the goniometer in manual mode.',values={'Incidence':[self.motor_i,self.min_motor_i,self.max_motor_i],'Emission':[self.motor_e,self.min_motor_e,self.max_motor_e],'Azimuth':[self.motor_az, self.min_motor_az, self.max_motor_az], 'Tray position':[self.sample_tray_index,0,self.num_samples-1]},buttons=buttons)
                 
             menu.entryconfigure(0,label='  Manual')
             menu.entryconfigure(1,label='X Automatic')
@@ -5009,7 +5070,7 @@ class Controller():
 
         return closest_pos, closest_dist
         
-    def validate_distance(self,i,e, az):
+    def validate_distance(self,i,e, az, print_me=False):
         try:
             i=int(i)
             e=int(e)
@@ -5019,10 +5080,11 @@ class Controller():
         
         closest_pos, closest_dist=self.get_closest_approach(i,e,az, print_me=False)
         if closest_dist<self.required_angular_separation:
-            print('COLLISION')
-            print(i)
-            print(e)
-            print(az)
+            if print_me:
+                print('COLLISION')
+                print(i)
+                print(e)
+                print(az)
             return False
         else:
             return True
@@ -6213,14 +6275,14 @@ class MotionHandler(CommandHandler):
             self.controller.angles_change_time=time.time()
             self.controller.motor_e=self.destination
             try:
-                self.controller.log('Goniometer moved to an emission angle of '+str(self.destination)+' degrees.')
+                self.controller.log('Goniometer moved to an emission angle of '+str(self.controller.science_e)+' degrees.')
             except:
                 self.controller.log('Emission set')
         elif 'incidence' in self.label:
             self.controller.angles_change_time=time.time()
             self.controller.motor_i=self.destination
             try:
-                self.controller.log('Goniometer moved to an incidence angle of '+str(self.destination)+' degrees.')
+                self.controller.log('Goniometer moved to an incidence angle of '+str(self.controller.science_i)+' degrees.')
             except:
                 self.controller.log('Incidence set')
                 
@@ -6228,7 +6290,7 @@ class MotionHandler(CommandHandler):
             self.controller.angles_change_time=time.time()
             self.controller.motor_az=self.destination
             try:
-                self.controller.log('Goniometer moved to an azimuth angle of '+str(self.destination)+' degrees.')
+                self.controller.log('Goniometer moved to an azimuth angle of '+str(self.science_az)+' degrees.')
             except:
                 self.controller.log('Azimuth set')
             
@@ -6534,7 +6596,7 @@ class SpectrumHandler(CommandHandler):
             info_string='Spectrum saved.'
             label=self.controller.sample_label_entries[self.controller.current_sample_gui_index].get()
         
-        info_string+='\n\tSpectra averaged: ' +str(self.controller.spec_config_count)+'\n\ti: '+str(self.controller.i)+'\n\te: '+str(self.controller.e)+'\n\taz: '+str(self.controller.az)+'\n\tfilename: '+self.controller.spec_save_path+'\\'+self.controller.spec_basename+lastnumstr+'.asd'+'\n\tLabel: '+label+'\n'
+        info_string+='\n\tSpectra averaged: ' +str(self.controller.spec_config_count)+'\n\ti: '+str(self.controller.science_i)+'\n\te: '+str(self.controller.science_e)+'\n\taz: '+str(self.controller.science_az)+'\n\tfilename: '+self.controller.spec_save_path+'\\'+self.controller.spec_basename+lastnumstr+'.asd'+'\n\tLabel: '+label+'\n'
         #If it was a garbage spectrum, we don't need all of the information about it. Instead, just delete it and log that it happened.
         if 'garbage' in self.wait_dialog.label:
                 
@@ -6931,36 +6993,24 @@ class IntInputDialog(Dialog):
             self.mins[val]=self.values[val][1]
             self.maxes[val]=self.values[val][2]
             valid=validate_int_input(self.entries[val].get(),self.mins[val],self.maxes[val]) #Weird for tray position - not valid for white reference
-
-                
+            if val=='Tray position':
+                valid=True
+            if not valid: bad_vals.append(val)
+        
+        if 'Incidence' in self.values and 'Emission' in self.values and 'Azimuth' in self.values:
+            valid_sep=self.controller.validate_distance(self.entries['Incidence'].get(),self.entries['Emission'].get(), self.entries['Azimuth'].get())
+        else:
             valid_sep=True
-            if valid:
-                #self.values[val][0]=self.entries[val].get()
-                if val=='Incidence' or val=='Emission' or val=='Azimuth':
-                    valid_sep=self.controller.validate_distance(self.entries['Incidence'].get(),self.entries['Emission'].get(), self.entries['Azimuth'].get())
-                        
-                elif val=='Tray position':
-                    self.controller.sample_tray_index=int(self.entries[val].get())-1
-                    
-            elif val=='Tray position': #This is a weird way of handling this. Happens whenever the user selects White Reference from drop down list.
-                if 'White reference' in self.entries[val].get():
-                    self.controller.sample_tray_index=-1
-                else: #We should never get here
-                    print(self.entries[val].get())
-                    self.controller.sample_tray_index=int(self.entries[val].get())-1
-            else:
-                bad_vals.append(val)
+                
         if len(bad_vals)==0 and valid_sep:
+            pos=self.entries['Tray position'].get()
+            if pos=='White reference': pos=-1
+            
             incidence=int(self.entries['Incidence'].get())
             emission=int(self.entries['Emission'].get())
             azimuth=int(self.entries['Azimuth'].get())
-            
-            
-            self.controller.science_e=emission
-            self.controller.science_i=incidence
-            self.controller.science_az=azimuth
-            
-        if len(bad_vals)==0 and valid_sep:
+            self.controller.queue[0][self.controller.configure_pi]=[incidence, emission,azimuth, pos]
+
             self.top.destroy()
             dict=self.buttons['ok']
             for func in dict:
@@ -7333,10 +7383,10 @@ class PiCommander(Commander):
         self.remove_from_listener_queue(['donemoving','nopiconfig'])
         if type=='angle':
             incidence=num
-            filename=self.encrypt('movelight',[incidence])
+            filename=self.encrypt('moveincidence',[incidence])
         else:
             steps=num
-            filename=self.encrypt('movelight',[steps,'steps'])
+            filename=self.encrypt('moveincidence',[steps,'steps'])
         self.send(filename)
         return filename
     
@@ -7345,10 +7395,10 @@ class PiCommander(Commander):
         self.remove_from_listener_queue(['donemoving','nopiconfig'])
         if type=='angle':
             azimuth=num
-            filename=self.encrypt('movelight',[azimuth])
+            filename=self.encrypt('moveazimuth',[azimuth])
         else:
             steps=num
-            filename=self.encrypt('movelight',[steps,'steps'])
+            filename=self.encrypt('moveazimuth',[steps,'steps'])
         self.send(filename)
         return filename
     
@@ -7357,10 +7407,10 @@ class PiCommander(Commander):
         self.remove_from_listener_queue(['donemoving','nopiconfig'])
         if type=='angle':
             emission=num
-            filename=self.encrypt('movedetector',[emission])
+            filename=self.encrypt('moveemission',[emission])
         else:
             steps=num
-            filename=self.encrypt('movedetector',[steps,'steps'])
+            filename=self.encrypt('moveemission',[steps,'steps'])
         self.send(filename)
         return filename
     
@@ -7382,12 +7432,12 @@ class SpecCommander(Commander):
     def __init__(self,write_command_loc,listener):
         super().__init__(write_command_loc,listener)
     
-    def take_spectrum(self, path, basename, num, label, i, e):
+    def take_spectrum(self, path, basename, num, label, i, e, az):
         self.remove_from_listener_queue(['nonumspectra','noconfig','savedfile','failedtosavefile','savespecfailedfileexists'])
 
         if i==None:i=''
         if e==None:e=''
-        filename=self.encrypt('spectrum',[path,basename,num, label, i, e])
+        filename=self.encrypt('spectrum',[path,basename,num, label, i, e, az])
         self.send(filename)
         return filename
         

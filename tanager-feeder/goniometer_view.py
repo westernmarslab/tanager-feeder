@@ -45,7 +45,7 @@ class GoniometerView():
 
         self.d_up=False
         self.l_up=False
-        self.current_sample=''
+        self.current_sample='WR'
         self.tray_angle=0
         
         self.wireframes = {}
@@ -78,6 +78,7 @@ class GoniometerView():
         self.science_e=0
         self.motor_e=0
         
+        self.samples=['WR','Sample 1','Sample 2','Sample 3','Sample 4','Sample 5']
         self.standard_delay=.0001
         pygame.init()
 
@@ -160,7 +161,6 @@ class GoniometerView():
             sample['wireframe'].add_faces(sample['faces'], color=sample['color'])
             sample['wireframe'].set_rotation_center((-0.6,0.0,0))
             sample['wireframe'].az=0
-            #sample['wireframe'].rotate_az(120)
         
         self.wireframes['tray']=tray_wireframe
         for i, sample in enumerate(samples.values()):
@@ -675,8 +675,8 @@ class GoniometerView():
             self.wireframes['light guide'].set_elevation(self.motor_i)
             
             self.set_goniometer_tilt(20)
-#             self.draw_3D_goniometer(self.width,self.height)
-#             self.flip()
+            self.draw_3D_goniometer(self.width,self.height)
+            self.flip()
             if self.collision:
                 print('COLLISION SETTING INCIDENCE')
         
@@ -718,8 +718,8 @@ class GoniometerView():
                 self.science_az=self.motor_az+180
                 self.science_i=-1*self.motor_i
                 
-#             self.draw_3D_goniometer(self.width,self.height)
-#             self.flip()
+            self.draw_3D_goniometer(self.width,self.height)
+            self.flip()
             if self.collision:
                 print('COLLISION SETTING AZIMUTH')
             
@@ -737,9 +737,20 @@ class GoniometerView():
             
             
     def set_current_sample(self, sample):
+            if self.current_sample=='wr': self.current_sample='WR'
+            if sample=='wr': sample='WR'
+            current_degrees=self.samples.index(self.current_sample)*60
             self.current_sample=sample
-            self.draw_side_view(self.width,self.height)
-            self.flip()
+            next_degrees=self.samples.index(sample)*60
+            
+            delta_theta=np.sign(next_degrees-current_degrees)*10
+            degrees_moved=0
+            degrees_to_rotate=np.abs(next_degrees-current_degrees)
+            while degrees_moved<degrees_to_rotate:
+                self.rotate_tray(delta_theta)
+                degrees_moved+=np.abs(delta_theta)
+                self.draw_3D_goniometer(self.width,self.height)
+                self.flip()
             
     def set_emission(self, motor_e, config=False):
         def next_pos(delta_theta):
@@ -756,8 +767,8 @@ class GoniometerView():
             self.wireframes['detector'].set_elevation(self.motor_e)
             self.wireframes['detector guide'].set_elevation(self.motor_e)
             self.set_goniometer_tilt(20)
-#             self.draw_3D_goniometer(self.width,self.height)
-#             self.flip()
+            self.draw_3D_goniometer(self.width,self.height)
+            self.flip()
             if self.collision:
                 print('COLLISION SETTING EMISSION')
             
