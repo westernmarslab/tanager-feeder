@@ -1,6 +1,7 @@
 #The controller runs the main thread controlling the program.
 #It opens a Tkinter GUI with options for instrument control parameters and sample configuration
 #The user can use the GUI to operate the goniometer motors and the spectrometer software.
+from test._test_multiprocessing import baz
 
 dev=False
 
@@ -320,7 +321,7 @@ class Controller():
         
         self.min_science_az=0
         self.max_science_az=179
-        self.min_motor_az=-90
+        self.min_motor_az=-179
         self.max_motor_az=270
         self.science_az=None #current azimuth angle
         self.motor_az=None
@@ -1841,9 +1842,9 @@ class Controller():
         
         def check_allowed_for_motors(motion_string):
             if motion_string=='az': #going to try a direct path to the next science az
-                if current_motor_az>=180 and next_science_az>90: #takes us to a very positive motor az
+                if current_motor_az>=180 and next_science_az>self.max_motor_az-180:#90: #takes us to a very positive motor az
                     return False
-                elif current_motor_az<0 and next_science_az<90: #takes us to a very negative motor az
+                elif current_motor_az<0 and next_science_az<self.min_motor_az+180:#90: #takes us to a very negative motor az
                     return False
                 else:
                     return True
@@ -1852,7 +1853,7 @@ class Controller():
                 if current_motor_az<0: return False
                 else:
                     next_motor_az=0-(180-next_science_az)
-                    if next_motor_az>=-90:
+                    if next_motor_az>=self.min_motor_az:#-90:
                         return True
                     else:
                         return False
@@ -1861,7 +1862,7 @@ class Controller():
                 if current_motor_az>=180: return False
                 else:
                     next_motor_az=180+next_science_az
-                    if next_motor_az<=270:
+                    if next_motor_az<=self.max_motor_az:#270:
                         return True
                     else:
                         return False
@@ -2000,7 +2001,7 @@ class Controller():
                                     movement_order= [temp_i_str, 'az-180','e','-i']
                                     
         if movement_order==None:
-            #Try movning to az 90, temp i at 20, move e, move i
+            #Try movning to az 90, temp i at 40, move e, move i
             i_negative=False
             if current_motor_az>=0 and current_motor_az<180:
                 safe_temp_az=self.safe_az_sweep(current_science_i, current_science_e, current_science_az, 90)
@@ -2017,37 +2018,89 @@ class Controller():
                 i_negative=True
             if safe_temp_az:
                 if i_negative:
-                    safe_temp_i=self.safe_i_sweep(current_science_e, 90,-1*current_science_i,20)
+                    safe_temp_i=self.safe_i_sweep(current_science_e, 90,-1*current_science_i,40)
                 else:
-                    safe_temp_i=self.safe_i_sweep(current_science_e, 90,current_science_i,20)
+                    safe_temp_i=self.safe_i_sweep(current_science_e, 90,current_science_i,40)
                 if safe_temp_i:
-                    safe_e=self.safe_e_sweep(20,90,current_science_e, next_science_e)
+                    safe_e=self.safe_e_sweep(40,90,current_science_e, next_science_e)
                     if safe_e:
-                        safe_i=self.safe_i_sweep(next_science_e, 90, 20, next_science_i)
+                        safe_i=self.safe_i_sweep(next_science_e, 90, 40, next_science_i)
                         if safe_i:
                             safe_az=self.safe_az_sweep(next_science_i, next_science_e, 90, next_science_az)
                             if safe_az:
                                 print('13')
-                                movement_order=['az 90','i 20','e','i','az']
-                        if movement_order==None and next_science_az>=90:
-                            safe_i=self.safe_i_sweep(next_science_e, 90,20, -1*next_science_i)
+                                movement_order=['az 90','i 40','e','i','az']
+                        if movement_order==None and next_science_az>=self.min_motor_az+180:#90:
+                            safe_i=self.safe_i_sweep(next_science_e, 90,40, -1*next_science_i)
                             if safe_i:
                                 safe_az_1=self.safe_az_sweep(-1*next_science_i, next_science_e, 90,0)
                                 safe_az_2=self.safe_az_sweep(next_science_i, next_science_e, 179,next_science_az)
                                 if safe_az_1 and safe_az_2:
                                     print('14')
-                                    movement_order=['az 90','i 20','e','-i','az-180']
-                        if movement_order==None and next_science_az<=90:
-                            safe_i=self.safe_i_sweep(next_science_e, 90,20, -1*next_science_i)
+                                    movement_order=['az 90','i 40','e','-i','az-180']
+                        if movement_order==None and next_science_az<=self.max_motor_az-180:#90:
+                            safe_i=self.safe_i_sweep(next_science_e, 90,40, -1*next_science_i)
                             if safe_i:
                                 safe_az_1=self.safe_az_sweep(-1*next_science_i, next_science_e, 90,179)
                                 safe_az_2=self.safe_az_sweep(next_science_i, next_science_e, 0,next_science_az)
                                 if safe_az_1 and safe_az_2:
                                     print('15')
-                                    movement_order=['az 90','i 20','e','-i','az+180']
+                                    movement_order=['az 90','i 40','e','-i','az+180']
+                                    
+#         if movement_order==None:
+#             #Try movning to temp i at 40, az 90, move e, move i, move az
+#             if current_motor_az>=0 and current_motor_az<180:
+#                 safe_temp_i=self.safe_i_sweep(current_science_e, current_science_az, current_science_i, 40)
+#                 temp_i_str='i 40'
+#             elif current_motor_az<0:
+#                 safe_temp_i=self.safe_i_sweep(current_science_e, current_science_az, current_science_i, -40)
+#                 temp_i_str='i -40'
+#             elif current_motor_az>=180:
+#                 safe_temp_i=self.safe_i_sweep(current_science_e, current_science_az, current_science_i, -40)
+#                 temp_i_str='i -40'
+#                 
+#             if safe_temp_i:
+#                 if current_motor_az>=0 and current_motor_az<180:
+#                     safe_temp_az=self.safe_az_sweep(40, current_science_e, current_science_az, 90)
+#                 elif current_motor_az<0:
+#                     safe_temp_az_1=self.safe_az_sweep(-40, current_science_e, current_science_az, 179)
+#                     safe_temp_az_2=self.safe_az_sweep(40, current_science_e,0,90)
+#                     safe_temp_az=safe_temp_az_1 and safe_temp_az_2
+#                 elif current_motor_az>=180:
+#                     safe_temp_az_1=self.safe_az_sweep(-40, current_science_e, current_science_az, 0)
+#                     safe_temp_az_2=self.safe_az_sweep(40, current_science_e, 179, 90)
+#                     safe_temp_az=safe_temp_az_1 and safe_temp_az_2
+#                     
+#                 if safe_temp_az:
+#                     safe_e=self.safe_e_sweep(40,90,current_science_e, next_science_e)
+#                     if safe_e:
+#                         safe_i=self.safe_i_sweep(next_science_e, 90, 40, next_science_i)
+#                         if safe_i:
+#                             safe_az=self.safe_az_sweep(next_science_i, next_science_e, 90, next_science_az)
+#                             if safe_az:
+#                                 print('24')
+#                                 movement_order=[temp_i_str,'az 90','e','i','az']
+#                         if movement_order==None and next_science_az>=90:
+#                             safe_i=self.safe_i_sweep(next_science_e, 90,40, -1*next_science_i)
+#                             if safe_i:
+#                                 safe_az_1=self.safe_az_sweep(-1*next_science_i, next_science_e, 90,0)
+#                                 safe_az_2=self.safe_az_sweep(next_science_i, next_science_e, 179,next_science_az)
+#                                 if safe_az_1 and safe_az_2:
+#                                     print('25')
+#                                     movement_order=[temp_i_str,'az 90','e','-i','az-180']
+#                         if movement_order==None and next_science_az<=90:
+#                             safe_i=self.safe_i_sweep(next_science_e, 90,40, -1*next_science_i)
+#                             if safe_i:
+#                                 safe_az_1=self.safe_az_sweep(-1*next_science_i, next_science_e, 90,179)
+#                                 safe_az_2=self.safe_az_sweep(next_science_i, next_science_e, 0,next_science_az)
+#                                 if safe_az_1 and safe_az_2:
+#                                     print('26')
+#                                     movement_order=[temp_i_str,'az 90','e','-i','az+180']
+                
+                                    
                                     
         if movement_order==None and current_motor_az>=90:
-            #Try movning to az -90, temp i at 20, move e, move i
+            #Try movning motor az to 270, temp i at 40, move e, move i
             i_negative=False
             if current_motor_az>=0 and current_motor_az<180:
                 safe_temp_az_1=self.safe_az_sweep(current_science_i, current_science_e, current_science_az, 179)
@@ -2057,31 +2110,36 @@ class Controller():
                 
             elif current_motor_az>180:
                 safe_temp_az=self.safe_az_sweep(current_science_i, current_science_e, current_science_az, 90)
+            else: #Never reach here, motor_az always >90
+                safe_temp_az_1=self.safe_az_sweep(current_science_i, current_science_e, current_science_az, 179)
+                safe_temp_az_2=self.safe_az_sweep(-1*current_science_i, current_science_e, 0, 179)
+                safe_temp_az_3=self.safe_az_sweep(current_science_i, current_science_e, 0,90)
+                safe_az=safe_temp_az_1 and safe_temp_az_2 and safe_temp_az_3
                 
             if safe_temp_az:
                 if i_negative:
-                    safe_temp_i=self.safe_i_sweep(current_science_e, 90,-1*current_science_i,20)
+                    safe_temp_i=self.safe_i_sweep(current_science_e, 90,-1*current_science_i,40)
                 else:
-                    safe_temp_i=self.safe_i_sweep(current_science_e, 90,current_science_i,20)
+                    safe_temp_i=self.safe_i_sweep(current_science_e, 90,current_science_i,40)
                 if safe_temp_i:
                     safe_e=self.safe_e_sweep(20,90,current_science_e, next_science_e)
                     if safe_e:
-                        safe_i=self.safe_i_sweep(next_science_e, 90,20, -1*next_science_i)
+                        safe_i=self.safe_i_sweep(next_science_e, 90,40, -1*next_science_i)
                         if safe_i and next_science_az<=90:
                             safe_az=self.safe_az_sweep(next_science_i, next_science_e, 90,next_science_az)
                             if safe_az:
                                 print('16')
-                                movement_order=['az 270','i -20','e','-i','az+180']
+                                movement_order=['az 270','i -40','e','-i','az+180']
 
                         if movement_order==None:
-                            safe_i=self.safe_i_sweep(next_science_e, 90, 20, -1*next_science_i)
+                            safe_i=self.safe_i_sweep(next_science_e, 90, 40, -1*next_science_i)
                             if safe_i:
                                 safe_az_1=self.safe_az_sweep(-1*next_science_i, next_science_e, 90, 0)
                                 safe_az_2=self.safe_az_sweep(next_science_i,next_science_e,179,next_science_az)
                                 safe_az=safe_az_1 and safe_az_2
                                 if safe_az:
                                     print('17')
-                                    movement_order=['az 270','i -20','e','i','az']
+                                    movement_order=['az 270','i -40','e','i','az']
         
 #         if movement_order==None and current_motor_az<180:
 #             #Try movning to az -90, temp i at 20, move e, move i
@@ -2252,6 +2310,10 @@ class Controller():
                     movements.append({'i':20})
                 elif 'i -20'==movement:
                     movements.append({'i':-20})
+                elif 'i 40' == movement:
+                    movements.append({'i':40})
+                elif 'i -40'==movement:
+                    movements.append({'i':-40})
                 elif movement=='i':
                     movements.append({'i':next_science_i})
                 elif movement=='-i':
@@ -3139,7 +3201,6 @@ class Controller():
                     return False
             else:
                 pos=param
-                print(pos)
                 alternatives=['1','2','3','4','5'] #These aren't how sample positions are specified in available_sample_positions (which has Sample 1, etc) but we'll accept them.
                 if pos in alternatives:
                     pos=self.available_sample_positions[alternatives.index(pos)]
@@ -3198,11 +3259,11 @@ class Controller():
                 if valid_e:
                     e=int(param)
                     valid_geom=self.validate_distance(self.science_i, e, self.science_az)
-                    if not valid_geom:
-                        self.log('Error: Because of geometric constraints on the instrument, angular separation must be at least '+str(self.required_angular_separation)+' degrees')
-                        self.queue=[]
-                        self.script_running=False
-                        return False
+#                     if not valid_geom:
+#                         self.log('Error: Because of geometric constraints on the instrument, angular separation must be at least '+str(self.required_angular_separation)+' degrees')
+#                         self.queue=[]
+#                         self.script_running=False
+#                         return False
     
                     if not self.script_running:
                         self.queue=[]
@@ -3254,11 +3315,11 @@ class Controller():
                 valid_az=validate_int_input(az, self.min_science_az, self.max_science_az)
                 if valid_az:
                     valid_geom=self.validate_distance(self.science_i, self.science_e, int(az))
-                    if not valid_geom:
-                        self.log('Error: Because of geometric constraints on the instrument, angular separation must be at least '+str(self.required_angular_separation)+' degrees')
-                        self.queue=[]
-                        self.script_running=False
-                        return False
+#                     if not valid_geom:
+#                         self.log('Error: Because of geometric constraints on the instrument, angular separation must be at least '+str(self.required_angular_separation)+' degrees')
+#                         self.queue=[]
+#                         self.script_running=False
+#                         return False
     
                     if not self.script_running:
                         self.queue=[]
@@ -3313,9 +3374,9 @@ class Controller():
                 if valid_i:
                     next_science_i=int(next_science_i)
                     valid_geom=self.validate_distance(next_science_i, self.science_e, self.science_az)
-                    if not valid_geom:
-                        self.log('Error: Because of geometric constraints on the instrument, angular distance must be at least '+str(self.required_angular_separation) +' degreees.')
-                        return False
+#                     if not valid_geom:
+#                         self.log('Error: Because of geometric constraints on the instrument, angular distance must be at least '+str(self.required_angular_separation) +' degreees.')
+#                         return False
     
                     if not self.script_running:
                         self.queue=[]
@@ -3359,11 +3420,11 @@ class Controller():
 #                             safe_path=self.safe_az_sweep(self.science_i, self.science_e, self.science_az,az)
 #                             
 #                     safe_path=self.safe_az_sweep()
-                else:
-                    self.log('Error: Because of geometric constraints on the instrument, angular separation must be at least '+str(self.required_angular_separation)+' degrees')
-                    self.queue=[]
-                    self.script_running=False
-                    return False
+#                 else:
+#                     self.log('Error: Because of geometric constraints on the instrument, angular separation must be at least '+str(self.required_angular_separation)+' degrees')
+#                     self.queue=[]
+#                     self.script_running=False
+#                     return False
                     
 
                 if not self.script_running:
@@ -3377,15 +3438,56 @@ class Controller():
                 return False
             
         elif 'set_goniometer' in cmd:
-            params=cmd.split('set_display(')[1].strip(')').split(',')
-            if len(params)!=4:
+            params=cmd.split('set_goniometer(')[1].strip(')').split(',')
+            if len(params)!=3:
                 self.log(str(len(params)))
-                self.log('Error: invalid display setting. Enter set_display(i, e, az, sample_position')
+                self.log('Error: invalid display setting. Enter set_display(i, e, az')
                 return 
             
             valid_i=validate_int_input(params[0], self.min_science_i, self.max_science_i)
             valid_e=validate_int_input(params[1], self.min_science_e, self.max_science_e)
             valid_az=validate_int_input(params[2],self.min_science_az,self.max_science_az)
+            
+            if not valid_i or not valid_e or not valid_az:
+                self.log('Error: invalid geometry')
+                return    
+        
+            i=int(params[0])
+            e=int(params[1])
+            az=int(params[2])
+            
+            current_motor=(self.motor_i,self.motor_e, self.motor_az)
+            movements=self.get_movements(i,e,az, current_motor=current_motor)
+
+            if movements==None:
+                print('NO PATH FOUND')
+                self.log('Error: Cannot find a path from current geometry to i= '+str(i)+', e='+str(e)+', az='+str(az))
+                
+            else:
+                temp_queue=[]
+        
+                for movement in movements:
+                    if 'az' in movement:
+                        next_motor_az=movement['az']
+                        temp_queue.append({self.set_azimuth:[next_motor_az]})
+                    elif 'e' in movement:
+                        next_motor_e=movement['e']
+                        temp_queue.append({self.set_emission:[next_motor_e]})
+                    elif 'i' in movement:
+                        next_motor_i=movement['i']
+                        temp_queue.append({self.set_incidence:[next_motor_i]})
+                    else:
+                        print('UNEXPECTED: '+str(movement))
+                        
+                self.queue=temp_queue+self.queue
+
+                    
+            if len(self.queue)>0:
+                self.next_in_queue()
+            else:
+                self.script_running=False
+                self.queue=[]
+            
             
             
         elif 'set_display' in cmd:
@@ -3402,7 +3504,13 @@ class Controller():
             
             if not valid_i or not valid_e or not valid_az:
                 self.log('Error: invalid geometry')
-                return    
+                if len(self.queue)>0:
+                    self.next_in_queue()
+                    return
+                else:
+                    self.script_running=False
+                    self.queue=[]
+                    return    
         
             
             
@@ -3410,17 +3518,6 @@ class Controller():
             e=int(params[1])
             az=int(params[2])
             
-            valid_geom=self.validate_distance(i,e, az)
-            if not valid_geom:
-                self.log('Error: Geometric constraints on the instrument make this position impossible to reach.')
-                if len(self.queue)>0:
-                    self.next_in_queue()
-                else:
-                    self.script_running=False
-                    self.queue=[]
-                return
-                
-
             current_motor=(self.goniometer_view.motor_i,self.goniometer_view.motor_e, self.goniometer_view.motor_az)
             movements=self.get_movements(i,e,az, current_motor=current_motor)
             
@@ -3430,7 +3527,7 @@ class Controller():
 
             if movements==None:
                 print('NO PATH FOUND')
-                self.controller.log('Error: Cannot find a path from current geometry to i= '+str(i)+', e='+str(e)+', az='+str(az))
+                self.log('Error: Cannot find a path from current geometry to i= '+str(i)+', e='+str(e)+', az='+str(az))
                 
             else:
                 temp_queue=[]
@@ -3460,6 +3557,56 @@ class Controller():
                 self.script_running=False
                 self.queue=[]
             
+#             valid_geom=self.validate_distance(i,e, az)
+#             if not valid_geom:
+#                 self.log('Error: Geometric constraints on the instrument make this position impossible to reach.')
+#                 if len(self.queue)>0:
+#                     self.next_in_queue()
+#                 else:
+#                     self.script_running=False
+#                     self.queue=[]
+#                 return
+#                 
+# 
+#             current_motor=(self.goniometer_view.motor_i,self.goniometer_view.motor_e, self.goniometer_view.motor_az)
+#             movements=self.get_movements(i,e,az, current_motor=current_motor)
+#             
+#             current_science_i=self.goniometer_view.science_i
+#             current_science_e=self.goniometer_view.science_e
+#             current_science_az=self.goniometer_view.science_az
+# 
+#             if movements==None:
+#                 print('NO PATH FOUND')
+#                 self.log('Error: Cannot find a path from current geometry to i= '+str(i)+', e='+str(e)+', az='+str(az))
+#                 
+#             else:
+#                 temp_queue=[]
+#         
+#                 for movement in movements:
+#                     if 'az' in movement:
+#                         next_motor_az=movement['az']
+#                         temp_queue.append({self.goniometer_view.set_azimuth:[next_motor_az]})
+#                     elif 'e' in movement:
+#                         next_motor_e=movement['e']
+#                         temp_queue.append({self.goniometer_view.set_emission:[next_motor_e]})
+#                     elif 'i' in movement:
+#                         next_motor_i=movement['i']
+#                         temp_queue.append({self.goniometer_view.set_incidence:[next_motor_i]})
+#                     else:
+#                         print('UNEXPECTED: '+str(movement))
+#                         
+#                 for item in temp_queue:
+#                     for func in item:
+#                         args=item[func]
+#                         func(*args)
+# 
+#                     
+#             if len(self.queue)>0:
+#                 self.next_in_queue()
+#             else:
+#                 self.script_running=False
+#                 self.queue=[]
+#             
         elif 'rotate_display' in cmd:
             angle=cmd.split('rotate_display(')[1].strip(')')
             valid=validate_int_input(angle, -360, 360)
@@ -3474,10 +3621,13 @@ class Controller():
             self.goniometer_view.wireframes['i'].rotate_az(angle)
             self.goniometer_view.wireframes['light'].rotate_az(angle)
             self.goniometer_view.wireframes['light guide'].rotate_az(angle)
+            self.goniometer_view.wireframes['motor az guide'].rotate_az(angle)
+            self.goniometer_view.wireframes['science az guide'].rotate_az(angle)
             
             self.goniometer_view.wireframes['e'].rotate_az(angle)
             self.goniometer_view.wireframes['detector'].rotate_az(angle)
             self.goniometer_view.wireframes['detector guide'].rotate_az(angle)
+            
             
             self.goniometer_view.set_goniometer_tilt(20)
             
@@ -4871,9 +5021,9 @@ class Controller():
     #science az from 0 to 179.
     #az=180, i=50 is the same position as az=0, i=-50
     def motor_pos_to_science_pos(self, motor_i,motor_e, motor_az):
-        if motor_az<-90:
+        if motor_az<self.min_motor_az:
             print('UNEXPECTED AZ: '+str(motor_az))
-        if motor_az>270:
+        if motor_az>self.max_motor_az:
             print('UNEXPECTED AZ: '+str(motor_az))
         science_i=motor_i
         science_e=motor_e
@@ -4896,6 +5046,7 @@ class Controller():
     #            https://en.wikipedia.org/wiki/Great-circle_navigation
     #            http://astrophysicsformulas.com/astronomy-formulas-astrophysics-formulas/angular-distance-between-two-points-on-a-sphere
     def get_closest_approach(self, i, e, az, print_me=False):
+
         def cos(theta):
             return np.cos(theta*3.14159/180)
         def sin(theta):
@@ -4906,9 +5057,6 @@ class Controller():
             return np.arctan2(y,x)*180/3.14159
         def arctan(ratio):
             return np.arctan(ratio)*180/3.14159
-        
-        i, e, az=self.motor_pos_to_science_pos(i, e, az)
-        
         
 #         need to subtract component that is in same direction
 #         or add component in opposite direction
@@ -4942,12 +5090,83 @@ class Controller():
             lat2=90-np.abs(e)
             bearing=arctan2(cos(lat2), sin(lat2))
             return bearing
-        
+
+        i, e, az=self.motor_pos_to_science_pos(i, e, az)
         closest_dist=get_angular_distance(i,e,az)
         closest_pos=(i,e,az)
+        
+        #check if the fiber optic cable will hit the light source arm
+        #start by defining a list of positions of the light source arm
+        if True: 
+            arm_positions=[]
+            arm_bottom_i=90
+            arm_bottom_az=az-90 
+            
+            arm_top_i=np.abs(i)
+            if np.sign(i)!=np.sign(e):
+                arm_top_az=arm_bottom_az-90
+            else:
+                arm_top_az=arm_bottom_az+90
+#             print('arm top az:')
+
+            bearing=get_initial_bearing(arm_top_i)
+
+            if print_me:
+                print('bearing: '+str(bearing))
+            points=np.arange(0,90,3)
+            points=np.append(points, 90)
+            arm_lat=[]
+            arm_delta_long=[]
+            if print_me:
+                print(points)
+            for point in points:
+                tan_lat=cos(bearing)*sin(point)/np.sqrt(cos(point)**2+sin(bearing)**2*sin(point)**2)
+                lat=arctan(tan_lat)
+                arm_lat.append(lat)
+                tan_long=sin(bearing)*sin(point)/cos(point)
+                long=arctan(tan_long)
+                
+                arm_delta_long.append(long)
+                
+            arm_delta_long=np.array(arm_delta_long)
+            if np.sign(i)!=np.sign(e):
+                arm_azes=arm_bottom_az-arm_delta_long
+                
+#                 arm_top_az=arm_bottom_az-90
+            else:
+#                 arm_top_az=arm_bottom_az+90
+                arm_azes=arm_bottom_az+arm_delta_long
+
+            if False:
+                print('arm bottom az')
+                print(arm_bottom_az)
+                print('arm lat:')
+                print(arm_lat)
+                print('arm long: ')
+                print(arm_azes)
+    
+            for num, lat in enumerate(arm_lat):
+                arm_i=90-lat
+                fiber_collision_e=np.abs(e)
+                pos=[arm_i, fiber_collision_e, arm_azes[num]]
+                if False:
+                    print('*****')
+                    print(fiber_collision_e)
+                    print(arm_i)
+                    print(arm_azes[num])
+                    
+                dist=get_angular_distance(arm_i,fiber_collision_e, arm_azes[num])
+#                 print('Distance: '+str(dist))
+                if dist<closest_dist:
+                    closest_dist=dist
+                    closest_pos=pos
+                if dist<self.required_angular_separation:
+                    if False:
+                        print('FIBER OPTIC COLLISION')
+
 
         if i<=0: #Can run into detector arm
-            #define a list of positions of the arm
+            #define a list of positions of the detector arm
             arm_positions=[]
             arm_bottom_e=90
             arm_bottom_az=az-90 #-90 to 90 because i is negative.
@@ -4986,29 +5205,6 @@ class Controller():
                 print('arm long: ')
                 print(arm_delta_long)
 
-             
-#             points=20    
-#             delta=(arm_top_e-arm_bottom_e)/points
-#             if delta==0:
-#                 arm_es=np.ones(points+1)*arm_top_az
-#             else:
-#                 arm_es=np.arange(arm_bottom_e, arm_top_e, delta)
-#                 arm_es=np.append(arm_es, arm_top_e)
-#             
-#             if arm_bottom_az==arm_top_az:
-#                 arm_azes=np.ones(points+1)*arm_top_az
-#             else:
-#                 delta=(arm_bottom_az-arm_top_az)/points
-#                 arm_azes=np.arange(arm_bottom_az, arm_top_az, delta)
-#                 if len(arm_azes)==0:
-#                     delta=-1*delta
-#                     arm_azes=np.arange(arm_bottom_az, arm_top_az, delta)
-#                 arm_azes=np.append(arm_azes, arm_top_az)
-#                 
-#             if i==-20 and e==25 and az==154:
-#                 print(arm_azes)
-#                 print(arm_es)
-
             for num, lat in enumerate(arm_lat):
                 arm_e=90-lat
                 pos=[i, -1*arm_e, arm_bottom_az+arm_delta_long[num]]
@@ -5019,19 +5215,6 @@ class Controller():
                 if dist<closest_dist:
                     closest_dist=dist
                     closest_pos=pos
-
-
-#             for num, arm_e in enumerate(arm_es):
-#                 pos=[i, -1*arm_e, arm_azes[num]]
-#                 dist=get_angular_distance(i,-1*arm_e,arm_azes[num])
-#                 if i==-20 and e==25 and az==154:
-#                     print('************')
-#                     print(str(i)+','+str(-1*arm_e)+', '+str(arm_azes[num]))
-#                     print(dist)
-# 
-#                 if dist<closest_dist:
-#                     closest_dist=dist
-#                     closest_pos=pos
 
 
         return closest_pos, closest_dist

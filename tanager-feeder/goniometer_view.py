@@ -49,8 +49,8 @@ class GoniometerView():
         self.tray_angle=0
         
         self.wireframes = {}
-        self.display_nodes = False
-        self.display_edges = False
+        self.display_nodes=False
+        self.display_edges=False
         self.display_faces=True
         self.nodeColour = (255,255,255)
         self.edge_color = (200,200,200)
@@ -60,6 +60,7 @@ class GoniometerView():
             self.sample_names.append('Sample '+str(i))
         self.define_goniometer_wireframes()
         self.define_sample_tray_wireframes()
+        
         self.tilt=0 #tilt of entire goniometer
         
 #         self.wireframes['i'].az=90
@@ -77,6 +78,7 @@ class GoniometerView():
         self.science_az=90
         self.science_e=0
         self.motor_e=0
+        self.define_az_guide_wireframes()
         
         self.samples=['WR','Sample 1','Sample 2','Sample 3','Sample 4','Sample 5']
         self.standard_delay=.0001
@@ -326,13 +328,18 @@ class GoniometerView():
         detector_nodes=[]
         for angle in np.arange(0,math.pi*2,math.pi/30):
             x=math.cos(angle)*0.03
+            y0=-1.5
             y1=-1
             y2=-0.6
+            
             z=math.sin(angle)*.03
             light_nodes.append((x,y1,z))
             light_nodes.append((x,y2,z))
+            
+            detector_nodes.append((x,y0,z))
             detector_nodes.append((x,y1,z))
             detector_nodes.append((x,y2,z))
+            
             
         light_wireframe.add_nodes(light_nodes)
         detector_wireframe.add_nodes(detector_nodes)
@@ -352,7 +359,13 @@ class GoniometerView():
         for n in range(len(light_nodes)-3):
             if n%2==0:
                 light_faces.append((n, n+1, n+3, n+2))
-                detector_faces.append((n, n+1, n+3, n+2))
+#                 detector_faces.append((n, n+1, n+3, n+2))
+                
+        for n in range(len(detector_nodes)-5):
+            if n%3==0:
+                detector_faces.append((n, n+1, n+4, n+3))
+                detector_faces.append((n+1, n+2, n+5, n+4))
+                
         light_wireframe.add_faces(light_faces, color=(150,50,50))
         detector_wireframe.add_faces(detector_faces)
         
@@ -381,11 +394,75 @@ class GoniometerView():
         
         
         
+    def define_az_guide_wireframes(self):
+        motor_az_guide_wireframe=Wireframe()
+        science_az_guide_wireframe=Wireframe()
+        motor_az_guide_nodes=[]
+        science_az_guide_nodes=[]
+        
+        first_angle=-1*(self.wireframes['detector'].az-90)*math.pi/180
+        last_motor_angle=-1*(self.wireframes['detector'].az+self.motor_az-90)*math.pi/180
+        last_science_angle=-1*(self.wireframes['detector'].az+self.science_az-90)*math.pi/180
+
+        if last_motor_angle>first_angle:
+            increment=math.pi/30
+        else:
+            increment=-1*math.pi/30
+        for angle in np.append(np.arange(first_angle, last_motor_angle, increment),last_motor_angle):
+            x1=math.cos(angle)*1.01
+            x2=math.cos(angle)*0.99
+            y=0
+            z1=math.sin(angle)*1.01
+            z2=math.sin(angle)*0.99
+            motor_az_guide_nodes.append((x1,y,z1))
+            motor_az_guide_nodes.append((x2,y,z2))
             
+        if last_science_angle>first_angle:
+            increment=math.pi/30
+        else:
+            increment=-1*math.pi/30
+            
+            
+        for angle in np.append(np.arange(first_angle, last_science_angle, increment),last_science_angle):
+            x1=math.cos(angle)*1.01
+            x2=math.cos(angle)*0.99
+            y=0
+            z1=math.sin(angle)*1.01
+            z2=math.sin(angle)*0.99
+            science_az_guide_nodes.append((x1,y,z1))
+            science_az_guide_nodes.append((x2,y,z2))
+            
+        motor_az_guide_wireframe.add_nodes(motor_az_guide_nodes)
+        science_az_guide_wireframe.add_nodes(science_az_guide_nodes)
+        
+        motor_az_guide_faces=[]
+        for n in range(len(motor_az_guide_nodes)-3):
+            if n%2==0:
+                motor_az_guide_faces.append((n, n+1, n+3, n+2))
+        
+        if self.motor_az>=0:
+            motor_az_guide_wireframe.add_faces(motor_az_guide_faces,color=(100,200,255))
+        else:
+            motor_az_guide_wireframe.add_faces(motor_az_guide_faces,color=(255,155,255))
+
+        science_az_guide_faces=[]
+        for n in range(len(science_az_guide_nodes)-3):
+            if n%2==0:
+                science_az_guide_faces.append((n, n+1, n+3, n+2))
+        science_az_guide_wireframe.add_faces(science_az_guide_faces, color=(200,255,155))
+        
+        self.wireframes['motor az guide']=motor_az_guide_wireframe
+        self.wireframes['science az guide']=science_az_guide_wireframe
+        motor_az_guide_wireframe.rotate_el(-1*self.tilt)
+        science_az_guide_wireframe.rotate_el(-1*self.tilt)
+        
+        
         
     def draw_3D_goniometer(self, width, height):
         self.width=width
         self.height=height
+        
+        
         self.char_len=self.height #characteristic length we use to scale drawings
         scale=1.12
         if self.width-120<self.height:
@@ -414,6 +491,12 @@ class GoniometerView():
         self.wireframes['i_base'].set_scale(i_radius)
         self.wireframes['light'].set_scale(i_radius)
         self.wireframes['light guide'].set_scale(i_radius)
+        try:
+            self.wireframes['motor az guide'].set_scale(i_radius)
+            self.wireframes['science az guide'].set_scale(e_radius)
+        except:
+            pass
+        
         self.wireframes['e'].set_scale(e_radius)
         self.wireframes['e_base'].set_scale(e_radius)
         self.wireframes['detector'].set_scale(e_radius)
@@ -522,8 +605,10 @@ class GoniometerView():
                 continue #if it is facing away from us don't draw it
             else:
                 theta = np.dot(face.normal, light)
-                
-                theta=int(theta*100)
+                try:
+                    theta=int(theta*100)
+                except:
+                    theta=-1
                 if theta < 0:
                     shade = color
                 else:
@@ -690,7 +775,7 @@ class GoniometerView():
 
             
     def set_azimuth(self, motor_az, config=False):
-        if motor_az>270 or motor_az<-90:
+        if motor_az>self.controller.max_motor_az or motor_az<self.controller.min_motor_az:
             raise Exception('MOTOR AZ OUTSIDE RANGE: '+str(motor_az))
         
         def next_pos(delta_theta):
@@ -717,7 +802,8 @@ class GoniometerView():
             elif self.motor_az<0:
                 self.science_az=self.motor_az+180
                 self.science_i=-1*self.motor_i
-                
+            
+            self.define_az_guide_wireframes()
             self.draw_3D_goniometer(self.width,self.height)
             self.flip()
             if self.collision:
