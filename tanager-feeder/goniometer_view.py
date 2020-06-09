@@ -25,6 +25,8 @@ class GoniometerView():
         self.notebook=notebook
         
         self.collision=False
+        self.invalid=False
+        
         self.embed=Frame(self.notebook,width=self.width,height=self.height)
         self.embed.pack(fill=BOTH,expand=True)
         
@@ -480,6 +482,11 @@ class GoniometerView():
                 face.color=(150,50,50)
             for face in self.wireframes['e'].faces:
                 face.color=(150,50,50)
+        elif self.invalid:
+            for face in self.wireframes['i'].faces:
+                face.color=(50,50,150)
+            for face in self.wireframes['e'].faces:
+                face.color=(50,50,150)
         else:
             for face in self.wireframes['i'].faces:
                 face.color=(80,80,80)

@@ -1,7 +1,8 @@
 #The controller runs the main thread controlling the program.
 #It opens a Tkinter GUI with options for instrument control parameters and sample configuration
 #The user can use the GUI to operate the goniometer motors and the spectrometer software.
-from test._test_multiprocessing import baz
+from pythonwin.pywin.scintilla.bindings import next_id
+from warnings import _next_external_frame
 
 dev=False
 
@@ -36,6 +37,8 @@ from tkinter.filedialog import *
 
 import http.client as httplib
 import shutil
+
+import traceback #for debugging
 
 #Which spectrometer computer are you using? This should probably be desktop, but could be 'new' for the new lappy or 'old' for the ancient laptop.
 computer='desktop'
@@ -1327,19 +1330,7 @@ class Controller():
         except:
             dialog=ErrorDialog(self,label='Error: Invalid number of spectra to average.\nEnter a value from 1 to 32767')
             return 
-        
-        # if self.manual_automatic.get()==0 and override==False: #manual
-        #     buttons={
-        #         'yes':{
-        #             self.opt:[True]
-        #         },
-        #         'no':{
-        #             self.clear_queue:[]
-        #         }
-        #     }
-        #     warnings=self.check_viewing_geom_for_manual_operation(buttons)
-        #     if warnings!='':
-        #         return
+
                 
             
             
@@ -1358,7 +1349,7 @@ class Controller():
             
             valid_i=validate_int_input(self.incidence_entries[0].get(),-90,90)
             if valid_i:
-                if str(self.i)!=self.incidence_entries[0].get():
+                if str(self.science_i)!=self.incidence_entries[0].get():
                     self.angles_change_time=time.time()
                 self.motor_i=int(self.incidence_entries[0].get())
                 
@@ -1367,16 +1358,24 @@ class Controller():
                 
             valid_e=validate_int_input(self.emission_entries[0].get(),-90,90)
             if valid_e:
-                if str(self.e)!=self.emission_entries[0].get():
+                if str(self.science_e)!=self.emission_entries[0].get():
                     self.angles_change_time=time.time()
                 self.motor_e=int(self.emission_entries[0].get())
             else:
                 warnings+='The emission angle is invalid (Min:'+str(-90)+', Max:'+str(90)+').\n\n'
                 
-            valid_separation=self.validate_distance(self.incidence_entries[0].get(),self.emission_entries[0].get())
-            if valid_e and valid_i and not valid_separation:
-                warnings+='Incidence and emission should be at least '+str(self.required_angular_separation)+' degrees apart.\n\n'
-            self.set_and_animate_geom()
+            valid_az=validate_int_input(self.azimuth_entries[0].get(),0,179)
+            if valid_az:
+                if str(self.science_az)!=self.azimuth_entries[0].get():
+                    self.angles_change_time=time.time()
+                self.motor_az=int(self.azimuth_entries[0].get())
+            else:
+                warnings+='The azimuth angle is invalid (Min:'+str(0)+', Max:'+str(179)+').\n\n'
+                
+            valid_separation=self.validate_distance(self.incidence_entries[0].get(),self.emission_entries[0].get(),self.azimuth_entries[0].get())
+            if valid_e and valid_i and valid_az and not valid_separation:
+                warnings+='Light source and detector should be at least '+str(self.required_angular_separation)+' degrees apart.\n\n'
+#             self.set_and_animate_geom()
                 
             return warnings
 
@@ -1463,7 +1462,7 @@ class Controller():
                             valid_e=validate_int_input(emission,self.min_science_e,self.max_science_e)
                             valid_az=validate_int_input(azimuth, self.min_science_az,self.max_science_az)
                             if valid_i and valid_e and valid_az:
-                                label+='The insturment has not been optimized at this geometry.\n\n'
+                                label+='The instrument has not been optimized at this geometry.\n\n'
                 
 
                 if self.wrfailsafe.get() and func!=self.wr and func!=self.opt:
@@ -1491,7 +1490,7 @@ class Controller():
                     if self.angles_change_time!=None and self.wr_time!=None and func!=self.opt:
                         if self.angles_change_time>self.wr_time+1:
                             valid_i=validate_int_input(incidence,self.min_science_i,self.max_science_i)
-                            valid_e=validate_int_input(emission,self.min_science,self.max_science_e)
+                            valid_e=validate_int_input(emission,self.min_science_e,self.max_science_e)
                             valid_az=validate_int_input(azimuth, self.min_science_az, self.max_science_az)
                             if valid_i and valid_e:
                                 label+=' No white reference has been taken at this viewing geometry.\n\n'
@@ -1610,19 +1609,21 @@ class Controller():
             if not valid_input:
                 return         
         #Make sure RS3 save config and instrument config are taken care of. This will add those actions to the queue if needed.
+
         if not setup_complete:
             if action==self.take_spectrum:
                 setup=self.setup_RS3_config({self.take_spectrum:[True, False,garbage]})
             elif action==self.wr or action==self.acquire:
                 setup=self.setup_RS3_config({action:[True, False]})
             elif action==self.opt:
-                setup=self.setup_RS3_config({self.opt:[True, False]})
+                setup=self.setup_RS3_config({self.opt:[True, False]}) #override=True (because we just checked those things?), setup_complete=False
+
             else:
                 raise Exception()
             #If things were not already set up (instrument config, etc) then the compy will take care of that and call take_spectrum again after it's done.
             if not setup:
                 return
-                    
+        
         if action==self.take_spectrum:
             startnum_str=str(self.spec_startnum_entry.get())
             while len(startnum_str)<NUMLEN:
@@ -1681,49 +1682,86 @@ class Controller():
 
     #updates motor and science angle values, animates goniometer arms moving
     def set_and_animate_geom(self, complete_queue_item=False):
-        try:
+        if self.manual_automatic.get()==1: #automatic mode
             next_science_i=int(self.active_incidence_entries[0].get())
             next_science_e=int(self.active_emission_entries[0].get())
             next_science_az=int(self.active_azimuth_entries[0].get())
+
+        else: #in manual mode, it's ok if the specified geometry is invalid.
+            try:
+                next_science_i=int(self.incidence_entries[0].get())
+            except:
+                next_science_i=None 
             
-            if self.science_i==None or self.science_e==None or self.science_az==None:
-                self.angles_change_time=time.time()
-            elif self.science_i!=next_science_i or self.science_e!=next_science_e or self.science_az!=next_science_az:
-                self.angles_change_time=time.time()
-        except:
-            raise Exception('EXCEPTION IN GETTING NEXT SCIENCE GEOM')
+            try:
+                next_science_e=int(self.emission_entries[0].get())
+            except:
+                next_science_e=None
+            
+            try:
+                next_science_az=int(self.azimuth_entries[0].get())
+            except:
+                next_science_az=None         
+        
+#         if self.science_i==None or self.science_e==None or self.science_az==None:
+#             self.angles_change_time=time.time()
+        if self.science_i!=next_science_i or self.science_e!=next_science_e or self.science_az!=next_science_az:
+            self.angles_change_time=time.time()
+            
+        self.science_i=next_science_i
+        self.science_e=next_science_e
+        self.science_az=next_science_az
         
         valid_i=validate_int_input(next_science_i,self.min_science_i,self.max_science_i)
         valid_e=validate_int_input(next_science_e,self.min_science_e, self.max_science_e)
         valid_az=validate_int_input(next_science_az, self.min_science_az, self.max_science_az)
         
-        if not (valid_i and valid_e and valid_az): 
-            raise Exception('Invalid geometry: '+str(next_science_i)+' '+str(next_science_e)+' '+str(next_science_az))
-        
-        motor_positions=self.get_movements()
         temp_queue=[]
-        
-        for movement in movements:
-            if 'az' in movement:
-                next_motor_az=movement['az']
-                temp_queue.append({self.goniometer_view.set_azimuth:[next_motor_az]})
-            elif 'e' in movement:
-                next_motor_e=movement['e']
-                temp_queue.append({self.goniometer_view.set_emission:[next_motor_e]})
-            elif 'i' in movement:
-                next_motor_i=movement['i']
-                temp_queue.append({self.goniometer_view.set_incidence:[next_motor_i]})
-                
-        self.queue=temp_queue+self.queue
-        
+        if not (valid_i and valid_e and valid_az):
+            if self.manual_automatic.get()==1:
+                raise Exception('Invalid geometry: '+str(next_science_i)+' '+str(next_science_e)+' '+str(next_science_az))
+            else:
+                self.goniometer_view.invalid=True
+                if valid_i:
+                    self.goniometer_view.set_incidence(next_science_i)
+                if valid_e:
+                    self.goniometer_view.set_emission(next_science_e)
+                if valid_az:
+                    self.goniometer_view.set_azimuth(next_science_az)
 
 
+        else:
+            self.goniometer_view.invalid=False
+            if self.manual_automatic.get()==0: #Manual mode. Might not know motor position, just use visualization position.
+                current=(self.goniometer_view.motor_i, self.goniometer_view.motor_e, self.goniometer_view.motor_az) 
+            else:
+                current=(self.motor_i, self.motor_e, self.motor_az)
+            movements=self.get_movements(next_science_i, next_science_e, next_science_az, current)
+            
+            for movement in movements:
+                if 'az' in movement:
+                    next_motor_az=movement['az']
+                    temp_queue.append({self.goniometer_view.set_azimuth:[next_motor_az]})
+                elif 'e' in movement:
+                    next_motor_e=movement['e']
+                    temp_queue.append({self.goniometer_view.set_emission:[next_motor_e]})
+                elif 'i' in movement:
+                    next_motor_i=movement['i']
+                    temp_queue.append({self.goniometer_view.set_incidence:[next_motor_i]})
 
         if complete_queue_item:
-            self.complete_queue_item()
+            if len(self.queue)>0:
+                self.complete_queue_item()
+        
+            self.queue=temp_queue+self.queue
             if len(self.queue)>0:
                 self.next_in_queue()
-                        
+        else:
+            for dictionary in temp_queue:
+                for func in dictionary:
+                    args=dictionary[func]
+                    func(*args)
+                            
 
 
 
@@ -2350,18 +2388,21 @@ class Controller():
         movements =self.get_movements(next_i, next_e, next_az)
         
         temp_queue=[]
-        for movement in movements:
-            if 'az' in movement:
-                next_motor_az=movement['az']
-                temp_queue.append({self.set_azimuth:[next_motor_az]})
-            elif 'e' in movement:
-                next_motor_e=movement['e']
-                temp_queue.append({self.set_emission:[next_motor_e]})
-            elif 'i' in movement:
-                next_motor_i=movement['i']
-                temp_queue.append({self.set_incidence:[next_motor_i]})
-            else:
-                print('UNEXPECTED: '+str(movement))
+        if movements!=None:
+            for movement in movements:
+                if 'az' in movement:
+                    next_motor_az=movement['az']
+                    temp_queue.append({self.set_azimuth:[next_motor_az]})
+                elif 'e' in movement:
+                    next_motor_e=movement['e']
+                    temp_queue.append({self.set_emission:[next_motor_e]})
+                elif 'i' in movement:
+                    next_motor_i=movement['i']
+                    temp_queue.append({self.set_incidence:[next_motor_i]})
+                else:
+                    print('UNEXPECTED: '+str(movement))
+        else:
+            raise Exception('Error: could not find path to next geometry: '+str(next_i)+' '+str(next_e)+' '+str(next_az))
 
         self.queue=temp_queue+self.queue
         
@@ -2632,7 +2673,7 @@ class Controller():
     def opt_button_cmd(self):
         self.queue=[]
         self.queue.append({self.opt:[True, True]}) #Setting override and setup_complete to True make is so if we automatically retry because of an error on the spec compy we won't have to do setup things agian.
-        self.acquire(override=False, setup_complete=False,action=self.opt)
+        self.acquire(override=False, setup_complete=False, action=self.opt)
      
     #called when user clicks wr button. No different than wr() except we clear out the queue first just in case there is something leftover hanging out in there.
     def wr_button_cmd(self):
@@ -2677,7 +2718,7 @@ class Controller():
                 dialog=ErrorDialog(self,title='Error',label='Could not create directory:\n\n'+dir+'\n\nFile exists.')
             elif status=='mkdirfailed':
                 dialog=ErrorDialog(self,title='Error',label='Could not create directory:\n\n'+dir)
-                
+
         status=self.remote_directory_worker.get_dirs(self.spec_save_dir_entry.get())
 
 
@@ -2705,7 +2746,7 @@ class Controller():
             if not self.text_only:
                 buttons={
                     'cancel':{},
-                    'retry':{self.next_in_queue:[]}
+                    'retry':{self.spec_commander.remove_from_listener_queue:[['timeout']],self.next_in_queue:[]}
                 }
                 try: #Do this if there is a wait dialog up
                     self.wait_dialog.interrupt('Error: Operation timed out.\n\nCheck that the automation script is running on the spectrometer\n computer and the spectrometer is connected.')
@@ -2721,7 +2762,6 @@ class Controller():
             else:
                 self.log('Error: Operation timed out while trying to set save configuration')
             return
-
         self.spec_commander.check_writeable(self.spec_save_dir_entry.get())
         t=3*BUFFER
         while t>0:
@@ -3766,7 +3806,7 @@ class Controller():
             if not self.text_only:
                 buttons={
                     'cancel':{},
-                    'retry':{self.next_in_queue:[]}
+                    'retry':{self.spec_commander.remove_from_listener_queue:[['timeout']],self.next_in_queue:[]}
                 }
                 dialog=ErrorDialog(self, label='Error: Operation timed out.\n\nCheck that the automation script is running on the spectrometer\n computer and the spectrometer is connected.', buttons=buttons)
                 for button in dialog.tk_buttons:
@@ -5073,17 +5113,8 @@ class Controller():
             return lat1, lat2, delta_long
         
         def get_angular_distance(i, e, az):
-
-#             if np.sign(i)==np.sign(e):
-#                 delta_long=az
-#             else:
-#                 delta_long=180-az
-#             lat1=90-np.abs(i)
-#             lat2=90-np.abs(e)
             lat1, lat2, delta_long=get_lat1_lat2_delta_long(i, e, az)
-            
             dist=np.abs(arccos(sin(lat1)*sin(lat2)+cos(lat1)*cos(lat2)*cos(delta_long)))
-#             print(dist)
             return dist
         
         def get_initial_bearing(e):
@@ -5245,10 +5276,12 @@ class Controller():
             self.unfreeze()
             self.active_incidence_entries[0].delete(0,'end')
             self.active_emission_entries[0].delete(0,'end')
-            self.active_azimuth_enries[0].delete(0,'end')
+            self.active_azimuth_entries[0].delete(0,'end')
             self.sample_label_entries[self.current_sample_gui_index].delete(0,'end')
             
     def next_in_queue(self):
+#         for line in traceback.format_stack():
+#             print(line.strip())
         dict=self.queue[0]
         for func in dict:
             args=dict[func]
@@ -5438,10 +5471,13 @@ class Controller():
         self.menubar.entryconfig('Settings', state='disabled')
         self.filemenu.entryconfig(0,state=DISABLED)
         self.filemenu.entryconfig(1,state=DISABLED)
+        
+        self.console_entry.configure(state='disabled')
 
         
 
     def unfreeze(self):
+        self.console_entry.configure(state='normal')
         self.menubar.entryconfig('Settings', state='normal')
         self.filemenu.entryconfig(0,state=NORMAL)
         self.filemenu.entryconfig(1,state=NORMAL)
@@ -6029,7 +6065,6 @@ class OptHandler(CommandHandler):
     def wait(self):
         while self.timeout_s>0:
             if 'nonumspectra' in self.listener.queue:
-                print("NONUM")
                 self.listener.queue.remove('nonumspectra')
                 self.controller.queue.insert(0,{self.controller.configure_instrument:[]})
                 self.controller.configure_instrument()
@@ -6114,10 +6149,7 @@ class WhiteReferenceHandler(CommandHandler):
                 #If the next thing we're going to do is take a spectrum then set override to True - we will already have checked in with the user about those things when we first decided to take a spectrum.
                 if self.controller.wr in self.controller.queue[0]:
                     self.controller.queue[0][self.controller.wr][0]=True
-                else:
-                    print('here is the queue')
-                    for item in self.controller.queue:
-                        print(item)
+            
                 self.controller.queue.insert(0,{self.controller.set_save_config:[]})
                 self.controller.set_save_config()
                 return
@@ -6217,7 +6249,7 @@ class DataHandler(CommandHandler):
                         return
                         
                     except Exception as e:
-                        print('1')
+                        print('data copied exception')
                         print(e)
                         
                         self.interrupt('Error transferring data',retry=True)
@@ -6257,8 +6289,7 @@ class ProcessHandler(CommandHandler):
         
     def wait(self):
         while True: #self.timeout_s>0: Never going to timeout
-            if self.timeout_s%20==0:
-                print(self.timeout_s)
+
             if 'processsuccess' in self.listener.queue or 'processsuccessnocorrection' in self.listener.queue or 'processsuccessnolog' in self.listener.queue:
                 warnings=''
                 if 'processsuccess' in self.listener.queue:
@@ -6292,7 +6323,6 @@ class ProcessHandler(CommandHandler):
                         except:
                             pass
                 else: #if the final destination was remote then we're already done.
-                    print('remote')
                     self.success(warnings=warnings)
                     if warnings !='':
                         self.wait_dialog.top.wm_geometry('376x185')
@@ -6340,8 +6370,7 @@ class ProcessHandler(CommandHandler):
             interrupt_string+='\n\n'+warnings
         self.interrupt(interrupt_string)
         self.controller.plot_input_file=self.outputfile
-        print(self.controller.proc_local_remote)
-        print(self.controller.plot_local_remote)
+
         if self.controller.proc_local_remote=='remote':
             self.controller.plot_local_remote='remote'
         else:
@@ -6639,11 +6668,8 @@ class SpectrumHandler(CommandHandler):
                 self.listener.queue.remove('noconfig')
                 #If the next thing we're going to do is take a spectrum then set override to True - we will already have checked in with the user about those things when we first decided to take a spectrum.
                 if self.controller.take_spectrum in self.controller.queue[0]:
-                    print('setting override to true')
                     self.controller.queue[0][self.controller.take_spectrum][0]=True
-                else:
-                    for item in self.controller.queue:
-                        print(item)
+
                 self.controller.queue.insert(0,{self.controller.set_save_config:[]})
                 self.controller.set_save_config()#self.controller.take_spectrum, [True])
                 return
@@ -6863,8 +6889,6 @@ class RemoteFileExplorer(Dialog):
 
     def mkdir(self, newdir):
         status=self.remote_directory_worker.mkdir(newdir)
-        print('Make dir status:')
-        print(status)
 
         if status=='mkdirsuccess':
             self.expand(None,'\\'.join(newdir.split('\\')[0:-1]))
@@ -6938,7 +6962,6 @@ class RemoteFileExplorer(Dialog):
                 # if self.current_parent=='':
                 #     self.current_parent='C:\\Users'
             if buttons==None:
-                print('setting buttons')
 
                 buttons={
                     'yes':{
@@ -7027,7 +7050,10 @@ class RemoteDirectoryWorker():
         self.timeout_s=BUFFER
     def reset_timeout(self):
         self.timeout_s=BUFFER
+        
     def wait_for_contents(self,cmdfilename):
+#         if self.wait_dialog==None
+
         #Wait to hear what the listener finds
         self.reset_timeout()
         while self.timeout_s>0:
@@ -7175,7 +7201,7 @@ class IntInputDialog(Dialog):
                 for val in bad_vals:
                     err_str+=val+' from '+str(self.mins[val])+' to '+str(self.maxes[val])+'\n'
             else:
-                err_str+='angular separation.\nEmission must be at least '+str(self.controller.required_angular_separation)+' degrees different than incidence.'
+                err_str+='angular separation.\nThe detector and its arm must be at least '+str(self.controller.required_angular_separation)+' degrees away from the light source.'
             dialog=ErrorDialog(self.controller,title='Error: Invalid Input',label=err_str)
         
             
@@ -7313,9 +7339,6 @@ class SpecListener(Listener):
                                 self.queue.append('listdirfailed')
                         else:
                             #RemoteDirectoryWorker in wait_for_contents is waiting for a file that contains a list of the contents of a given folder on the spec compy. This file will have an encrypted version of the parent directory's path in its title e.g. listdir&R=+RiceData+Kathleen+spectral_data
-                            print('read form quee')
-                            print(cmdfile)
-                            print('DONE')
                             self.queue.append(cmdfile)  
 
                     elif 'wrfailedfileexists' in cmd:
@@ -7331,7 +7354,6 @@ class SpecListener(Listener):
 
                         self.queue.append('processsuccessnolog')
                     elif 'processsuccess' in cmd:
-                        print('processsuccess')
                         self.queue.append('processsuccess')
                         
                     elif 'processerrorfileexists' in cmd:

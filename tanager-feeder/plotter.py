@@ -449,12 +449,10 @@ class Tab():
         self.canvas.get_tk_widget().pack(expand=True,fill=BOTH)
         self.plot=Plot(self.plotter, self.fig, self.white_fig,self.samples,self.title, self.oversize_legend,self.plot_scale,self.plot_width,x_axis=self.x_axis,y_axis=self.y_axis,xlim=self.xlim,ylim=self.ylim, exclude_artifacts=self.exclude_artifacts, draw=draw)
 
-        print('made plot')
         
         if draw:
             self.canvas.draw() #sometimes silently crashes if run from pip module (not IDE) on some login configurations. Related to thread safety (only crashes for remote plotting, which involves a separate thread). To protect against this, draw will be false if this is called from a separate thread and the user is asked for input instead.
 
-            print('drew on canvas')
 
         self.popup_menu = Menu(self.top.interior, tearoff=0)
         if self.x_axis=='wavelength' and (self.y_axis=='reflectance' or self.y_axis=='normalized reflectance'):
@@ -1647,12 +1645,8 @@ class Plot():
 
         if draw:
             self.draw()
-            print('draw')
         
         def on_closing():
-            # for i in self.plots:
-            #     del self.plots[i]
-            # #del self.plots[i]
             top.destroy()
     
 
