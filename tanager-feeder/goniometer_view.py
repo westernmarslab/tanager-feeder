@@ -18,6 +18,8 @@ import math
 #Animated graphic of goniometer
 class GoniometerView():
     def __init__(self,controller,notebook):
+        self.movements={'i':[],'e':[],'az':[]}
+        
         self.width=1800
         self.height=1200
         self.controller=controller
@@ -338,7 +340,7 @@ class GoniometerView():
             light_nodes.append((x,y1,z))
             light_nodes.append((x,y2,z))
             
-            detector_nodes.append((x,y0,z))
+#             detector_nodes.append((x,y0,z))
             detector_nodes.append((x,y1,z))
             detector_nodes.append((x,y2,z))
             
@@ -353,7 +355,10 @@ class GoniometerView():
             if n%2==0:
                 light_edges.append((n, n+1))
                 light_edges.append((n, n+2))
-        #light_wireframe.add_edges(light_edges)
+                detector_edges.append((n, n+1))
+                detector_edges.append((n, n+2))
+        light_wireframe.add_edges(light_edges)
+        detector_wireframe.add_edges(detector_edges)
         
         light_faces=[]
         detector_faces=[]
@@ -361,12 +366,13 @@ class GoniometerView():
         for n in range(len(light_nodes)-3):
             if n%2==0:
                 light_faces.append((n, n+1, n+3, n+2))
-#                 detector_faces.append((n, n+1, n+3, n+2))
-                
-        for n in range(len(detector_nodes)-5):
-            if n%3==0:
-                detector_faces.append((n, n+1, n+4, n+3))
-                detector_faces.append((n+1, n+2, n+5, n+4))
+                detector_faces.append((n, n+1, n+3, n+2))
+       
+#Uncomment if drawing the fiber optic sticking out above the top of the emission arm.         
+#         for n in range(len(detector_nodes)-5):
+#             if n%3==0:
+#                 detector_faces.append((n, n+1, n+4, n+3))
+#                 detector_faces.append((n+1, n+2, n+5, n+4))
                 
         light_wireframe.add_faces(light_faces, color=(150,50,50))
         detector_wireframe.add_faces(detector_faces)
@@ -745,6 +751,7 @@ class GoniometerView():
             self.collision=False
         
     def set_incidence(self, motor_i, config=False):
+        self.movements['i'].append(np.abs(self.motor_i-motor_i))
         
         
         def next_pos(delta_theta):
@@ -759,12 +766,14 @@ class GoniometerView():
             else:
                 time.sleep(0.005)
             
-            self.check_collision(self.science_i, self.science_e, self.science_az)
+            
             self.set_goniometer_tilt(0)
             
             self.wireframes['i'].set_elevation(self.motor_i)
             self.wireframes['light'].set_elevation(self.motor_i)
             self.wireframes['light guide'].set_elevation(self.motor_i)
+            
+            self.check_collision(self.science_i, self.science_e, self.science_az)
             
             self.set_goniometer_tilt(20)
             self.draw_3D_goniometer(self.width,self.height)
@@ -782,6 +791,7 @@ class GoniometerView():
 
             
     def set_azimuth(self, motor_az, config=False):
+        self.movements['az'].append(np.abs(self.motor_az-motor_az))
         if motor_az>self.controller.max_motor_az or motor_az<self.controller.min_motor_az:
             raise Exception('MOTOR AZ OUTSIDE RANGE: '+str(motor_az))
         
@@ -793,7 +803,7 @@ class GoniometerView():
             else:
                 time.sleep(.005)
                 
-            self.check_collision(self.science_i, self.science_e, self.science_az)
+            
             self.set_goniometer_tilt(0)
             self.wireframes['i'].set_azimuth(next_drawing_az)
             self.wireframes['light'].set_azimuth(next_drawing_az)
@@ -810,6 +820,7 @@ class GoniometerView():
                 self.science_az=self.motor_az+180
                 self.science_i=-1*self.motor_i
             
+            self.check_collision(self.science_i, self.science_e, self.science_az)
             self.define_az_guide_wireframes()
             self.draw_3D_goniometer(self.width,self.height)
             self.flip()
@@ -846,6 +857,8 @@ class GoniometerView():
                 self.flip()
             
     def set_emission(self, motor_e, config=False):
+        self.movements['e'].append(np.abs(self.motor_e-motor_e))
+        
         def next_pos(delta_theta):
             self.motor_e=self.motor_e+delta_theta
             self.science_e=self.science_e+delta_theta
@@ -854,17 +867,22 @@ class GoniometerView():
             else:
                 time.sleep(.005)
                 
-            self.check_collision(self.science_i, self.science_e, self.science_az)
+            
             self.set_goniometer_tilt(0)
             self.wireframes['e'].set_elevation(self.motor_e)
             self.wireframes['detector'].set_elevation(self.motor_e)
             self.wireframes['detector guide'].set_elevation(self.motor_e)
+            
+            self.check_collision(self.science_i, self.science_e, self.science_az)
+            
             self.set_goniometer_tilt(20)
             self.draw_3D_goniometer(self.width,self.height)
             self.flip()
             if self.collision:
                 print('COLLISION SETTING EMISSION')
-            
+        
+        
+        
         delta_theta=5*np.sign(motor_e-self.motor_e)
         while np.abs(motor_e-self.motor_e)>=5:
             next_pos(delta_theta)

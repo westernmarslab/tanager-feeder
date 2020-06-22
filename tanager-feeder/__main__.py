@@ -4,17 +4,19 @@
 from pythonwin.pywin.scintilla.bindings import next_id
 from warnings import _next_external_frame
 
-dev=False
-
-import os
-import sys
-import platform
-
 global SPEC_OFFLINE
 SPEC_OFFLINE=False
 
 global PI_OFFLINE
 PI_OFFLINE=False
+
+
+dev=True
+
+import os
+import sys
+import platform
+import socket
 
 from tkinter import *
 from tkinter import messagebox
@@ -59,6 +61,13 @@ CMDNUM=0
 global INTERVAL
 INTERVAL=0.25
 
+
+global SPEC_PORT
+SPEC_PORT=54321
+
+global PI_PORT
+PI_PORT=12345
+
 if opsys=='Windows':
     #If I am running this script from my IDE, __file__ is not defined. In that case, I'll get an exception, and I'll go with my own hard-coded file location instead.
     try:
@@ -99,6 +108,9 @@ import goniometer_view
 from goniometer_view import GoniometerView
 import plotter
 from plotter import Plotter
+import control_tcp
+from control_tcp import ControlClient
+from control_tcp import ControlServer
 #import verticalscrolledframe
 
 #This is needed because otherwise changes won't show up until you restart the shell. Not needed if you aren't changing the modules.
@@ -108,6 +120,9 @@ if dev:
         from goniometer_view import GoniometerView
         importlib.reload(plotter)
         from plotter import Plotter
+        importlib.reload(control_tcp)
+        from control_tcp import ControlServer
+        from control_tcp import ControlClient
     except:
         print('Not reloading modules')
 #Server and share location. Can change if spectroscopy computer changes.
@@ -158,10 +173,12 @@ if opsys=='Linux':
     spec_share_loc='/run/user/1000/gvfs/smb-share:server='+server+',share='+spec_share+'/'
     pi_share_loc='/run/user/1000/gvfs/smb-share:server='+pi_server+',share='+pi_share+'/'
     delimiter='/'
-    spec_write_loc=spec_share_loc+'commands/from_control/'
+#     spec_write_loc=spec_share_loc+'commands/from_control/'
+    spec_server_ip='192.168.5.47'
     spec_temp_loc=spec_share_loc+'temp/'
     
-    pi_write_loc=pi_share_loc+'commands/from_control/'
+#     pi_write_loc=pi_share_loc+'commands/from_control/'
+    pi_server_ip='raspberrypi'#'127.0.1.1'
     spec_read_loc=spec_share_loc+'commands/from_spec/'
     pi_read_loc=pi_share_loc+'/commands/from_pi/'
     local_config_loc=home_loc+'.autospec_config/' #package_loc+'local_config/'
@@ -173,10 +190,12 @@ elif opsys=='Windows':
     spec_share_loc='\\\\'+server.upper()+'\\'+spec_share+'\\'
     pi_share_loc='\\\\'+pi_server.upper()+'\\'+pi_share.upper()+'\\'
 
-    spec_write_loc=spec_share_loc+'commands\\from_control\\'
+#     spec_write_loc=spec_share_loc+'commands\\from_control\\'
+    spec_server_ip='192.168.5.47'
     spec_temp_loc=spec_share_loc+'temp\\'
     
-    pi_write_loc=pi_share_loc+'commands\\from_control\\'
+#     pi_write_loc=pi_share_loc+'commands\\from_control\\'
+    pi_server_ip='raspberrypi'#'127.0.1.1'
     spec_read_loc=spec_share_loc+'commands\\from_spec\\'
     pi_read_loc=pi_share_loc+'commands\\from_pi\\'
     local_config_loc=home_loc+'.autospec_config\\' #package_loc+'local_config\\'
@@ -188,10 +207,13 @@ elif opsys=='Mac':
     spec_share_loc='/Volumes/'+spec_share_Mac+'/'
     pi_share_loc='/Volumes/'+pi_share_Mac+'/'
     delimiter='/'
-    spec_write_loc=spec_share_loc+'commands/from_control/'
+#     spec_write_loc=spec_share_loc+'commands/from_control/'
+    spec_server_ip='192.168.5.47'
+#     spec_write_loc='192.168.5.47'
     spec_temp_loc=spec_share_loc+'temp/'
     
-    pi_write_loc=pi_share_loc+'commands/from_control/'
+#     pi_write_loc=pi_share_loc+'commands/from_control/'
+    pi_server_ip='raspberrypi'#'127.0.1.1'
     spec_read_loc=spec_share_loc+'commands/from_spec/'
     pi_read_loc=pi_share_loc+'commands/from_spec/'
     local_config_loc=home_loc+'.autospec_config/' #package_loc+'local_config/'
@@ -209,70 +231,38 @@ def exit_func():
 
 def main():
     #Check if you are connected to the server. If not, put up dialog box and wait. If you are connected, go on to main part 2.
-    spec_connection_checker=SpecConnectionChecker(spec_read_loc, func=main_part_2)
+    spec_connection_checker=SpecConnectionChecker(spec_server_ip, func=main_part_2)
     print('Checking spectrometer computer connection...')
-    connected = spec_connection_checker.check_connection(True)
-    if connected:
-        print('Connected.')
-    else:
-        print('Not connected.')
+    connected = spec_connection_checker.check_connection(listening_port=SPEC_PORT)
+    if not connected:
+        global SPEC_OFFLINE
+        SPEC_OFFLINE=True
+        print('Not connected')
 
+ 
 #repeat check for raspi
 def main_part_2():
-    pi_connection_checker=PiConnectionChecker(pi_read_loc, func=main_part_3)
+    
+    pi_connection_checker=PiConnectionChecker(pi_server_ip, func=main_part_3)
     print('Checking raspberry pi connection...')
-    connected=pi_connection_checker.check_connection(True)
-    if connected:
-        print('Connected.')
-    else:
-        print('Not connected.')
+    connected=pi_connection_checker.check_connection(listening_port=PI_PORT)
+    if not connected:
+        global PI_OFFLINE
+        PI_OFFLINE=True
+        print('Not connected')
 
 def main_part_3():
-    #Clean out your read and write directories for commands. Prevents confusion based on past instances of the program.
-    if not SPEC_OFFLINE:
-        print('Emptying spec command folder...')
-        delme=os.listdir(spec_write_loc)
-        delme2=os.listdir(spec_read_loc)
-        print(str(len(delme)+len(delme2))+' files to delete')
-        for file in delme:
-            os.remove(spec_write_loc+file)
-        for file in delme2:
-            os.remove(spec_read_loc+file)
-
-        print('Emptying spec temporary data folder...')
-        delme=os.listdir(spec_temp_loc)
-        print(str(len(delme))+' files to delete')
-        for file in delme:
-            os.remove(spec_temp_loc+file)
-            
-    if not PI_OFFLINE:
-        print('Emptying pi command folder...')
-        delme=os.listdir(pi_write_loc)
-        print(str(len(delme))+' files to delete')
-        for file in delme:
-            os.remove(pi_write_loc+file)
-        delme=os.listdir(pi_read_loc)
-        print(str(len(delme))+' files to delete')
-        for file in delme:
-            try:
-                os.remove(pi_read_loc+file)
-            except:
-                time.sleep(2)
-                try:
-                    os.remove(pi_read_loc+file)
-                except(FileNotFoundError):
-                    pass
     
     #Create a listener, which listens for commands, and a controller, which manages the model (which writes commands) and the view.
-    spec_listener=SpecListener(spec_read_loc)
-    pi_listener=PiListener(pi_read_loc)
+    spec_listener=SpecListener(spec_server_ip)
+    pi_listener=PiListener(pi_server_ip)
 
     icon_loc=package_loc+'exception'#eventually someone should make this icon thing work. I haven't!
     
-    control=Controller(spec_listener, pi_listener,spec_share_loc, spec_read_loc,spec_write_loc, spec_temp_loc, pi_write_loc, local_config_loc,global_config_loc, opsys, icon_loc)
+    control=Controller(spec_listener, pi_listener,spec_share_loc, spec_read_loc,spec_server_ip, spec_temp_loc, pi_server_ip, local_config_loc,global_config_loc, opsys, icon_loc)
 
 class Controller():
-    def __init__(self, spec_listener, pi_listener,spec_share_loc, spec_read_loc, spec_write_loc,spec_temp_loc, pi_write_loc,local_config_loc, global_config_loc,opsys,icon):
+    def __init__(self, spec_listener, pi_listener,spec_share_loc, spec_read_loc, spec_server_ip,spec_temp_loc, pi_server_ip,local_config_loc, global_config_loc,opsys,icon):
         self.spec_listener=spec_listener
         self.spec_listener.set_controller(self)
         self.spec_listener.start()
@@ -283,12 +273,13 @@ class Controller():
         
         self.spec_read_loc=spec_read_loc
         self.spec_share_loc=spec_share_loc
-        self.spec_write_loc=spec_write_loc
+        self.spec_server_ip=spec_server_ip
         self.spec_temp_loc=spec_temp_loc
         
-        self.pi_write_loc=pi_write_loc
-        self.spec_commander=SpecCommander(self.spec_write_loc,self.spec_listener)
-        self.pi_commander=PiCommander(self.pi_write_loc,self.pi_listener)
+        self.pi_server_ip=pi_server_ip
+        self.spec_commander=SpecCommander(self.spec_server_ip,self.spec_listener)
+#         self.spec_commander=SpecCommander(self.spec_ip_address,self.spec_listener)
+        self.pi_commander=PiCommander(self.pi_server_ip,self.pi_listener)
         
         self.remote_directory_worker=RemoteDirectoryWorker(self.spec_commander, self.spec_read_loc, self.spec_listener)
         
@@ -2700,7 +2691,7 @@ class Controller():
         
     
     def check_connection(self):
-        self.connection_checker.check_connection(False)
+        self.connection_checker.check_connection()
     
     def configure_instrument(self):
         self.spec_commander.configure_instrument(self.instrument_config_entry.get())
@@ -3527,6 +3518,19 @@ class Controller():
             else:
                 self.script_running=False
                 self.queue=[]
+        elif cmd=='print_movements()':
+            print(len(self.goniometer_view.movements['i']))
+            print(len(self.goniometer_view.movements['e']))
+            print(len(self.goniometer_view.movements['az']))
+            print()
+            print(self.goniometer_view.movements)
+            print()
+            
+            if len(self.queue)>0:
+                self.next_in_queue()
+            else:
+                self.script_running=False
+                self.queue=[]
             
             
             
@@ -3569,7 +3573,21 @@ class Controller():
                 print('NO PATH FOUND')
                 self.log('Error: Cannot find a path from current geometry to i= '+str(i)+', e='+str(e)+', az='+str(az))
                 
-            else:
+#                 movements=self.get_movements(e, i, az, current_motor=current_motor)
+#                 if movements==None:
+#                     movements=self.get_movements(-1*i, -1*e, az, current_motor=current_motor)
+#                     if movements==None:
+#                         movements=self.get_movements(-1*e, -1*i, az, current_motor=current_motor)
+#                 
+#                 if movements==None:
+#                     print('NO PATH FOUND')
+#                     self.log('Error: Cannot find a path from current geometry to i= '+str(i)+', e='+str(e)+', az='+str(az))
+#                 else:
+#                     print('RECIPROCAL')
+#                     self.log('Warning! Using reciprocal geometry instead for '+str(e)+' '+str(i)+' '+str(az))
+                
+                
+            if movements!=None:
                 temp_queue=[]
         
                 for movement in movements:
@@ -5128,7 +5146,7 @@ class Controller():
         
         #check if the fiber optic cable will hit the light source arm
         #start by defining a list of positions of the light source arm
-        if True: 
+        if False: #Fiber optic tucked under incidence arm, no collision possible. 
             arm_positions=[]
             arm_bottom_i=90
             arm_bottom_az=az-90 
@@ -5856,7 +5874,6 @@ class CommandHandler():
         self.wait_dialog=self.controller.wait_dialog 
         self.controller.freeze()
         
-        #if self.controller.manual_automatic.get()==1 and len(self.controller.queue)>1:
         if len(self.controller.queue)>1:
             buttons={
                 'pause':{
@@ -6474,7 +6491,7 @@ class MotionHandler(CommandHandler):
             
         elif 'tray' in self.label:
             try:
-                print(self.steps) #For some reason sometimes get an error saying MotionHandler has no attribute self.steps
+                x=self.steps #For some reason sometimes get an error saying MotionHandler has no attribute self.steps
             except:
                 self.steps=False
             if self.steps==False: #If we're specifying a position, not a number of motor steps
@@ -6956,8 +6973,10 @@ class RemoteFileExplorer(Dialog):
                 
         elif status=='listdirfailed':
             if self.current_parent==None:
-                print('setting to RiceData')
-                self.current_parent='R:\\RiceData'
+#                 print('setting to RiceData')
+#                 self.current_parent='R:\\RiceData'
+#                 self.expand(newparent='C:\\Users')
+                self.current_parent='C:\\Users'
                 # self.current_parent='\\'.join(newparent.split('\\')[:-1])
                 # if self.current_parent=='':
                 #     self.current_parent='C:\\Users'
@@ -7060,28 +7079,24 @@ class RemoteDirectoryWorker():
             #print('looking for '+cmdfilename)
             #If we get a file back with a list of the contents, replace the old listbox contents with new ones.
             #The cmdfilename should be e.g. listdir&R=+RiceData+Kathleen+spectral_data
-            if cmdfilename in self.listener.queue:
-                contents=[]
-                with open(self.read_command_loc+cmdfilename,'r') as f:
-                    next=f.readline().strip('\n')
-                    while next!='':
-                        contents.append(next)
-                        next=f.readline().strip('\n')
-                self.listener.queue.remove(cmdfilename)
-                return contents
+            for item in self.listener.queue:
+                if cmdfilename in item:
+                    contents=item.split('&')[1:]
+                    self.listener.queue.remove(item)
+                    return contents
+                    
+                elif 'listdirfailed' in self.listener.queue:
+                    self.listener.queue.remove('listdirfailed')
+                    return 'listdirfailed'
+                    
+                elif 'listdirfailedpermission' in self.listener.queue:
+                    self.listener.queue.remove('listdirfailedpermission')
+                    return 'listdirfailedpermission'
                 
-            elif 'listdirfailed' in self.listener.queue:
-                self.listener.queue.remove('listdirfailed')
-                return 'listdirfailed'
+                elif 'listfilesfailed' in self.listener.queue:
+                    self.listener.queue.remove('listfilesfailed')
+                    return 'listfilesfailed'
                 
-            elif 'listdirfailedpermission' in self.listener.queue:
-                self.listener.queue.remove('listdirfailedpermission')
-                return 'listdirfailedpermission'
-            
-            elif 'listfilesfailed' in self.listener.queue:
-                self.listener.queue.remove('listfilesfailed')
-                return 'listfilesfailed'
-            
             time.sleep(INTERVAL)
             self.timeout_s-=INTERVAL 
         return 'timeout'
@@ -7227,14 +7242,18 @@ class Listener(Thread):
         self.read_command_loc=read_command_loc
         self.controller=None
         self.queue=[]
-        self.cmdfiles0=[]
-        if not OFFLINE:
-            self.cmdfiles0=os.listdir(self.read_command_loc)
 
     def run(self):
+        i=0
         while True:
-            if not OFFLINE:
-                connection=self.connection_checker.check_connection(False)
+            if not OFFLINE and i%20==0:
+                print('check')
+                connection=self.connection_checker.check_connection(timeout=8)
+                
+                    
+            else:
+                self.listen()
+            i+=1
             time.sleep(INTERVAL)
             
     def listen(self):
@@ -7246,44 +7265,36 @@ class Listener(Thread):
 
     
 class PiListener(Listener):
-    def __init__(self, read_command_loc,test=False):
-       
-
-        super().__init__(read_command_loc,PI_OFFLINE)
-        self.connection_checker=PiConnectionChecker(read_command_loc,controller=self.controller, func=self.listen)
+    def __init__(self, pi_server_ip,test=False):
+        super().__init__(pi_server_ip,PI_OFFLINE)
+        self.connection_checker=PiConnectionChecker(pi_server_ip, controller=self.controller, func=self.listen)
+        self.local_server=ControlServer(port=PI_PORT)
+        if not PI_OFFLINE:
+            client=ControlClient((pi_server_ip,12345),'setcontrolserveraddress&'+self.local_server.ip_address+'&'+str(PI_PORT), PI_PORT)
+        thread=Thread(target=self.local_server.listen)
+        thread.start()
+        
+    def send_control_address(self):
+        client=ControlClient((pi_server_ip,12345),'setcontrolserveraddress&'+self.local_server.ip_address+'&'+str(PI_PORT), PI_PORT)
         
     def run(self):
+        i=0
+        global PI_OFFLINE #no idea why this declaration is needed, I'm not modifying the value of PI_OFFLINE, but I am getting an unbound local variable error.
         while True:
-            if not PI_OFFLINE:
-                connection=self.connection_checker.check_connection(False)
+            if not PI_OFFLINE and i%20==0:
+                connection=self.connection_checker.check_connection(PI_PORT, timeout=8)
+                if not connection:PI_OFFLINE=True
+            else:
+                self.listen()
+            i+=1
             time.sleep(INTERVAL)
             
     def listen(self):
-        try:
-            self.cmdfiles=os.listdir(self.read_command_loc) 
-            if 'delme' in self.cmdfiles:
-                cmdfiles.remove('delme')
-            #print(self.cmdfiles)
-            if self.controller.opsys=='Windows': #these lines at one point eliminated the lag that is otherwise present when running this software from windows computers. THen the lag came back. It happens because windows is reading from a cache, but I don't know how to force windows to clear the cache for the directory before looking again.
-                with open(self.read_command_loc+'delme', 'w',0) as f:
-                    f.write(self.cmdfiles) 
-                #os.remove(self.read_command_loc+'delme')
-                
-        except:#Happens if there is a network disconnect that hasn't been registered yet.
-            self.cmd_files=self.cmdfiles0
-        if self.cmdfiles==self.cmdfiles0:
-            pass
-        else:
-            for cmdfile in self.cmdfiles:
-                try:
-                    os.remove(self.read_command_loc+cmdfile)
-                except:
-                    #happens if the file is still in use, e.g. not done writing
-                    if cmdfile!='delme':
-                        print('failed to remove '+self.read_command_loc+cmdfile)
-                  
-                if cmdfile not in self.cmdfiles0 and cmdfile !='delme':
-                    cmd, params=decrypt(cmdfile)
+        while len(self.local_server.queue)>0:
+            
+                    message=self.local_server.queue.pop(0)
+                    print(message)
+                    cmd, params=decrypt(message)
 
                     print('Pi read command: '+cmd)
                     if 'donemoving' in cmd:
@@ -7291,41 +7302,46 @@ class PiListener(Listener):
                     elif 'piconfigsuccess' in cmd:
                         self.queue.append('piconfigsuccess')
                     elif 'nopiconfig' in cmd:
-                        self.queue.append('nopiconfig')
-        self.cmdfiles0=list(self.cmdfiles)
-                    
+                        self.queue.append('nopiconfig')                    
 
                         
                         
 class SpecListener(Listener):
-    def __init__(self, read_command_loc):
-        super().__init__(read_command_loc,SPEC_OFFLINE)
-        self.connection_checker=SpecConnectionChecker(read_command_loc,controller=self.controller, func=self.listen)
+    def __init__(self, spec_server_ip):
+        super().__init__(spec_server_ip, SPEC_OFFLINE)
+        self.connection_checker=SpecConnectionChecker(spec_server_ip,controller=self.controller, func=self.listen)
         self.unexpected_files=[]
         self.wait_for_unexpected_count=0
-
         self.alert_lostconnection=True
         self.new_dialogs=True
+        self.local_server=ControlServer(port=SPEC_PORT)
+        if not SPEC_OFFLINE:
+            client=ControlClient((spec_server_ip,12345),'setcontrolserveraddress&'+self.local_server.ip_address+'&'+str(SPEC_PORT), SPEC_PORT)
+        thread=Thread(target=self.local_server.listen)
+        thread.start()
+        
+    def set_control_address(self):
+        client=ControlClient((spec_server_ip,12345),'setcontrolserveraddress&'+self.local_server.ip_address+'&'+str(SPEC_PORT), SPEC_PORT)
+
         
     def run(self):
+        i=0
+        global SPEC_OFFLINE #Not sure why needed (not modifying value) but getting unbound local variable error.
         while True:
-            if not SPEC_OFFLINE:
-                connection=self.connection_checker.check_connection(False)
+            if not SPEC_OFFLINE and i%20==0:
+                connection=self.connection_checker.check_connection(SPEC_PORT, timeout=8)
+                if not connection:SPEC_OFFLINE=True
+            else:
+                self.listen()
+            i+=1
             time.sleep(INTERVAL)
 
             
     def listen(self):
-        try:
-            self.cmdfiles=os.listdir(self.read_command_loc)  
-        except:
-            print('Warning! Error finding files. Lost connection?')
-            self.cmdfiles=self.cmdfiles0
-        if self.cmdfiles==self.cmdfiles0:
-            pass
-        else:
-            for cmdfile in self.cmdfiles:
-                if cmdfile not in self.cmdfiles0:
-                    cmd, params=decrypt(cmdfile)
+
+        while len(self.local_server.queue)>0:
+                    message=self.local_server.queue.pop(0)
+                    cmd, params=decrypt(message)
                     if 'lostconnection' not in cmd:
                         print('Spec read command: '+cmd)
                     if 'savedfile' in cmd:
@@ -7339,7 +7355,7 @@ class SpecListener(Listener):
                                 self.queue.append('listdirfailed')
                         else:
                             #RemoteDirectoryWorker in wait_for_contents is waiting for a file that contains a list of the contents of a given folder on the spec compy. This file will have an encrypted version of the parent directory's path in its title e.g. listdir&R=+RiceData+Kathleen+spectral_data
-                            self.queue.append(cmdfile)  
+                            self.queue.append(message)  
 
                     elif 'wrfailedfileexists' in cmd:
                         self.queue.append('wrfailedfileexists')
@@ -7437,15 +7453,14 @@ class SpecListener(Listener):
                         except:
                             pass #This is probably because the lostconnection file was already removed by spec compy.
 
-                        self.cmdfiles.remove(cmdfile)
                         if self.alert_lostconnection:
                             print('Spec read command: lostconnection')
                             self.alert_lostconnection=False
 
                             buttons={
                                 'retry':{
-                                    self.set_alert_lostconnection:[True]
-                                    },
+                                    self.set_alert_lostconnection:[True],
+                                },
                                 'work offline':{
                                 },
                                 'exit':{
@@ -7475,7 +7490,6 @@ class SpecListener(Listener):
             #This line always prints twice if it's uncommented, I'm not sure why.
             #print('forward!')
 
-        self.cmdfiles0=list(self.cmdfiles)
 
     def set_alert_lostconnection(self,bool):
         self.alert_lostconnection=bool
@@ -7504,23 +7518,14 @@ def numbers_only(input):
     return output
     
 class Commander():
-    def __init__(self, write_command_loc,listener):
-        self.write_command_loc=write_command_loc
+    def __init__(self, remote_server_ip,listener):
         self.listener=listener
         self.cmdnum=0
+        self.remote_server_ip=remote_server_ip
         
-    def send(self,filename):
-        try:
-            file=open(self.write_command_loc+filename,'w')
-        except OSError as e: #For some reason, I am only able to create files, not write content. And when I do create files, I get permission errors all the time. Probably not best, but it works...
-            if e.errno==22 or e.errno==2:
-                pass
-            else:
-                raise e
-        except FileNotFoundError as e:
-            pass
-        except Exception as e:
-            raise e
+        
+    def send(self,filename, listening_port):
+        client=ControlClient((self.remote_server_ip,12345), filename, listening_port)
             
     def remove_from_listener_queue(self,commands):
         for command in commands:
@@ -7539,11 +7544,10 @@ class Commander():
         return filename
     
 class PiCommander(Commander):
-    def __init__(self,write_command_loc,listener):
-        super().__init__(write_command_loc,listener)
-    
+    def __init__(self,pi_server_ip,listener):
+        super().__init__(pi_server_ip,listener)
+        
     def configure(self,i,e,az,pos):
-
         self.remove_from_listener_queue(['piconfigsuccess'])
         filename=self.encrypt('configure',[i,e,az,pos])
         self.send(filename)
@@ -7597,11 +7601,13 @@ class PiCommander(Commander):
             filename=self.encrypt('movetray',[pos,'steps'])
         self.send(filename)
         
+    def send(self, filename):
+        super().send(filename, PI_PORT)
     
 
 class SpecCommander(Commander):
-    def __init__(self,write_command_loc,listener):
-        super().__init__(write_command_loc,listener)
+    def __init__(self,server_ip,listener):
+        super().__init__(server_ip,listener)
     
     def take_spectrum(self, path, basename, num, label, i, e, az):
         self.remove_from_listener_queue(['nonumspectra','noconfig','savedfile','failedtosavefile','savespecfailedfileexists'])
@@ -7683,19 +7689,23 @@ class SpecCommander(Commander):
         filename=self.encrypt('process',[input_dir,output_dir,output_file])
         self.send(filename)
         return filename
+    
+    def send(self, filename):
+        super().send(filename, SPEC_PORT)
         
         
 class ConnectionChecker():
-    def __init__(self,dir,controller=None, func=None):
-        self.dir=dir
+    def __init__(self,server_ip,controller=None, func=None):
+        self.server_ip=server_ip
         self.controller=controller
         self.func=func
         self.busy=False
-    def alert_lost_connection(self, signum=None, frame=None):
+        
+    def alert_lost_connection(self):
         buttons={
             'retry':{
                 self.release:[],
-                self.check_connection:[False]
+                self.check_connection:[6]
                 },
             'work offline':{
                 self.set_work_offline:[]
@@ -7707,11 +7717,11 @@ class ConnectionChecker():
         self.lost_dialog(buttons)
 
 
-    def alert_not_connected(self, signum=None, frame=None):
+    def alert_not_connected(self):
         buttons={
             'retry':{
                 self.release:[],
-                self.check_connection:[True]
+                self.check_connection:[6]
             },
             'work offline':{
                 self.set_work_offline:[],
@@ -7724,48 +7734,48 @@ class ConnectionChecker():
         self.no_dialog(buttons)
         
 
-    def have_internet(self):
-        conn = httplib.HTTPConnection("www.google.com", timeout=5)
+    
+    def check_connection(self, listening_port, timeout=3):
+
         try:
-            conn.request("HEAD", "/")
-            conn.close()
-            return True
-        except:
-            conn.close()
-            return False
-    
-    
-    def check_connection(self,firstconnection, attempt=0):
-        if self.get_offline():
+            client=ControlClient((self.server_ip,12345),'test', listening_port, timeout=timeout)
             self.func()
             return True
-        if self.busy:
-            return
+        except Exception as e:
+            print(e)
+            self.alert_not_connected()
+            return False
+        
+#         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#         sock.settimeout(timeout)
+#         try:
+#             sock.connect((self.server_ip,12345))
+#             self.func()
+#             return True
+#         except socket.timeout:
+#             print('socket timeout')
+#             self.alert_not_connected()
+#             return False
+#         except BlockingIOError:
+#             print('Blocking')
+#             self.func()
+#             return True
+#             
+#         except ConnectionRefusedError:
+#             print('Connection Refused.')
+#             self.alert_not_connected()
+#             return False
+#         except:
+#             e = sys.exc_info()
+#             print(e)
+#             self.alert_not_connected()
+#             return False
+#         finally:
+#             print('closing')
+#             sock.close()
+#             
 
-            
-        self.busy=True
-        connected=True
-        if self.have_internet()==False:
-            connected=False
-        else: 
-            connected=os.path.isdir(self.dir)                
-        if connected==False:
-            #For some reason reconnecting only seems to work on the second attempt. This seems like a pretty poor way to handle that, but I just call check_connection twice if it fails the first time.
-            if attempt>0 and firstconnection==True:
-                self.alert_not_connected(None, None)
-                return False
-            elif attempt>0 and firstconnection==False:
-                self.alert_lost_connection(None, None)
-                return False
-            else:
-                time.sleep(0.5)
-                self.release()
-                self.check_connection(firstconnection, attempt=1)
-        else:
-            if self.func !=None:
-                self.func()
-            self.release()
-            return True
+        
     def release(self):
         self.busy=False
 
@@ -7792,8 +7802,8 @@ class PretendEvent():
         self.height=height
 
 class SpecConnectionChecker(ConnectionChecker):
-    def __init__(self,dir,controller=None, func=None):
-        super().__init__(dir,controller=controller, func=func)
+    def __init__(self,server_ip,controller=None, func=None):
+        super().__init__(server_ip,controller=controller, func=func)
         
     def set_work_offline(self):
         global SPEC_OFFLINE
@@ -7814,8 +7824,8 @@ class SpecConnectionChecker(ConnectionChecker):
         except:
             pass
 class PiConnectionChecker(ConnectionChecker):
-    def __init__(self,dir,controller=None, func=None):
-        super().__init__(dir,controller=controller, func=func)
+    def __init__(self,server_ip,controller=None, func=None):
+        super().__init__(server_ip,controller=controller, func=func)
         
     def set_work_offline(self):
         global PI_OFFLINE

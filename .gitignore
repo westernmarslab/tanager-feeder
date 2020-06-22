@@ -8,3 +8,4 @@ AutoSpec.egg-info/
 .project
 .pydevproject
 movement_generator.py
+tanager_feeder/test_client.py
