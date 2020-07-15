@@ -1,8 +1,6 @@
 #The controller runs the main thread controlling the program.
 #It opens a Tkinter GUI with options for instrument control parameters and sample configuration
 #The user can use the GUI to operate the goniometer motors and the spectrometer software.
-from pythonwin.pywin.scintilla.bindings import next_id
-from warnings import _next_external_frame
 
 global SPEC_OFFLINE
 SPEC_OFFLINE=False
@@ -10,11 +8,11 @@ SPEC_OFFLINE=False
 global PI_OFFLINE
 PI_OFFLINE=False
 
-
 dev=True
 
 import os
 import sys
+# print(sys.executable) #prints path to python
 import platform
 import socket
 
@@ -108,9 +106,8 @@ import goniometer_view
 from goniometer_view import GoniometerView
 import plotter
 from plotter import Plotter
-import control_tcp
-from control_tcp import ControlClient
-from control_tcp import ControlServer
+from tanager_tcp import TanagerClient
+from tanager_tcp import TanagerServer
 #import verticalscrolledframe
 
 #This is needed because otherwise changes won't show up until you restart the shell. Not needed if you aren't changing the modules.
@@ -121,8 +118,8 @@ if dev:
         importlib.reload(plotter)
         from plotter import Plotter
         importlib.reload(control_tcp)
-        from control_tcp import ControlServer
-        from control_tcp import ControlClient
+        from tanager_tcp import TanagerClient
+        from tanager_tcp import TanagerServer
     except:
         print('Not reloading modules')
 #Server and share location. Can change if spectroscopy computer changes.
@@ -425,7 +422,7 @@ class Controller():
         # create more pulldown menus
         editmenu = Menu(self.menubar, tearoff=0)
         editmenu.add_command(label="Failsafes...", command=self.show_settings_frame)
-        editmenu.add_command(label="Plot settings...", command=self.show_plot_settings_frame)
+#         editmenu.add_command(label="Plot settings...", command=self.show_plot_settings_frame)
         self.menubar.add_cascade(label="Settings", menu=editmenu)
         
 
@@ -3555,9 +3552,7 @@ class Controller():
                     self.script_running=False
                     self.queue=[]
                     return    
-        
-            
-            
+
             i=int(params[0])
             e=int(params[1])
             az=int(params[2])
@@ -3876,7 +3871,7 @@ class Controller():
                 }
             }
             dialog=Dialog(self,title='Error: File Exists',label='Error: Specified output file already exists.\n\n'+self.full_process_output_path+'\n\nDo you want to overwrite this data?',buttons=buttons)
-            dialog.geometry('376x175')
+            dialog.top.wm_geometry('376x175')
             return False
         else:
             return True
@@ -3957,10 +3952,22 @@ class Controller():
             final_log_destination=log_base+'_'+str(i)
             i+=1
         final_log_destination+='.txt'
-        print('moving data to '+final_data_destination)
-        shutil.move(self.spec_temp_loc+'proc_temp.csv',final_data_destination)
-        print('moving log to '+final_log_destination)
-        shutil.move(self.spec_temp_loc+'proc_temp_log.txt',final_log_destination)
+        
+        for item in self.spec_listener.queue:
+            if 'spec_data' in item:
+                spec_data=item['spec_data']
+                print('Writing data to '+final_data_destination)
+                with open(final_data_destination, 'w+') as f:
+                    f.write(spec_data)
+        print('data written')
+
+        
+        for item in self.spec_listener.queue:
+            if 'log_data' in item:
+                log_data=item['log_data']
+                print('Writing log file to '+final_log_destination)
+                with open(final_log_destination, 'w+') as f:
+                    f.write(log_data)
         
     def open_options(self, tab,current_title):
         #If the user already has dialogs open for editing the plot, close the extras to avoid confusion.
@@ -4084,7 +4091,159 @@ class Controller():
         self.zoom_label_z1.pack(side=RIGHT,padx=self.padx)
         
         
+    def open_plot_settings(self, tab):
+        def select_tab():
+            self.view_notebook.select(tab.top)
         
+        def set_title():
+            tab.set_title(self.title_entry.get())
+        
+        def set_color():
+            print('set!')
+        
+        def set_linestyle():
+            print('set!')
+            
+        tab.freeze() #You have to finish dealing with this before, say, opening another analysis box.
+        buttons={
+#             'reset':{
+#                 select_tab:[],
+#                 tab.reset:[],
+#             },
+            'close':{}
+        }
+        
+        #If the user already has analysis tools or a plot editing dialog open, close the extra to avoid confusion.
+        try:
+            self.plot_settings_dialog.top.destroy()
+        except:
+            pass
+        try:
+            self.analysis_dialog.top.destroy()
+        except:
+            pass
+        try:
+            self.edit_plot_dialog.top.destroy()
+        except:
+            pass
+        try:
+            self.plot_options_dialog.top.destroy()
+        except:
+            pass
+        self.plot_settings_dialog=VerticalScrolledDialog(self,'Plot Settings','',buttons=buttons,button_width=13, min_height=200, width=300)
+        self.plot_settings_dialog.top.wm_geometry('300x400')
+        self.plot_settings_dialog.top.attributes('-topmost', True)
+        
+        self.outer_title_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
+        self.outer_title_frame.pack(expand=True,fill=BOTH)
+
+        self.title_frame=Frame(self.outer_title_frame,bg=self.bg,padx=self.padx,pady=15)
+        self.title_frame.pack(fill=BOTH, expand=True)
+
+        self.title_label=Label(self.title_frame,text='Plot title:',bg=self.bg,fg=self.textcolor)
+        self.title_entry=Entry(self.title_frame, width=20, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+        self.title_button=Button(self.title_frame,text='Apply',  command=set_title,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
+        self.title_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
+        self.title_button.pack(side=RIGHT,padx=(10,20))
+        self.title_entry.pack(side=RIGHT,padx=self.padx)
+        self.title_label.pack(side=RIGHT,padx=self.padx)
+        
+        self.outer_color_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
+        self.outer_color_frame.pack(expand=True,fill=BOTH)
+        self.color_label=Label(self.outer_color_frame,text='Color settings',bg=self.bg,fg=self.textcolor)
+        self.color_label.pack()
+
+        self.color_frame=Frame(self.outer_color_frame,bg=self.bg,padx=self.padx,pady=15)
+        self.color_frame.pack(fill=BOTH, expand=True)
+        self.color_sample_frame=Frame(self.color_frame,bg=self.bg,padx=30,pady=0)
+        self.color_sample_frame.pack(fill=BOTH, expand=True)
+
+        self.color_sample_label=Label(self.color_sample_frame,text='Sample: ',bg=self.bg,fg=self.textcolor)
+        self.color_sample_label.pack(side=LEFT)
+        self.color_sample_var=StringVar()
+        sample_names=[]
+        repeats=False
+        max_len=0
+        for sample in tab.samples:
+            if sample.name in sample_names:
+                repeats=True
+            else:
+                sample_names.append(sample.name)
+                max_len=np.max([max_len, len(sample.name)])
+        if repeats:
+            sample_names=[]
+            for sample in tab.samples:
+                sample_names.append(sample.title+': '+sample.name)
+                max_len=np.max([max_len, len(sample_names[-1])])
+        self.color_sample_var.set(sample_names[0])
+        self.color_menu=OptionMenu(self.color_sample_frame, self.color_sample_var,*sample_names)
+        self.color_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
+        self.color_menu.pack(side=LEFT)
+        
+        self.color_color_frame=Frame(self.color_frame,bg=self.bg,padx=40,pady=0)
+        self.color_color_frame.pack(fill=BOTH, expand=True)
+        self.color_sample_label=Label(self.color_color_frame,text='Color: ',bg=self.bg,fg=self.textcolor)
+        self.color_sample_label.pack(side=LEFT)
+        self.color_color_var=StringVar()
+        color_names=['Blue','Red','Green','Custom']
+
+        self.color_color_var.set(color_names[0])
+        self.color_menu=OptionMenu(self.color_color_frame, self.color_color_var,*color_names)
+        self.color_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
+        self.color_menu.pack(side=LEFT)
+        self.color_button=Button(self.color_frame,text='Apply',  command=set_color,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
+        self.color_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
+        self.color_button.pack()
+        
+        self.outer_linestyle_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
+        self.outer_linestyle_frame.pack(expand=True,fill=BOTH)
+        self.linestyle_label=Label(self.outer_linestyle_frame,text='Linestyle settings',bg=self.bg,fg=self.textcolor)
+        self.linestyle_label.pack()
+
+        self.linestyle_frame=Frame(self.outer_linestyle_frame,bg=self.bg,padx=self.padx,pady=15)
+        self.linestyle_frame.pack(fill=BOTH, expand=True)
+        self.linestyle_sample_frame=Frame(self.linestyle_frame,bg=self.bg,padx=30,pady=0)
+        self.linestyle_sample_frame.pack(fill=BOTH, expand=True)
+
+        self.linestyle_sample_label=Label(self.linestyle_sample_frame,text='Sample: ',bg=self.bg,fg=self.textcolor)
+        self.linestyle_sample_label.pack(side=LEFT)
+        self.linestyle_sample_var=StringVar()
+        sample_names=[]
+        repeats=False
+        max_len=0
+        for sample in tab.samples:
+            if sample.name in sample_names:
+                repeats=True
+            else:
+                sample_names.append(sample.name)
+                max_len=np.max([max_len, len(sample.name)])
+        if repeats:
+            sample_names=[]
+            for sample in tab.samples:
+                sample_names.append(sample.title+': '+sample.name)
+                max_len=np.max([max_len, len(sample_names[-1])])
+        self.linestyle_sample_var.set(sample_names[0])
+        self.linestyle_menu=OptionMenu(self.linestyle_sample_frame, self.linestyle_sample_var,*sample_names)
+        self.linestyle_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
+        self.linestyle_menu.pack(side=LEFT)
+        
+        self.linestyle_linestyle_frame=Frame(self.linestyle_frame,bg=self.bg,padx=48,pady=0)
+        self.linestyle_linestyle_frame.pack(fill=BOTH, expand=True)
+        self.linestyle_sample_label=Label(self.linestyle_linestyle_frame,text='Style: ',bg=self.bg,fg=self.textcolor)
+        self.linestyle_sample_label.pack(side=LEFT)
+        self.linestyle_linestyle_var=StringVar()
+        linestyle_names=['Solid','Dash','Dott','Dot-dash']
+
+        self.linestyle_linestyle_var.set(linestyle_names[0])
+        self.linestyle_menu=OptionMenu(self.linestyle_linestyle_frame, self.linestyle_linestyle_var,*linestyle_names)
+        self.linestyle_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
+        self.linestyle_menu.pack(side=LEFT)
+        self.linestyle_button=Button(self.linestyle_frame,text='Apply',  command=set_linestyle,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
+        self.linestyle_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
+        self.linestyle_button.pack()
+#         self.color_entry.pack(side=RIGHT,padx=self.padx)
+#         self.color_label.pack(side=RIGHT,padx=self.padx)
+
     def open_analysis_tools(self, tab):
 
         #tab.set_exclude_artifacts(True)
@@ -4196,6 +4355,7 @@ class Controller():
                 pass
             tab.normalize(self.normalize_entry.get())
             
+            
         def offset():
             tab.offset(self.offset_sample_var.get(), self.offset_entry.get())
 
@@ -4206,6 +4366,7 @@ class Controller():
                 x1=float(self.left_zoom_entry.get())
                 x2=float(self.right_zoom_entry.get())
                 tab.adjust_x(x1,x2)
+                self.analysis_dialog.top.lift()
             except:
                 ErrorDialog(self, title='Invalid Zoom Range',label='Error! Invalid x limits: '+self.left_zoom_entry.get()+', '+self.right_zoom_entry.get())
         def apply_y():
@@ -4302,9 +4463,7 @@ class Controller():
         except:
             pass
         self.analysis_dialog=VerticalScrolledDialog(self,'Analyze Data','',buttons=buttons,button_width=13)
-        
-        
-        
+        self.analysis_dialog.top.attributes('-topmost', True)
         
         self.outer_normalize_frame=Frame(self.analysis_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
         self.outer_normalize_frame.pack(expand=True,fill=BOTH)
@@ -5532,8 +5691,8 @@ class Controller():
             self.add_geometry_button.configure(state='disabled')
             self.add_sample_button.configure(state='disabled')
             for pos_menu in self.pos_menus:
-                menu.configure(state='disabled')
-            
+                pos_menu.configure(state='disabled')
+
                     
     def light_close(self):
         self.pi_commander.move_light(self.active_incidence_entries[0].get())
@@ -6138,8 +6297,7 @@ class OptHandler(CommandHandler):
 
         
 class WhiteReferenceHandler(CommandHandler):
-    def __init__(self, controller, title='White referencing...',
-    label='White referencing...'):
+    def __init__(self, controller, title='White referencing...', label='White referencing...'):
         
         timeout_s=int(controller.spec_config_count)/9+30+BUFFER
         self.listener=controller.spec_listener
@@ -6317,28 +6475,21 @@ class ProcessHandler(CommandHandler):
                 if 'processsuccessnocorrection' in self.listener.queue:
                     self.listener.queue.remove('processsuccessnocorrection')
                     warnings='Correction for non-Lambertian properties of\nSpectralon was not applied.'
-                
                 if '.' not in self.outputfile:
                     self.outputfile+='.csv'
 
                 self.controller.log('Files processed. '+warnings.replace('\n',' ' )+'\n\t'+self.outputfile)
-                if self.controller.proc_local_remote=='local': #Move on to finishing the process by transferring the data from temp to final destination
-                    try:
+                if self.controller.proc_local_remote=='local': #Move on to finishing the process by writing the data to its final destination
+#                     try:
                         self.controller.complete_queue_item()
                         self.controller.next_in_queue()
                         self.success()
                         if warnings !='':
                             self.wait_dialog.top.wm_geometry('376x185')
-                    except Exception as e:
-                        print(e)
-                        self.interrupt('Error: Could not transfer data to local folder.')
+#                     except Exception as e:
+#                         print(e)
+#                         self.interrupt('Error: Could not write data to local folder.')
 
-                        #Leave the temp data directory clean
-                        try:
-                            os.remove(self.controller.spec_temp_loc+'proc_temp.csv')
-                            os.remove(self.controller.spec_temp_loc+'proc_temp_log.txt')
-                        except:
-                            pass
                 else: #if the final destination was remote then we're already done.
                     self.success(warnings=warnings)
                     if warnings !='':
@@ -6392,10 +6543,12 @@ class ProcessHandler(CommandHandler):
             self.controller.plot_local_remote='remote'
         else:
             self.controller.plot_local_remote='local'
-        self.wait_dialog.top.wm_geometry('376x130')
         
-        # if len(self.controller.queue)>0:
-        #     self.controller.next_in_queue()
+        if warnings!='':
+            self.wait_dialog.top.wm_geometry('376x130')
+        else:
+            self.wait_dialog.top.wm_geometry('376x100')
+        
         while len(self.controller.queue)>0:
             self.controller.complete_queue_item()
         self.controller.process_top.destroy()
@@ -6434,18 +6587,13 @@ class MotionHandler(CommandHandler):
     def __init__(self, controller, title='Moving...', label='Moving...', buttons={'cancel':{}}, timeout=90, new_sample_loc='foo', steps=False, destination=None):
         self.steps=steps
         self.listener=controller.pi_listener
-        try:
-            super().__init__(controller, title, label,timeout=timeout)
-        except:
-            print('exception in super init in motion handler') #There has been an erro rthat has come up a couple of times saying the motion handler has no attribute self.steps. Maybe because the call to super is silently failing so this method never finishes?
         self.new_sample_loc=new_sample_loc
-        self.steps=steps
         self.destination=destination
-
-
+        super().__init__(controller, title, label,timeout=timeout)
 
 
     def wait(self):
+        print(self.listener)
         while self.timeout_s>0:
             if 'donemoving' in self.listener.queue:
                 self.listener.queue.remove('donemoving')
@@ -6456,16 +6604,15 @@ class MotionHandler(CommandHandler):
                 self.listener.queue.remove('nopiconfig')
                 #self.controller.queue.append({self.controller.set_manual_automatic:[]})
                 self.controller.set_manual_automatic(self,force=1)
-                
                 return
 
             time.sleep(INTERVAL)
             self.timeout_s-=INTERVAL
             
-        
         self.timeout()
+        
     def success(self):
-
+        print(self.listener)
         if 'emission' in self.label:
             self.controller.angles_change_time=time.time()
             self.controller.motor_e=self.destination
@@ -7081,7 +7228,7 @@ class RemoteDirectoryWorker():
             #The cmdfilename should be e.g. listdir&R=+RiceData+Kathleen+spectral_data
             for item in self.listener.queue:
                 if cmdfilename in item:
-                    contents=item.split('&')[1:]
+                    contents=item.replace('+','\\',).replace('=',':').split('&')[2:] #0 is the command listcontents, 1 is the top level folder
                     self.listener.queue.remove(item)
                     return contents
                     
@@ -7268,14 +7415,14 @@ class PiListener(Listener):
     def __init__(self, pi_server_ip,test=False):
         super().__init__(pi_server_ip,PI_OFFLINE)
         self.connection_checker=PiConnectionChecker(pi_server_ip, controller=self.controller, func=self.listen)
-        self.local_server=ControlServer(port=PI_PORT)
+        self.local_server=TanagerServer(port=PI_PORT)
         if not PI_OFFLINE:
-            client=ControlClient((pi_server_ip,12345),'setcontrolserveraddress&'+self.local_server.ip_address+'&'+str(PI_PORT), PI_PORT)
+            client=TanagerClient((pi_server_ip,12345),'setcontrolserveraddress&'+self.local_server.server_address[0]+'&'+str(PI_PORT), PI_PORT)
         thread=Thread(target=self.local_server.listen)
         thread.start()
         
     def send_control_address(self):
-        client=ControlClient((pi_server_ip,12345),'setcontrolserveraddress&'+self.local_server.ip_address+'&'+str(PI_PORT), PI_PORT)
+        client=TanagerClient((pi_server_ip,12345),'setcontrolserveraddress&'+self.local_server.server_address[0]+'&'+str(PI_PORT), PI_PORT)
         
     def run(self):
         i=0
@@ -7291,18 +7438,19 @@ class PiListener(Listener):
             
     def listen(self):
         while len(self.local_server.queue)>0:
+            message=self.local_server.queue.pop(0)
+            cmd, params=decrypt(message)
+            print('Pi read command: '+cmd)
             
-                    message=self.local_server.queue.pop(0)
-                    print(message)
-                    cmd, params=decrypt(message)
+            self.queue.append(cmd)
 
-                    print('Pi read command: '+cmd)
-                    if 'donemoving' in cmd:
-                        self.queue.append('donemoving')
-                    elif 'piconfigsuccess' in cmd:
-                        self.queue.append('piconfigsuccess')
-                    elif 'nopiconfig' in cmd:
-                        self.queue.append('nopiconfig')                    
+#                     print('Pi read command: '+cmd)
+#                     if 'donemoving' in cmd:
+#                         self.queue.append('donemoving')
+#                     elif 'piconfigsuccess' in cmd:
+#                         self.queue.append('piconfigsuccess')
+#                     elif 'nopiconfig' in cmd:
+#                         self.queue.append('nopiconfig')                    
 
                         
                         
@@ -7314,15 +7462,14 @@ class SpecListener(Listener):
         self.wait_for_unexpected_count=0
         self.alert_lostconnection=True
         self.new_dialogs=True
-        self.local_server=ControlServer(port=SPEC_PORT)
+        self.local_server=TanagerServer(port=SPEC_PORT)
         if not SPEC_OFFLINE:
-            client=ControlClient((spec_server_ip,12345),'setcontrolserveraddress&'+self.local_server.ip_address+'&'+str(SPEC_PORT), SPEC_PORT)
+            client=TanagerClient((spec_server_ip,12345),'setcontrolserveraddress&'+self.local_server.server_address[0]+'&'+str(SPEC_PORT), SPEC_PORT)
         thread=Thread(target=self.local_server.listen)
         thread.start()
         
     def set_control_address(self):
-        client=ControlClient((spec_server_ip,12345),'setcontrolserveraddress&'+self.local_server.ip_address+'&'+str(SPEC_PORT), SPEC_PORT)
-
+        client=TanagerClient((spec_server_ip,12345),'setcontrolserveraddress&'+self.local_server.server_address[0]+'&'+str(SPEC_PORT), SPEC_PORT)
         
     def run(self):
         i=0
@@ -7335,158 +7482,248 @@ class SpecListener(Listener):
                 self.listen()
             i+=1
             time.sleep(INTERVAL)
-
             
     def listen(self):
-
         while len(self.local_server.queue)>0:
-                    message=self.local_server.queue.pop(0)
-                    cmd, params=decrypt(message)
-                    if 'lostconnection' not in cmd:
-                        print('Spec read command: '+cmd)
-                    if 'savedfile' in cmd:
-                        #self.saved_files.append(params[0])
-                        self.queue.append('savedfile')
-                    elif 'listdir' in cmd:
-                        if 'listdirfailed' in cmd:
-                            if 'permission' in cmd:
-                                self.queue.append('listdirfailedpermission')
-                            else:
-                                self.queue.append('listdirfailed')
-                        else:
-                            #RemoteDirectoryWorker in wait_for_contents is waiting for a file that contains a list of the contents of a given folder on the spec compy. This file will have an encrypted version of the parent directory's path in its title e.g. listdir&R=+RiceData+Kathleen+spectral_data
-                            self.queue.append(message)  
+            message=self.local_server.queue.pop(0)
+            cmd, params=decrypt(message)
+            
+            if 'lostconnection' not in cmd:
+                print('Spec read command: '+cmd)
+                
+            if cmd=='listdir':
+                #RemoteDirectoryWorker in wait_for_contents is waiting for a file that contains a list of the contents of a given folder on the spec compy. This file will have an encrypted version of the parent directory's path in its title e.g. listdir&R=+RiceData+Kathleen+spectral_data
+                self.queue.append(message)
+                print(message)
+            elif 'spec_data' in cmd:
+                found=False
+                for item in self.queue:
+                    if 'spec_data' in item:
+                        found=True
+                        item['spec_data']=item['spec_data']+'&'.join(params)
+                if not found:
+                    self.queue.append({'spec_data':'&'.join(params)})
+                    
+                if cmd=='spec_data_final':
+                    self.queue.append('spec_data_transferred')
+        
+            elif 'log_data' in cmd:
+                found=False
+                for item in self.queue:
+                    if 'log_data' in item:
+                        found=True
+                        item['log_data']=item['log_data']+'&'.join(params)
+                if not found:
+                    self.queue.append({'log_data':'&'.join(params)})
+                    
+                if cmd=='log_data_final':
+                    self.queue.append('log_data_transferred')
+                    
+            elif 'listcontents' in cmd:
+                self.queue.append(message)
+        
+            elif 'lostconnection' in cmd:
+                if self.alert_lostconnection:
+                    print('Spec read command: lostconnection')
+                    self.alert_lostconnection=False
 
-                    elif 'wrfailedfileexists' in cmd:
-                        self.queue.append('wrfailedfileexists')
-                    elif 'wrfailed' in cmd:
-                        self.queue.append('wrfailed')
-                        
-                    elif 'failedtosavefile' in cmd:
-                        self.queue.append('failedtosavefile')
-                    elif 'processsuccessnocorrection' in cmd:
-                        self.queue.append('processsuccessnocorrection')
-                    elif 'processsuccessnolog' in cmd:
+                    buttons={
+                        'retry':{
+                            self.set_alert_lostconnection:[True],
+                        },
+                        'work offline':{
+                        },
+                        'exit':{
+                            exit_func:[]
+                        }
+                    }
+                    try:
+                        dialog=ErrorDialog(controller=self.controller, title='Lost Connection',label='Error: RS3 has no connection with the spectrometer.\nCheck that the spectrometer is on.\n\nNote that RS3 can take some time to connect to the spectrometer.\nBe patient and wait for the dot at the lower right of RS3 to turn green.',buttons=buttons,button_width=15, width=600)
+                    except:
+                        print('Ignoring an error in Listener when I make a new error dialog')
+            
+            elif 'unexpectedfile' in cmd:
+                if self.new_dialogs:
+                    try:
+                        dialog=ErrorDialog(self.controller, title='Untracked Files',label='There is an untracked file in the data directory.\nDoes this belong here?\n\n'+params[0])
+                    except:
+                        print('Ignoring an error in Listener when I make a new error dialog')
+                else:
+                    self.unexpected_files.append(params[0])
 
-                        self.queue.append('processsuccessnolog')
-                    elif 'processsuccess' in cmd:
-                        self.queue.append('processsuccess')
+            else:
+                self.queue.append(cmd)
                         
-                    elif 'processerrorfileexists' in cmd:
-                        self.queue.append('processerrorfileexists')
-                    
-                    elif 'processerrorwropt' in cmd:
-                        self.queue.append('processerrorwropt')
-                    elif 'processerrornodirectory' in cmd:
-                        self.queue.append('processerrornodirectory')
-                    elif 'processerror' in cmd:
-                        self.queue.append('processerror')
-                    
-                    elif 'wrsuccess' in cmd:
-                        self.queue.append('wrsuccess')
-                    
-                    elif 'donelookingforunexpected' in cmd:
-                        self.queue.append('donelookingforunexpected')
-                    
-                    elif 'saveconfigerror' in cmd:
-                        self.queue.append('saveconfigerror')
-                    
-                    elif 'saveconfigsuccess' in cmd:
-                        self.queue.append('saveconfigsuccess')
-                    
-                    elif 'noconfig' in cmd:
-                        print("Spectrometer computer doesn't have a file configuration saved (python restart over there?). Setting to current configuration.")
-                        self.queue.append('noconfig')
-                    
-                    elif 'nonumspectra' in cmd:
-                        print("Spectrometer computer doesn't have an instrument configuration saved (python restart over there?). Setting to current configuration.")
-                        self.queue.append('nonumspectra')
-                    
-                    elif 'saveconfigfailedfileexists' in cmd:
-                        self.queue.append('saveconfigfailedfileexists')
                         
-                    elif 'saveconfigfailed' in cmd:
-                        self.queue.append('saveconfigfailed')
-                        
-                    elif 'savespecfailedfileexists' in cmd:
-                        self.queue.append('savespecfailedfileexists')
-                    
-    
-                    elif 'listcontents' in cmd:
-                        self.queue.append(cmdfile)  
-                    
-                    elif 'mkdirsuccess' in cmd:
-                        self.queue.append('mkdirsuccess')
-                    
-                    elif 'mkdirfailedfileexists' in cmd:
-                        self.queue.append('mkdirfailedfileexists')
-                    elif 'mkdirfailed' in cmd:
-                        self.queue.append('mkdirfailed')
-                    
-                    elif 'iconfigsuccess' in cmd:
-                        self.queue.append('iconfigsuccess')
-                        
-                    elif 'datacopied' in cmd:
-                        self.queue.append('datacopied')
-                        
-                    elif 'datafailure' in cmd:
-                        self.queue.append('datafailure')
-                    
-                    elif 'iconfigfailure' in cmd:
-                        self.queue.append('iconfigfailure')
-                        
-                    elif 'optsuccess' in cmd:
-                        self.queue.append('optsuccess')
-                    
-                    elif 'optfailure' in cmd:
-                        self.queue.append('optfailure')
-                        
-                    elif 'notwriteable' in cmd:
-                        self.queue.append('notwriteable')
-                        
-                    elif 'yeswriteable' in cmd:
-                        self.queue.append('yeswriteable')
-                        
-                    elif 'lostconnection' in cmd:
-                        try:
-                            os.remove(self.read_command_loc+cmdfile)
-                        except:
-                            pass #This is probably because the lostconnection file was already removed by spec compy.
 
-                        if self.alert_lostconnection:
-                            print('Spec read command: lostconnection')
-                            self.alert_lostconnection=False
-
-                            buttons={
-                                'retry':{
-                                    self.set_alert_lostconnection:[True],
-                                },
-                                'work offline':{
-                                },
-                                'exit':{
-                                    exit_func:[]
-                                }
-                            }
-                            try:
-                                dialog=ErrorDialog(controller=self.controller, title='Lost Connection',label='Error: RS3 has no connection with the spectrometer.\nCheck that the spectrometer is on.\n\nNote that RS3 can take some time to connect to the spectrometer.\nBe patient and wait for the dot at the lower right of RS3 to turn green.',buttons=buttons,button_width=15, width=600)
-                            except:
-                                print('Ignoring an error in Listener when I make a new error dialog')
-                    elif 'rmsuccess' in cmd:
-                        self.queue.append('rmsuccess')
-    
-                    elif 'rmfailure' in cmd:
-                        self.queue.append('rmfailure')
-                        
-                    elif 'unexpectedfile' in cmd:
-                        if self.new_dialogs:
-                            try:
-                                dialog=ErrorDialog(self.controller, title='Untracked Files',label='There is an untracked file in the data directory.\nDoes this belong here?\n\n'+params[0])
-                            except:
-                                print('Ignoring an error in Listener when I make a new error dialog')
-                        else:
-                            self.unexpected_files.append(params[0])
-                    else:
-                        print('unexpected cmd: '+cmdfile)
+#                     if 'savedfile' in cmd:
+#                         #self.saved_files.append(params[0])
+#                         self.queue.append('savedfile')
+#                     elif 'listdir' in cmd:
+#                         if 'listdirfailed' in cmd:
+#                             if 'permission' in cmd:
+#                                 self.queue.append('listdirfailedpermission')
+#                             else:
+#                                 self.queue.append('listdirfailed')
+#                         else:
+#                             #RemoteDirectoryWorker in wait_for_contents is waiting for a file that contains a list of the contents of a given folder on the spec compy. This file will have an encrypted version of the parent directory's path in its title e.g. listdir&R=+RiceData+Kathleen+spectral_data
+#                             self.queue.append(message)  
+#                             print(message)
+# 
+#                     elif 'wrfailedfileexists' in cmd:
+#                         self.queue.append('wrfailedfileexists')
+#                         
+#                     elif 'wrfailed' in cmd:
+#                         self.queue.append('wrfailed')
+#                         
+#                     elif 'failedtosavefile' in cmd:
+#                         self.queue.append('failedtosavefile')
+#                         
+#                     elif 'processsuccessnocorrection' in cmd:
+#                         self.queue.append('processsuccessnocorrection')
+#                         
+#                     elif 'processsuccessnolog' in cmd:
+#                         self.queue.append('processsuccessnolog')
+#                         
+#                     elif 'processsuccess' in cmd:
+#                         self.queue.append('processsuccess')
+#                         
+#                     elif 'processerrorfileexists' in cmd:
+#                         self.queue.append('processerrorfileexists')
+#                     
+#                     elif 'processerrorwropt' in cmd:
+#                         self.queue.append('processerrorwropt')
+#                         
+#                     elif 'processerrornodirectory' in cmd:
+#                         self.queue.append('processerrornodirectory')
+#                         
+#                     elif 'processerror' in cmd:
+#                         self.queue.append('processerror')
+#                         
+#                     elif 'spec_data' in cmd:
+#                         found=False
+#                         for item in self.queue:
+#                             if 'spec_data' in item:
+#                                 found=True
+#                                 item['spec_data']=item['spec_data']+'&'.join(params)
+#                         if not found:
+#                             self.queue.append({'spec_data':'&'.join(params)})
+#                             
+#                         if cmd=='spec_data_final':
+#                             self.queue.append('spec_data_transferred')
+#                 
+#                     elif 'log_data' in cmd:
+#                         found=False
+#                         for item in self.queue:
+#                             if 'log_data' in item:
+#                                 found=True
+#                                 item['log_data']=item['log_data']+'&'.join(params)
+#                         if not found:
+#                             self.queue.append({'log_data':'&'.join(params)})
+#                             
+#                         if cmd=='log_data_final':
+#                             self.queue.append('log_data_transferred')
+#                     
+#                     elif 'wrsuccess' in cmd:
+#                         self.queue.append('wrsuccess')
+#                     
+#                     elif 'donelookingforunexpected' in cmd:
+#                         self.queue.append('donelookingforunexpected')
+#                     
+#                     elif 'saveconfigerror' in cmd:
+#                         self.queue.append('saveconfigerror')
+#                     
+#                     elif 'saveconfigsuccess' in cmd:
+#                         self.queue.append('saveconfigsuccess')
+#                     
+#                     elif 'noconfig' in cmd:
+#                         print("Spectrometer computer doesn't have a file configuration saved (python restart over there?). Setting to current configuration.")
+#                         self.queue.append('noconfig')
+#                     
+#                     elif 'nonumspectra' in cmd:
+#                         print("Spectrometer computer doesn't have an instrument configuration saved (python restart over there?). Setting to current configuration.")
+#                         self.queue.append('nonumspectra')
+#                     
+#                     elif 'saveconfigfailedfileexists' in cmd:
+#                         self.queue.append('saveconfigfailedfileexists')
+#                         
+#                     elif 'saveconfigfailed' in cmd:
+#                         self.queue.append('saveconfigfailed')
+#                         
+#                     elif 'savespecfailedfileexists' in cmd:
+#                         self.queue.append('savespecfailedfileexists')
+#                     
+#                     elif 'listcontents' in cmd:
+#                         self.queue.append(message)  
+#                     
+#                     elif 'mkdirsuccess' in cmd:
+#                         self.queue.append('mkdirsuccess')
+#                     
+#                     elif 'mkdirfailedfileexists' in cmd:
+#                         self.queue.append('mkdirfailedfileexists')
+#                     elif 'mkdirfailed' in cmd:
+#                         self.queue.append('mkdirfailed')
+#                     
+#                     elif 'iconfigsuccess' in cmd:
+#                         self.queue.append('iconfigsuccess')
+#                         
+#                     elif 'datacopied' in cmd:
+#                         self.queue.append('datacopied')
+#                         
+#                     elif 'datafailure' in cmd:
+#                         self.queue.append('datafailure')
+#                     
+#                     elif 'iconfigfailure' in cmd:
+#                         self.queue.append('iconfigfailure')
+#                         
+#                     elif 'optsuccess' in cmd:
+#                         self.queue.append('optsuccess')
+#                     
+#                     elif 'optfailure' in cmd:
+#                         self.queue.append('optfailure')
+#                         
+#                     elif 'notwriteable' in cmd:
+#                         self.queue.append('notwriteable')
+#                         
+#                     elif 'yeswriteable' in cmd:
+#                         self.queue.append('yeswriteable')
+#                         
+#                     elif 'lostconnection' in cmd:
+# 
+#                         if self.alert_lostconnection:
+#                             print('Spec read command: lostconnection')
+#                             self.alert_lostconnection=False
+# 
+#                             buttons={
+#                                 'retry':{
+#                                     self.set_alert_lostconnection:[True],
+#                                 },
+#                                 'work offline':{
+#                                 },
+#                                 'exit':{
+#                                     exit_func:[]
+#                                 }
+#                             }
+#                             try:
+#                                 dialog=ErrorDialog(controller=self.controller, title='Lost Connection',label='Error: RS3 has no connection with the spectrometer.\nCheck that the spectrometer is on.\n\nNote that RS3 can take some time to connect to the spectrometer.\nBe patient and wait for the dot at the lower right of RS3 to turn green.',buttons=buttons,button_width=15, width=600)
+#                             except:
+#                                 print('Ignoring an error in Listener when I make a new error dialog')
+#                     elif 'rmsuccess' in cmd:
+#                         self.queue.append('rmsuccess')
+#     
+#                     elif 'rmfailure' in cmd:
+#                         self.queue.append('rmfailure')
+#                         
+#                     elif 'unexpectedfile' in cmd:
+#                         if self.new_dialogs:
+#                             try:
+#                                 dialog=ErrorDialog(self.controller, title='Untracked Files',label='There is an untracked file in the data directory.\nDoes this belong here?\n\n'+params[0])
+#                             except:
+#                                 print('Ignoring an error in Listener when I make a new error dialog')
+#                         else:
+#                             self.unexpected_files.append(params[0])
+#                     else:
+#                         print('unexpected cmd: '+cmd)
             #This line always prints twice if it's uncommented, I'm not sure why.
             #print('forward!')
 
@@ -7525,12 +7762,23 @@ class Commander():
         
         
     def send(self,filename, listening_port):
-        client=ControlClient((self.remote_server_ip,12345), filename, listening_port)
+        client=TanagerClient((self.remote_server_ip,12345), filename, listening_port)
             
     def remove_from_listener_queue(self,commands):
         for command in commands:
             while command in self.listener.queue:
                 self.listener.queue.remove(command)
+                
+        for command in commands:
+            if command=='spec_data':
+                for item in self.listener.queue:
+                    if 'spec_data' in item:
+                        self.listener.queue.remove(item)
+                    
+            if command=='log_data':
+                for item in self.listener.queue:
+                    if 'log_data' in item:
+                        self.listener.queue.remove(item)
             
     def encrypt(self,cmd,parameters=[]):
         filename=cmd+str(self.cmdnum)
@@ -7685,7 +7933,7 @@ class SpecCommander(Commander):
     #     return filename
         
     def process(self,input_dir, output_dir, output_file):
-        self.remove_from_listener_queue(['processsuccess','processerrorfileexists','processerrorwropt','processerror','processsuccess1unknownsample','processsuccessunknownsamples'])
+        self.remove_from_listener_queue(['processsuccess','processerrorfileexists','processerrorwropt','processerror','processsuccess1unknownsample','processsuccessunknownsamples','spec_data','log_data'])
         filename=self.encrypt('process',[input_dir,output_dir,output_file])
         self.send(filename)
         return filename
@@ -7738,7 +7986,7 @@ class ConnectionChecker():
     def check_connection(self, listening_port, timeout=3):
 
         try:
-            client=ControlClient((self.server_ip,12345),'test', listening_port, timeout=timeout)
+            client=TanagerClient((self.server_ip,12345),'test', listening_port, timeout=timeout)
             self.func()
             return True
         except Exception as e:
@@ -7895,7 +8143,7 @@ class VerticalScrolledFrame(Frame):
         self.interior_id = canvas.create_window(0, 0, window=interior,
                                            anchor=NW)
         self.canvas.bind('<Configure>', self._configure_canvas)
-
+        self.width=width
 
     def _configure_canvas(self,event):
         if self.canvas.winfo_height()>self.min_height:
@@ -7909,7 +8157,16 @@ class VerticalScrolledFrame(Frame):
             self.canvas.config(scrollregion=self.canvas.bbox("all"))
         if self.interior.winfo_reqwidth() != self.canvas.winfo_width():
             # update the inner frame's width to fill the canvas
+            if self.canvas.winfo_height()<self.min_height:
+                self.canvas.config(width=self.width-20)
+#                 self.canvas.itemconfigure(self.interior_id, width=self.canvas.winfo_width()-20)
+            else:
+#                 self.canvas.itemconfigure(self.interior_id, width=self.canvas.winfo_width())
+                self.canvas.config(width=self.width)
+
+            
             self.canvas.itemconfigure(self.interior_id, width=self.canvas.winfo_width())
+
     
     def update(self, controller_resize=True):
         self._configure_canvas(None)

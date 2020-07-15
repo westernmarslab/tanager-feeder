@@ -47,9 +47,8 @@ class ControlServer():
                 # Receive the data in small chunks and retransmit it
                 next_message=b''
                 header=connection.recv(6)
-                print('header')
-                print(header)
                 if len(header)!=6:
+                    raise Exception('Did not receive full header')
                     connection.sendall(header)
                 else:
                     while len(next_message)<int(header):
@@ -103,8 +102,6 @@ class ControlClient():
             address_info+='&'
         
         full_message=header+address_info+base_message
-        if len(full_message)>200:
-            print(message)
         full_message=full_message.encode('utf-8')
         
         try: 

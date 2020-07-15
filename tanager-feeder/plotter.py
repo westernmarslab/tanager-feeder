@@ -16,6 +16,7 @@ import io
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from verticalscrolledframe import VerticalScrolledFrame #slightly different than vsf defined in main
+from Cython.Compiler.Naming import self_cname
 
 #These are related to the region of spectra that are sensitive to polarization artifacts. This is at high phase angles between 1000 and 1400 nm.
 global MIN_WAVELENGTH_ARTIFACT_FREE
@@ -52,7 +53,9 @@ class Plotter():
         initialdir=self.save_dir
                 
         path=None
+        print('asksaveas')
         if initialdir!=None:
+            print('initial dir set to '+self.save_dir)
             path=filedialog.asksaveasfilename(initialdir=initialdir)
         else:
             path=filedialog.asksaveasfilename()
@@ -62,6 +65,7 @@ class Plotter():
             self.save_dir='\\'.join(path.split('\\')[0:-1])
         elif '/' in path:
             self.save_dir='/'.join(path.split('/')[0:-1])
+        print('return')
         return path
         
     def get_index(self, array, val):
@@ -458,6 +462,8 @@ class Tab():
         if self.x_axis=='wavelength' and (self.y_axis=='reflectance' or self.y_axis=='normalized reflectance'):
             self.popup_menu.add_command(label="Edit plot",
                                         command=self.ask_which_samples)
+            self.popup_menu.add_command(label="Plot settings",
+                                        command=self.open_plot_settings)
             self.popup_menu.add_command(label="Open analysis tools",
                                         command=self.open_analysis_tools)
         else:
@@ -543,6 +549,7 @@ class Tab():
     
     def open_options(self):
         self.plotter.controller.open_options(self, self.title)
+        
     def set_title(self,title):
         self.title=title
         self.plotter.notebook.tab(self.top, text = title+' x')
@@ -1338,7 +1345,19 @@ class Tab():
         self.samples=normalized_samples
 
         self.refresh(original=self.original_samples,xlim=self.xlim,y_axis='normalized reflectance') #Let the tab know this data has been modified and we want to hold on to a separate set of original samples. If we're zoomed in, save the xlim but not the ylim (since y scale will be changing)
-        
+    
+    def set_title(self, title):
+        self.plotter.titles.remove(self.notebook_title)
+        self.title=title
+        base=title
+        i=1
+        while title in self.plotter.titles:
+            title=base+' ('+str(i)+')'
+            i=i+1
+        self.notebook_title=title
+        self.plotter.titles.append(self.notebook_title)
+        self.plot.set_title(title)
+    
     def reset(self):
         self.samples=self.original_samples
         self.exclude_artifacts=False
@@ -1353,6 +1372,9 @@ class Tab():
         self.plotter.controller.open_analysis_tools(self)
         #self.plotter.controller.open_data_analysis_tools(self,self.existing_indices,self.sample_options_list)
         
+    def open_plot_settings(self):
+        self.build_sample_lists()
+        self.plotter.controller.open_plot_settings(self)
         
     def build_sample_lists(self):
         #Sample options will be the list of strings to put in the listbox. It may include the sample title, depending on whether there is more than one title.
@@ -1652,15 +1674,18 @@ class Plot():
 
         
     def save(self, fig):
-
+        print('save')
         path=self.plotter.get_path()
+        print(path)
         if not path: return
         if '.' in path:
             available_formats=['eps', 'pdf', 'pgf', 'png', 'ps', 'raw', 'rgba', 'svg', 'svgz']
             format=path.split('.')[-1]
             if format not in available_formats:
                 path=path+'.png'
+        print('figsave')
         fig.savefig(path, facecolor=fig.get_facecolor())
+        print('done')
         
     def set_title(self,title):
         self.title=title
@@ -1848,16 +1873,19 @@ class Plot():
             self.visible_data.append(z)
 
             triang = mtri.Triangulation(x, y)
-            if len(self.contour_levels)>0:  #If we're drawing after user adjusts z manually
-                self.contour=self.plot.tricontourf(triang, z,levels=self.contour_levels)
-            else:
-                self.contour=self.plot.tricontourf(triang, z)
+            if len(self.contour_levels)==0: #contour levels are set here, and also in adjust z if the user does it manually
+                interval=(np.max(z)-np.min(z))/7
+                self.contour_levels=np.arange(np.min(z), np.max(z),interval)
+                self.contour_levels=np.append(self.contour_levels, np.max(z))
+            
+            self.contour=self.plot.tricontourf(triang, z, levels=self.contour_levels)
 
             self.colorbar=self.fig.colorbar(self.contour, ax=self.plot)
             self.plot.plot(x,y,'+',color='white',markersize=5,alpha=0.5)
             
             with plt.style.context(('default')):
-                self.white_contour=self.white_plot.tricontourf(triang, z)
+                self.white_contour=self.white_plot.tricontourf(triang, z, levels=self.contour_levels)
+                
                 self.white_colorbar=self.white_fig.colorbar(self.white_contour, ax=self.white_plot)
                 self.white_colorbar.ax.tick_params(labelsize=14) 
                 self.white_plot.plot(x,y,'+',color='white',markersize=5,alpha=0.5)
@@ -2086,7 +2114,6 @@ class Plot():
         self.set_x_ticks()
         self.set_y_ticks()
         
-        print('done')
 
 
 class NotScrolledFrame(Frame):
