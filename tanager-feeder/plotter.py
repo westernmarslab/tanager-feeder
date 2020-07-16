@@ -16,7 +16,7 @@ import io
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from verticalscrolledframe import VerticalScrolledFrame #slightly different than vsf defined in main
-from Cython.Compiler.Naming import self_cname
+
 
 #These are related to the region of spectra that are sensitive to polarization artifacts. This is at high phase angles between 1000 and 1400 nm.
 global MIN_WAVELENGTH_ARTIFACT_FREE
@@ -287,6 +287,8 @@ class Sample():
         self.file=file
         self.data={}
         self.spectrum_labels=[]
+        self.linestyle='-'
+        self.markerstyle='o'
     
     def add_spectrum(self,spectrum_label, reflectance, wavelengths):
         self.spectrum_labels.append(spectrum_label)
@@ -294,6 +296,12 @@ class Sample():
         self.data[spectrum_label]['reflectance']=reflectance
         self.data[spectrum_label]['wavelength']=wavelengths
     
+    def set_linestyle(self, linestyle):
+        self.linestyle=linestyle
+        
+    def set_markerstyle(self, markerstyle):
+        self.markerstyle=markerstyle
+        
     def add_offset(self, offset, y_axis):
         try:
             offset=float(offset)
@@ -362,6 +370,9 @@ class Sample():
         self.white_index=-1
         
         #self.__next_color=self.colors[0]
+    def restart_color_cycle(self):
+        self.index=-1
+        self.white_index=-1
         
     def next_color(self):
         self.index+=1
@@ -467,8 +478,8 @@ class Tab():
             self.popup_menu.add_command(label="Open analysis tools",
                                         command=self.open_analysis_tools)
         else:
-            self.popup_menu.add_command(label="Options",
-                                        command=self.open_options)
+            self.popup_menu.add_command(label="Plot settings",
+                                        command=self.open_plot_settings)
 
         self.save_menu=Menu(self.popup_menu, tearoff=0)
         self.save_menu.add_command(label="White background",
@@ -486,7 +497,6 @@ class Tab():
 
         self.plotter.menus.append(self.popup_menu)
 
-        print('done')
     def freeze(self):
         self.frozen=True
     def unfreeze(self):
@@ -550,10 +560,10 @@ class Tab():
     def open_options(self):
         self.plotter.controller.open_options(self, self.title)
         
-    def set_title(self,title):
-        self.title=title
-        self.plotter.notebook.tab(self.top, text = title+' x')
-        self.plot.set_title(title)
+#     def set_title(self,title):
+#         self.title=title
+#         self.plotter.notebook.tab(self.top, text = title+' x')
+#         self.plot.set_title(title)
         
     #This is needed so that this can be one of the parts of a dict for buttons: self.view_notebook.select:[lambda:tab.get_top()],.
     #That way when the top gets recreated in refresh, the reset button will get the new one instead of creating errors by getting the old one.
@@ -622,7 +632,6 @@ class Tab():
         for i, sample in enumerate(self.samples):
             if name==sample.name:
                 if title==None or sample.title==title:
-
                     break
         self.samples.pop(i)
         
@@ -634,20 +643,8 @@ class Tab():
             for key2 in sample.data[key]:
                 new_sample.data[key][key2]=list(sample.data[key][key2])
         new_sample.spectrum_labels=list(sample.spectrum_labels)
-        # for sample in self.original_samples:
-        #     print(sample.name)
-        #     for label in sample.spectrum_labels:
-        #         print(sample.data[label]['reflectance'][0])
         new_sample.add_offset(offset, self.y_axis)
-        # for sample in self.original_samples:
-        #     print(sample.name)
-        #     for label in sample.spectrum_labels:
-        #         print(sample.data[label]['reflectance'][0])
         self.samples.insert(i,new_sample)
-        # for sample in self.original_samples:
-        #     print(sample.name)
-        #     for label in sample.spectrum_labels:
-        #         print(sample.data[label]['reflectance'][0])
         self.refresh(original=self.original_samples, y_axis=self.y_axis)
         
 
@@ -1345,7 +1342,44 @@ class Tab():
         self.samples=normalized_samples
 
         self.refresh(original=self.original_samples,xlim=self.xlim,y_axis='normalized reflectance') #Let the tab know this data has been modified and we want to hold on to a separate set of original samples. If we're zoomed in, save the xlim but not the ylim (since y scale will be changing)
+    def get_sample(self, sample_name):
+        if ':' in sample_name:
+            title=sample_name.split(':')[0]
+            name=sample_name.split(':')[1]
+        else:
+            title=None
+            name=sample_name
+        for i, sample in enumerate(self.samples):
+            if name==sample.name:
+                if title==None or sample.title==title:
+                    break
+        return sample
     
+    def set_color(self, sample_name, color):
+        sample=self.get_sample(sample_name)
+        if type(color)==int: #If the user entered a custom hue value
+            hue=color
+        else:
+            color_index=self.plot.color_names.index(color)
+            hue=self.plot.hues[color_index]
+        sample.set_colors(hue)
+        self.plot.draw()
+    
+    def set_linestyle(self, sample_name, linestyle):
+        sample=self.get_sample(sample_name)
+        linestyles={'Solid':'-', 'Dash':'--', 'Dot':':', 'Dot-dash':'-.'}
+        sample.set_linestyle(linestyles[linestyle])
+        self.plot.draw()
+        
+    def set_markerstyle(self, sample_name, markerstyle):
+        sample=self.get_sample(sample_name)
+        markerstyles={'Circle':'o', 'X':'x', 'Diamond':'D', 'Triangle':'^'}
+        sample.set_markerstyle(markerstyles[markerstyle])
+#         for sample in self.samples:
+#             sample.restart_color_cycle() #Makes sure that we start at the same point for replotting
+        self.plot.draw()
+        
+#         self.refresh(original=self.original_samples, xlim=self.xlim, ylim=self.ylim, y_axis=self.y_axis)
     def set_title(self, title):
         self.plotter.titles.remove(self.notebook_title)
         self.title=title
@@ -1357,6 +1391,7 @@ class Tab():
         self.notebook_title=title
         self.plotter.titles.append(self.notebook_title)
         self.plot.set_title(title)
+        self.plotter.notebook.tab(self.top, text = title+' x')
     
     def reset(self):
         self.samples=self.original_samples
@@ -1408,8 +1443,7 @@ class Tab():
         self.build_sample_lists()
         #We tell the controller which samples are already plotted so it can initiate the listbox with those samples highlighted.
         self.plotter.controller.ask_plot_samples(self,self.existing_indices, self.sample_options_list, self.geoms, self.title)
-        
-    
+  
     def set_samples(self, listbox_labels, title, incidences, emissions, exclude_specular=False, tolerance=None):
         #we made a dict mapping sample labels for a listbox to available samples to plot. This was passed back when the user clicked ok. Reset this tab's samples to be those ones, then replot.
         self.samples=[]
@@ -1423,7 +1457,6 @@ class Tab():
             i=i.replace(' ','')
         if incidences==['']: 
             incidences=[]
-    
         
         emissions=emissions.split(',')
         for e in emissions:
@@ -1441,8 +1474,6 @@ class Tab():
         winnowed_samples=[] #These will only have the data we are actually going to plot, which will only be from the specificied geometries. 
         
         for i, sample in enumerate(self.samples):
-
-            
             winnowed_sample=Sample(sample.name, sample.file, sample.title)
             
             for label in sample.spectrum_labels: #For every spectrum associated with the sample, check if it is for a geometry we are going to plot. if it is, attach that spectrum to the winnowed sample data
@@ -1453,10 +1484,7 @@ class Tab():
                         winnowed_sample.add_spectrum(label, sample.data[label]['reflectance'], sample.data[label]['wavelength'])
                 except: #If there's no geometry information, plot the sample.
                     print('plotting spectrum with invalid geometry information')
-                    winnowed_sample.add_spectrum(label,sample.data[label]['reflectance'],sample.data[label]['wavelength'])
-
-                
-                    
+                    winnowed_sample.add_spectrum(label,sample.data[label]['reflectance'],sample.data[label]['wavelength'])     
             winnowed_samples.append(winnowed_sample)
 
         self.samples=winnowed_samples
@@ -1492,8 +1520,7 @@ class Tab():
         left=float(left)
         right=float(right)
         self.xlim=[left,right]
-        self.plot.adjust_x(left,right)
-        
+        self.plot.adjust_x(left,right)  
     
     def adjust_y(self, bottom, top):
         bottom=float(bottom)
@@ -1517,19 +1544,19 @@ class Plot():
         self.title='' #This will be the text to put on the notebook tab
         #self.geoms={'i':[],'e':[]} #This is a dict like this: {'i':[10,20],'e':[-10,0,10,20,30,40,50]} telling which incidence and emission angles to include on the plot. empty lists mean plot all available.
 
-
         self.x_axis=x_axis
         self.y_axis=y_axis
         self.ylim=None #About to set based on either data limits or zoom if specified
         self.xlim=None #same as ylim
         self.exclude_artifacts=exclude_artifacts
+        self.markers_drawn=False #Referenced to decide whether to display markerstyle options in open_options
+        self.lines_drawn=False #Referenced to decide whether to display linestyle options in open_options
         #If y limits for plot not specified, make the plot wide enough to display min and max values for all samples.
         if ylim==None and xlim==None:
             for i, sample in enumerate(self.samples):
                 for j, label in enumerate(sample.spectrum_labels):
                     if self.y_axis not in sample.data[label] or self.x_axis not in sample.data[label]: continue
                     if i==0 and j==0:
-
                         self.ylim=[np.min(sample.data[label][self.y_axis]),np.max(sample.data[label][self.y_axis])]
                         
                     else:
@@ -1594,22 +1621,16 @@ class Plot():
                 self.xlim[1]=self.xlim[1]+delta_x*.02 
                 
         else: #This will be specified if this is a zoomed in plot
-
             self.xlim=xlim
-            
 
-
-        
         #we'll use these to generate hsv lists of colors for each sample, which will be evenly distributed across a gradient to make it easy to see what the overall trend of reflectance is.
-        self.hues=[200,12,130,290,170,37,330]
+#         self.hues=[200,12,130,290,170,37,330]
         self.hues=[200,12,130,290,170,37]
-        #self.hues=[200,130,12,290,170,37,330]
-        #self.hues=[130,290,170,37,330]
+        self.color_names=['Blue','Red','Green','Magenta','Teal','Custom']
         self.oversize_legend=oversize_legend
         self.plot_scale=plot_scale
         self.annotations=[] #These will be vertical lines drawn to help with analysis to show where slopes are being calculated, etc
         self.white_annotations=[]
-        
         
         self.files=[]
         self.num_spectra=0 #This is the total number of spectra we're plotting. We want to get a count so we know where to put the legend (on top or to the right).
@@ -1635,8 +1656,7 @@ class Plot():
                 if len(legend_label)>self.max_legend_label_len:
                     self.max_legend_label_len=len(legend_label)
                 self.legend_len+=1
-                    
-      
+
         plot_width=plot_width*0.85
         if self.max_legend_label_len==0:
             ratio=1000
@@ -1647,9 +1667,16 @@ class Plot():
 
         self.gs = mpl.gridspec.GridSpec(1, 2, width_ratios=[ratio, 1]) 
 
-        self.plot = fig.add_subplot(self.gs[0])
+        if self.x_axis!='theta': self.plot = fig.add_subplot(self.gs[0])
+        else: 
+            print('POLAR!!')
+            self.plot=self.fig.add_subplot(self.gs[0],projection='polar')
+            print(self.plot)
+        
+        
         with plt.style.context(('default')):
-            self.white_plot=self.white_fig.add_subplot(self.gs[0])
+            if self.x_axis!='theta': self.white_plot=self.white_fig.add_subplot(self.gs[0])
+            else: self.white_plot=self.white_fig.add_subplot(self.gs[0],projection='polar')
         pos1 = self.plot.get_position() # get the original position 
 
         y0=pos1.y0*1.5 #This is all just magic to tweak the exact position.
@@ -1663,7 +1690,6 @@ class Plot():
 
         self.plot.set_position(pos2)
         self.white_plot.set_position(pos2) # set a new position, slightly adjusted so it doesn't go off the edges of the screen.
-        
 
         if draw:
             self.draw()
@@ -1671,8 +1697,6 @@ class Plot():
         def on_closing():
             top.destroy()
     
-
-        
     def save(self, fig):
         print('save')
         path=self.plotter.get_path()
@@ -1683,9 +1707,7 @@ class Plot():
             format=path.split('.')[-1]
             if format not in available_formats:
                 path=path+'.png'
-        print('figsave')
         fig.savefig(path, facecolor=fig.get_facecolor())
-        print('done')
         
     def set_title(self,title):
         self.title=title
@@ -1855,13 +1877,18 @@ class Plot():
     
         
     def draw(self, exclude_wr=True):
+        self.plot.cla()
+        self.white_plot.cla()
+        
         self.visible_data=[]
         self.visible_data_headers=[]
         self.lines=[]
         self.white_lines=[]
         
+        for sample in self.samples:
+            sample.restart_color_cycle() #Makes sure that we start at the same point for replotting
+        
         if self.x_axis=='contour':
-
             x=self.samples[0].data['all samples']['e']
             y=self.samples[0].data['all samples']['i']
             z=self.samples[0].data['all samples'][self.y_axis]
@@ -1884,15 +1911,11 @@ class Plot():
             self.plot.plot(x,y,'+',color='white',markersize=5,alpha=0.5)
             
             with plt.style.context(('default')):
-                self.white_contour=self.white_plot.tricontourf(triang, z, levels=self.contour_levels)
-                
+                self.white_contour=self.white_plot.tricontourf(triang, z, levels=self.contour_levels)           
                 self.white_colorbar=self.white_fig.colorbar(self.white_contour, ax=self.white_plot)
                 self.white_colorbar.ax.tick_params(labelsize=14) 
                 self.white_plot.plot(x,y,'+',color='white',markersize=5,alpha=0.5)
 
-        
-
-            
             self.adjust_x(np.min(x),np.max(x))
             self.adjust_y(np.min(y),np.max(y)) 
                        
@@ -1912,7 +1935,6 @@ class Plot():
             for j, sample in enumerate(self.samples):
                 for i, label in enumerate(sample.spectrum_labels):
                     if self.y_axis not in sample.data[label] or self.x_axis not in sample.data[label]: continue
-                    
                     legend_label=label
                     if repeats:
                         legend_label=sample.title+': '+legend_label
@@ -1932,126 +1954,141 @@ class Plot():
     
                         if self.exclude_artifacts: #If we are excluding data from the suspect region from 1050 to 1450 nm, divide each spectrum into 3 segments. One on either side of that bad region, and then one straight dashed line through the bad region. All the same color. Only attach a legend label to the first one so the legend only gets drawn once.
                             e,i,g=self.plotter.get_e_i_g(label)
-                            if self.plotter.artifact_danger(g):
+                            if self.plotter.artifact_danger(g): #Only exclude data for high phase angle spectra
                                 artifact_index_left=self.plotter.get_index(np.array(wavelengths), MIN_WAVELENGTH_ARTIFACT_FREE)
                                 artifact_index_right=self.plotter.get_index(np.array(wavelengths), MAX_WAVELENGTH_ARTIFACT_FREE)
                                 w_1, r_1=wavelengths[0:artifact_index_left], reflectance[0:artifact_index_left]
                                 w_2=[wavelengths[artifact_index_left],wavelengths[artifact_index_right]]
                                 r_2= [reflectance[artifact_index_left],reflectance[artifact_index_right]]
                                 w_3,r_3=wavelengths[artifact_index_right:-1], reflectance[artifact_index_right:-1]
-                                self.lines.append(self.plot.plot(w_1,r_1, label=legend_label,color=color,linewidth=2))
-                                self.lines.append(self.plot.plot(w_2,r_2,'--',color=color,linewidth=2))
-                                self.lines.append(self.plot.plot(w_3,r_3, color=color, linewidth=2))
-                                
+                                self.lines.append(self.plot.plot(w_1,r_1, sample.linestyle, label=legend_label,color=color,linewidth=2))
+                                if sample.linestyle!='--': self.lines.append(self.plot.plot(w_2,r_2,'--',color=color,linewidth=2))
+                                else: self.lines.append(self.plot.plot(w_2,r_2,'.',color=color,linewidth=2))
+                                self.lines.append(self.plot.plot(w_3,r_3, sample.linestyle, color=color, linewidth=2))
+    
                                 self.visible_data_headers.append(legend_label)
                                 self.visible_data.append(list(r_1)+list(r_2)+list(r_3))
 
-                                
                                 with plt.style.context('default'):
-                                    self.white_lines.append(self.white_plot.plot(w_1,r_1, label=legend_label,color=white_color,linewidth=2))
-                                    self.white_lines.append(self.white_plot.plot(w_2,r_2,'--',color=white_color,linewidth=2))
-                                    self.white_lines.append(self.white_plot.plot(w_3,r_3, color=white_color, linewidth=2))
+                                    self.lines_drawn=True
+                                    self.white_lines.append(self.white_plot.plot(w_1,r_1, sample.linestyle, label=legend_label,color=white_color,linewidth=2))
+                                    if sample.linestyle!='--': self.white_lines.append(self.white_plot.plot(w_2,r_2,'--',color=white_color,linewidth=2))
+                                    else: self.white_lines.append(self.plot.plot(w_2,r_2,'.',color=color,linewidth=2))
+                                    self.white_lines.append(self.white_plot.plot(w_3,r_3, sample.linestyle, color=white_color, linewidth=2))
                             else:
-                                self.lines.append(self.plot.plot(wavelengths,reflectance, label=legend_label,color=color,linewidth=2))
-                                
+                                self.lines_drawn=True
+                                self.lines.append(self.plot.plot(wavelengths,reflectance, sample.linestyle, label=legend_label,color=color,linewidth=2))
                                 self.visible_data_headers.append(legend_label)
                                 self.visible_data.append(reflectance)
                                 
                                 with plt.style.context('default'):
-                                    self.white_lines.append(self.white_plot.plot(wavelengths,reflectance, label=legend_label,color=white_color,linewidth=2))
+                                    self.white_lines.append(self.white_plot.plot(wavelengths,reflectance, sample.linestyle, label=legend_label,color=white_color,linewidth=2))
 
                         else:
                             if len(wavelengths)>50:
-                                self.lines.append(self.plot.plot(wavelengths,reflectance, label=legend_label,color=color,linewidth=2))
+                                self.lines_drawn=True  #Referenced to decide whether to display linestyle options
+                                self.lines.append(self.plot.plot(wavelengths,reflectance, sample.linestyle, label=legend_label,color=color,linewidth=2))
                             else:
-                                self.lines.append(self.plot.plot(wavelengths,reflectance,'-o', label=legend_label,color=color,linewidth=2,markersize=5))
+                                self.markers_drawn=True #Referenced to decide whether to display markerstyle options
+                                self.lines.append(self.plot.plot(wavelengths,reflectance,'-'+sample.markerstyle, label=legend_label,color=color,linewidth=2,markersize=5))
                             
                             self.visible_data_headers.append(legend_label)
                             self.visible_data.append(reflectance)
                         
                             with plt.style.context('default'):
                                 if len(wavelengths)>50:
-                                    self.white_lines.append(self.white_plot.plot(wavelengths,reflectance, label=legend_label,color=white_color,linewidth=2))
+                                    self.white_lines.append(self.white_plot.plot(wavelengths,reflectance, sample.linestyle, label=legend_label,color=white_color,linewidth=2))
                                 else:
-                                    self.white_lines.append(self.white_plot.plot(wavelengths,reflectance, '-o',label=legend_label,color=white_color,linewidth=2,markersize=5))
+                                    self.white_lines.append(self.white_plot.plot(wavelengths,reflectance, '-'+sample.markerstyle,label=legend_label,color=white_color,linewidth=2,markersize=5))
                     elif self.x_axis=='g':
+                        self.markers_drawn=True
+                        self.lines_drawn=False
                         self.visible_data_headers.append(legend_label)
                         self.visible_data.append(sample.data[label][self.y_axis])
                         
-                        self.lines.append(self.plot.plot(sample.data[label][self.x_axis], sample.data[label][self.y_axis], 'o',label=legend_label,color=color, markersize=6))
+                        self.lines.append(self.plot.plot(sample.data[label][self.x_axis], sample.data[label][self.y_axis], sample.markerstyle,label=legend_label,color=color, markersize=6))
                         #self.lines.append(self.plot.plot(sample.data[label][self.x_axis], sample.data[label][self.y_axis],label=legend_label,color=color, markersize=6))
                         with plt.style.context('default'):
-                            self.lines.append(self.white_plot.plot(sample.data[label][self.x_axis], sample.data[label][self.y_axis], 'o',label=legend_label,color=white_color, markersize=6))
+                            self.lines.append(self.white_plot.plot(sample.data[label][self.x_axis], sample.data[label][self.y_axis], sample.markerstyle,label=legend_label,color=white_color, markersize=6))
                             #self.lines.append(self.white_plot.plot(sample.data[label][self.x_axis], sample.data[label][self.y_axis], label=legend_label,color=white_color, markersize=6))
                     elif self.x_axis=='theta':
-                        
-                        
-                        
+                        print(self.plot)
+                        self.markers_drawn=True
+                        self.lines_drawn=False
                         theta=sample.data[label]['e']
                         theta=np.array(theta)*-1*3.14159/180+3.14159/2
                         r=sample.data[label][self.y_axis]
                         if i==0 and j==0: #If this is the first line we are plotting, we'll need to create the polar axis.
-                            self.fig.delaxes(self.plot)
-                            self.ax = self.fig.add_subplot(self.gs[0],projection='polar')
-                            c = self.ax.plot(theta, np.array(r),'-o',color=color,label=legend_label)
+#                             self.fig.delaxes(self.plot)
+#                             self.plot=self.fig.add_subplot(self.gs[0],projection='polar')
+#                             print(self.plot)
+#                             self.ax.cla()
+                            c = self.plot.plot(theta, np.array(r),'-'+sample.markerstyle,color=color,label=legend_label, markersize=6)
                             
                             with plt.style.context('default'):
-                                self.white_fig.delaxes(self.white_plot)
-                                self.white_ax = self.white_fig.add_subplot(self.gs[0],projection='polar')
-                                c_white = self.white_ax.plot(theta, np.array(r),'-o',color=white_color,label=legend_label)
+#                                 try:
+#                                     self.white_fig.delaxes(self.white_plot)
+#                                 except:
+#                                     pass
+#                                 self.white_ax = self.white_fig.add_subplot(self.gs[0],projection='polar')
+                                self.white_ax=self.white_plot
+                                c_white = self.white_plot.plot(theta, np.array(r),'-'+sample.markerstyle,color=white_color,label=legend_label, markersize=6)
                             
                             min=np.min(r)#0.9990460801637914
                             max=np.max(r)#1.0025749009476894
                             delta=max-min
-                            self.ax.set_ylim(min-delta/10,max+delta/10)
-                            self.ax.set_thetamin(0)
-                            self.ax.set_thetamax(180)
+                            self.plot.set_ylim(min-delta/10,max+delta/10)
+                            self.plot.set_thetamin(0)
+                            self.plot.set_thetamax(180)
                             
-                            self.white_ax.set_ylim(min-delta/10,max+delta/10)
-                            self.white_ax.set_thetamin(0)
-                            self.white_ax.set_thetamax(180)
+                            self.white_plot.set_ylim(min-delta/10,max+delta/10)
+                            self.white_plot.set_thetamin(0)
+                            self.white_plot.set_thetamax(180)
                             
-                            self.ax.set_title(self.title, fontsize=24)
-                            self.ax.title.set_position([0.5,1.02])
+                            self.plot.set_title(self.title, fontsize=24)
+                            self.plot.title.set_position([0.5,1.02])
                             
                             with plt.style.context(('default')):
                                 self.white_ax.set_title(self.title, fontsize=24)
                                 self.white_ax.title.set_position([0.5,1.02])
                         else: #if this is not the first line being plotted on this radial plot, we can just add on
                             
-                            c = self.ax.plot(theta, np.array(r),'-o',color=color,label=legend_label)
+                            c = self.plot.plot(theta, np.array(r),'-'+sample.markerstyle,color=color,label=legend_label,markersize=6)
                             with plt.style.context('default'):
-                                c = self.white_ax.plot(theta, np.array(r),'-o',color=white_color,label=legend_label)
+                                c = self.white_plot.plot(theta, np.array(r),'-'+sample.markerstyle,color=white_color,label=legend_label,markersize=6)
                             if np.min(r)<min or np.max(r)>max:
                                 min=np.min([min, np.min(r)])
                                 max=np.max([max,np.max(r)])
                                 
                         if i==len(sample.spectrum_labels)-1 and j==len(self.samples)-1: #On the last sample, set the range of the value being plotted on the radial axis.
+                            
                             delta=max-min
-                            self.ax.set_ylim(min-delta/10,max+delta/10)
-                            self.ax.set_yticks(np.round(np.arange(min,max+delta/10,delta/2),3))
-                            self.ax.set_thetagrids(np.arange(0,180.1,30), labels=['90','60','30','0','-30','-60','-90'])
-                            self.ax.legend(bbox_to_anchor=(self.legend_anchor, 1), loc=1, borderaxespad=0.)
+                            self.plot.set_ylim(min-delta/10,max+delta/10)
+                            self.plot.set_yticks(np.round(np.arange(min,max+delta/10,delta/2),3))
+                            self.plot.set_thetagrids(np.arange(0,180.1,30), labels=['90','60','30','0','-30','-60','-90'])
+                            self.plot.legend(bbox_to_anchor=(self.legend_anchor*1.2, 1), loc=1, borderaxespad=0.) #The legend needs to be a little farther to the right for polar plots.
                             
                             with plt.style.context('default'):
-                                self.white_ax.set_ylim(min-delta/10,max+delta/10)
-                                self.white_ax.set_rgrids(np.round(np.arange(min,max+delta/10,delta/2),3))
-                                #self.white_ax.tick_params(axis='r', colors='red')
-                                self.white_ax.set_thetagrids(np.arange(0,180.1,30), labels=['90','60','30','0','-30','-60','-90'])
-                                self.white_ax.legend(bbox_to_anchor=(self.legend_anchor, 1), loc=1, borderaxespad=0.)
+                                self.white_plot.set_ylim(min-delta/10,max+delta/10)
+                                self.white_plot.set_rgrids(np.round(np.arange(min,max+delta/10,delta/2),3))
+                                self.plot.set_yticks(np.round(np.arange(min,max+delta/10,delta/2),3))
+                                self.white_plot.set_thetagrids(np.arange(0,180.1,30), labels=['90','60','30','0','-30','-60','-90'])
+                                self.white_plot.tick_params(axis='both', colors='black')
+                                self.white_plot.legend(bbox_to_anchor=(self.legend_anchor*1.2, 1), loc=1, borderaxespad=0.)
                     else:
                         self.visible_data_headers.append(legend_label)
                         self.visible_data.append(sample.data[label][self.y_axis])
-                        
-                        self.lines.append(self.plot.plot(sample.data[label][self.x_axis], sample.data[label][self.y_axis], '-o',label=legend_label,color=color, markersize=5))
+                        self.markers_drawn=True
+                        self.lines.append(self.plot.plot(sample.data[label][self.x_axis], sample.data[label][self.y_axis], '-'+sample.markerstyle,label=legend_label,color=color, markersize=5))
                         with plt.style.context('default'):
-                            self.white_lines.append(self.white_plot.plot(sample.data[label][self.x_axis], sample.data[label][self.y_axis], '-o',label=legend_label,color=white_color, markersize=5))
+                            self.white_lines.append(self.white_plot.plot(sample.data[label][self.x_axis], sample.data[label][self.y_axis], '-'+sample.markerstyle,label=legend_label,color=white_color, markersize=5))
         
+
         self.plot.set_title(self.title, fontsize=24)
         self.plot.title.set_position([0.5,1.02])
         
         with plt.style.context(('default')):
-            self.white_plot.set_title(self.title, fontsize=24)
+            self.white_plot.set_title(self.title, fontsize=24, color='black')
             self.white_plot.title.set_position([0.5,1.02])
         
         if self.x_axis=='contour':
@@ -2063,8 +2100,7 @@ class Plot():
         elif self.y_axis=='reflectance':
             self.plot.set_ylabel('Reflectance',fontsize=18)
             with plt.style.context('default'):
-                self.white_plot.set_ylabel('Reflectance',fontsize=18)
-                
+                self.white_plot.set_ylabel('Reflectance',fontsize=18)        
         elif self.y_axis=='normalized reflectance':
             self.plot.set_ylabel('Normalized Reflectance',fontsize=18)
             with plt.style.context('default'):
@@ -2101,20 +2137,21 @@ class Plot():
         
         with plt.style.context(('default')):
             self.white_plot.tick_params(labelsize=14)
-        if self.x_axis!='contour': #If it is a contour map, we put in the colorbar already above.
+        if self.x_axis!='contour' and self.x_axis!='theta': #If it is a contour map or f(theta) plot, we put in the legend already above.
             self.plot.legend(bbox_to_anchor=(self.legend_anchor, 1), loc=1, borderaxespad=0.)
             with plt.style.context('default'):
                 self.white_plot.legend(bbox_to_anchor=(self.legend_anchor, 1), loc=1, borderaxespad=0.)
         
         
-        self.plot.set_xlim(*self.xlim)
-        self.white_plot.set_xlim(*self.xlim)
-        self.plot.set_ylim(*self.ylim)
-        self.white_plot.set_ylim(*self.ylim)
-        self.set_x_ticks()
-        self.set_y_ticks()
-        
-
+        if self.x_axis!='theta': #If it is theta, we did this already
+            self.plot.set_xlim(*self.xlim)
+            self.white_plot.set_xlim(*self.xlim)
+            self.plot.set_ylim(*self.ylim)
+            self.white_plot.set_ylim(*self.ylim)
+            self.set_x_ticks()
+            self.set_y_ticks()
+        self.fig.canvas.draw()
+        self.white_fig.canvas.draw()
 
 class NotScrolledFrame(Frame):
     def __init__(self, parent, *args, **kw):

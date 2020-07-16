@@ -13,7 +13,7 @@ setup(
     project_urls={
         'Source':'https://github.com/kathleenhoza/autospectroscopy'
     },
-    install_requires=['pygame','matplotlib','numpy','cython','colorutils','tanager-tcp'],
+    install_requires=['pygame','matplotlib','numpy','cython','colorutils','tanager-tcp','playsound'],
     python_requires='>=3',
     include_package_data=True
 )
