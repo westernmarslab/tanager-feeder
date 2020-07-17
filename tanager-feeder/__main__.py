@@ -127,9 +127,6 @@ if dev:
 server=''
 global NUMLEN #number of digits in the raw data filename. Could change from one version of software to next.
 
-global tk_master
-tk_master=None
-
 NUMLEN=500
 if computer=='old':
     #Number of digits in spectrum number for spec save config
@@ -397,7 +394,6 @@ class Controller():
         self.selectforeground='white'
         self.check_bg='#444444'
         
-        
         #Tkinter notebook GUI
         self.master=Tk()
         self.master.configure(background = self.bg)
@@ -406,7 +402,7 @@ class Controller():
         self.master.minsize(1050,400)
         #When the window closes, send a command to set the geometry to i=0, e=30.
         self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
-        self.tk_master=self.master #this gets used when deciding whether to open a new master when giving a no connection dialog or something. I can't remember. Maybe could be deleted, but I don't think so
+#         self.tk_master=self.master #this gets used when deciding whether to open a new master when giving a no connection dialog or something. I can't remember. Maybe could be deleted, but I don't think so
 
         self.menubar = Menu(self.master)
         # create a pulldown menu, and add it to the menu bar
@@ -3975,9 +3971,7 @@ class Controller():
                 print('Writing data to '+final_data_destination)
                 with open(final_data_destination, 'w+') as f:
                     f.write(spec_data)
-        print('data written')
 
-        
         for item in self.spec_listener.queue:
             if 'log_data' in item:
                 log_data=item['log_data']
@@ -3985,20 +3979,10 @@ class Controller():
                 with open(final_log_destination, 'w+') as f:
                     f.write(log_data)
         
+    #Not used, replaced by open_plot_settings.
     def open_options(self, tab,current_title):
         #If the user already has dialogs open for editing the plot, close the extras to avoid confusion.
-        try:
-            self.analysis_dialog.top.destroy()
-        except:
-            pass
-        try:
-            self.edit_plot_dialog.top.destroy()
-        except:
-            pass        
-        try:
-            self.plot_options_dialog.top.destroy()
-        except:
-            pass
+        self.close_plot_option_windows()
         def select_tab():
             self.view_notebook.select(tab.top)
         buttons={
@@ -4158,24 +4142,16 @@ class Controller():
         
         
     def open_plot_settings(self, tab):
-                #If the user already has dialogs open for editing the plot, close the extras to avoid confusion.
-        try:
-            self.analysis_dialog.top.destroy()
-        except:
-            pass
-        try:
-            self.edit_plot_dialog.top.destroy()
-        except:
-            pass        
-        try:
-            self.plot_options_dialog.top.destroy()
-        except:
-            pass
+        #If the user already has dialogs open for editing the plot, close the extras to avoid confusion.
+        self.close_plot_option_windows()
+        
         def select_tab():
             self.view_notebook.select(tab.top)
+            self.lift_widget(self.plot_settings_dialog.top)
 
         def set_markerstyle():
             tab.set_markerstyle(self.markerstyle_sample_var.get(), self.markerstyle_markerstyle_var.get())
+            self.lift_widget(self.plot_settings_dialog.top)
         
         def apply_x():
             self.view_notebook.select(tab.top)
@@ -4184,17 +4160,21 @@ class Controller():
                 x1=float(self.left_zoom_entry.get())
                 x2=float(self.right_zoom_entry.get())
                 tab.adjust_x(x1,x2)
+                self.lift_widget(self.plot_settings_dialog.top)
             except:
-                ErrorDialog(self, title='Invalid Zoom Range',label='Error: Invalid x limits: '+self.left_zoom_entry.get()+', '+self.right_zoom_entry.get())
-                
+                self.lift_widget(self.plot_settings_dialog.top)
+                ErrorDialog(self, title='Invalid Zoom Range',label='Error: Invalid x limits: '+self.left_zoom_entry.get()+', '+self.right_zoom_entry.get())            
+            
         def apply_y():
             self.view_notebook.select(tab.top)
             try:
                 y1=float(self.left_zoom_entry2.get())
                 y2=float(self.right_zoom_entry2.get())
                 tab.adjust_y(y1,y2)
+                self.lift_widget(self.plot_settings_dialog.top)
             except Exception as e:
                 print(e)
+                self.lift_widget(self.plot_settings_dialog.top)
                 ErrorDialog(self, title='Invalid Zoom Range',label='Error! Invalid y limits: '+self.left_zoom_entry2.get()+', '+self.right_zoom_entry2.get())
                 
         def apply_z():
@@ -4204,8 +4184,10 @@ class Controller():
                 z1=float(self.left_zoom_entry_z.get())
                 z2=float(self.right_zoom_entry_z.get())
                 tab.adjust_z(z1,z2)
+                self.lift_widget(self.plot_settings_dialog.top)
             except Exception as e:
                 print(e)
+                self.lift_widget(self.plot_settings_dialog.top)
                 ErrorDialog(self, title='Invalid Zoom Range',label='Error: Invalid z limits: '+self.left_zoom_entry.get()+', '+self.right_zoom_entry.get())
         
 #         def select_tab():
@@ -4213,15 +4195,36 @@ class Controller():
         
         def set_title():
             tab.set_title(self.title_entry.get())
+            self.lift_widget(self.plot_settings_dialog.top)
+            
+        def set_custom_color(custom_color):
+            print('foo')
+            print(self.custom_color)
+            tab.set_color(self.color_sample_var.get(), custom_color)
+            self.lift_widget(self.plot_settings_dialog.top)
         
         def set_color():
-            tab.set_color(self.color_sample_var.get(), self.color_color_var.get())
+            if self.color_color_var.get()=='Custom':
+                self.custom_color=None
+                try:
+                    self.custom_color_dialog.top.destroy()
+                except:
+                    pass
+                self.custom_color_dialog=CustomColorDialog(self,set_custom_color, self.custom_color)
+                self.lift_widget(self.custom_color_dialog.top)
+            else:
+                tab.set_color(self.color_sample_var.get(), self.color_color_var.get())
+            
+            self.lift_widget(self.plot_settings_dialog.top)
         
         def set_linestyle():
             tab.set_linestyle(self.linestyle_sample_var.get(), self.linestyle_linestyle_var.get())
-        
+            self.lift_widget(self.plot_settings_dialog.top)
+            
         def set_markerstyle():
             tab.set_markerstyle(self.markerstyle_sample_var.get(), self.markerstyle_markerstyle_var.get())
+            self.lift_widget(self.plot_settings_dialog.top)
+            
         tab.freeze() #You have to finish dealing with this before, say, opening another analysis box.
         buttons={
 #             'reset':{
@@ -4236,10 +4239,13 @@ class Controller():
 #                 lambda: tab.set_title(self.new_plot_title_entry.get()):[]
 #             }
 #         }
+        def set_legend():
+            tab.set_legend_style(self.legend_legend_var.get())
+            self.lift_widget(self.plot_settings_dialog.top)
         
-        self.plot_settings_dialog=VerticalScrolledDialog(self,'Plot Settings','',buttons=buttons,button_width=13, min_height=570, width=300)
-        self.plot_settings_dialog.top.wm_geometry('300x630')
-        self.plot_settings_dialog.top.attributes('-topmost', True)
+        self.plot_settings_dialog=VerticalScrolledDialog(self,'Plot Settings','',buttons=buttons,button_width=13, min_height=680, width=360)
+        self.plot_settings_dialog.top.wm_geometry('360x730')
+#         self.plot_settings_dialog.top.attributes('-topmost', True)
         
         self.outer_title_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
         self.outer_title_frame.pack(expand=True,fill=BOTH)
@@ -4460,11 +4466,39 @@ class Controller():
             self.markerstyle_button=Button(self.markerstyle_frame,text='Apply',  command=set_markerstyle,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
             self.markerstyle_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
             self.markerstyle_button.pack()
+            
+        self.outer_legend_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
+        self.outer_legend_frame.pack(expand=True,fill=BOTH)
+
+        self.legend_frame=Frame(self.outer_legend_frame,bg=self.bg,padx=self.padx,pady=15)
+        self.legend_frame.pack(fill=BOTH, expand=True)
+        
+        self.legend_legend_frame=Frame(self.legend_frame,bg=self.bg,padx=20,pady=0)
+        self.legend_legend_frame.pack(fill=BOTH, expand=True)
+        self.legend_sample_label=Label(self.legend_legend_frame,text='Legend style: ',bg=self.bg,fg=self.textcolor)
+        self.legend_sample_label.pack(side=LEFT)
+        self.legend_legend_var=StringVar()
+        legend_names=['Full list','Gradient']
+
+        self.legend_legend_var.set(legend_names[0])
+        self.legend_menu=OptionMenu(self.legend_legend_frame, self.legend_legend_var,*legend_names)
+        self.legend_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
+        self.legend_menu.pack(side=LEFT)
+        self.legend_button=Button(self.legend_legend_frame,text='Apply',  command=set_legend,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
+        self.legend_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
+        self.legend_button.pack(side=LEFT, padx=(5,5),pady=(5,3))
         
 
 #         self.color_entry.pack(side=RIGHT,padx=self.padx)
 #         self.color_label.pack(side=RIGHT,padx=self.padx)
-
+    def lift_widget(self, widget):
+        widget.focus_set()
+        widget.lift()
+    
+    def thread_lift_widget(self, widget):
+        thread=Thread(target=self.lift_widget, args=(widget,))
+        thread.start()
+    
     def open_analysis_tools(self, tab):
 
         #tab.set_exclude_artifacts(True)
@@ -4525,6 +4559,7 @@ class Controller():
                 max_len=np.max([max_len,len(option)])
                 self.plot_slope_menu['menu'].add_command(label=option, command=tk._setit(self.plot_slope_var, option))
             self.plot_slope_menu.configure(width=max_len)
+            
 
         def update_entries(left, right):
                 self.left_slope_entry.delete(0,'end')
@@ -4546,7 +4581,6 @@ class Controller():
                 self.plot_slope_button.configure(state=NORMAL)
                 
         def plot():
-            
             if self.analyze_var.get()=='slope':
                 tab.plot_slopes(self.plot_slope_var.get())
             elif self.analyze_var.get()=='band depth':
@@ -4564,10 +4598,11 @@ class Controller():
                 x1=float(self.left_slope_entry.get())
                 x2=float(self.right_slope_entry.get())
                 new.adjust_x(x1,x2)
-
+            
+            self.thread_lift_widget(self.analysis_dialog.top)
 
         def normalize():
-            self.view_notebook.select(tab.top)
+            select_tab()
             
             try:
                 self.slopes_listbox.delete(0,'end')
@@ -4575,10 +4610,13 @@ class Controller():
             except:
                 pass
             tab.normalize(self.normalize_entry.get())
-            
+            thread=Thread(target=self.lift_widget, args=(self.analysis_dialog.top,))
+            thread.start()
             
         def offset():
             tab.offset(self.offset_sample_var.get(), self.offset_entry.get())
+            thread=Thread(target=self.lift_widget, args=(self.analysis_dialog.top,))
+            thread.start()
 
         def apply_x():
             self.view_notebook.select(tab.top)
@@ -4587,21 +4625,26 @@ class Controller():
                 x1=float(self.left_zoom_entry.get())
                 x2=float(self.right_zoom_entry.get())
                 tab.adjust_x(x1,x2)
-                self.analysis_dialog.top.lift()
+                self.lift_widget(self.analysis_dialog.top)
             except:
-                ErrorDialog(self, title='Invalid Zoom Range',label='Error! Invalid x limits: '+self.left_zoom_entry.get()+', '+self.right_zoom_entry.get())
+                self.lift_widget(self.analysis_dialog.top)
+                ErrorDialog(self, title='Invalid Zoom Range',label='Error! Invalid x limits: '+self.left_zoom_entry.get()+', '+self.right_zoom_entry.get()) 
+        
         def apply_y():
             self.view_notebook.select(tab.top)
             try:
                 y1=float(self.left_zoom_entry2.get())
                 y2=float(self.right_zoom_entry2.get())
                 tab.adjust_y(y1,y2)
+                self.lift_widget(self.analysis_dialog.top)
             except:
+                self.lift_widget(self.analysis_dialog.top)
                 ErrorDialog(self, title='Invalid Zoom Range',label='Error! Invalid y limits: '+self.left_zoom_entry2.get()+', '+self.right_zoom_entry2.get())
             
         def uncheck_exclude_artifacts():
             self.exclude_artifacts.set(0)
             self.exclude_artifacts_check.deselect()
+            self.lift_widget(self.analysis_dialog.top)
             
         def disable_plot(analyze_var='None'):
             try:
@@ -4644,6 +4687,8 @@ class Controller():
                 self.extra_analysis_check_frame.pack()
                 self.outer_slope_frame.pack()
             
+            self.lift_widget(self.analysis_dialog.top)
+            
         def calculate_photometric_variability():
 
             photo_var=tab.calculate_photometric_variability(self.right_photo_var_entry.get(),self.left_photo_var_entry.get())
@@ -4654,10 +4699,14 @@ class Controller():
             for var in photo_var:
                 self.photo_var_listbox.insert('end',var)
             self.photo_var_listbox.pack(fill=BOTH, expand=True)
+            
 
         def select_tab():
             self.view_notebook.select(tab.top)
-        
+            self.lift_widget(self.analysis_dialog.top)
+            
+        def lift():
+            self.thread_lift_widget(self.analysis_dialog.top)
         
         tab.freeze() #You have to finish dealing with this before, say, opening another analysis box.
         buttons={
@@ -4665,26 +4714,17 @@ class Controller():
                 select_tab:[],
                 tab.reset:[],
                 uncheck_exclude_artifacts:[],
-                disable_plot:[]
+                disable_plot:[],
+                lift:[]
             },
             'close':{}
         }
         
         #If the user already has analysis tools or a plot editing dialog open, close the extra to avoid confusion.
-        try:
-            self.analysis_dialog.top.destroy()
-        except:
-            pass
-        try:
-            self.edit_plot_dialog.top.destroy()
-        except:
-            pass
-        try:
-            self.plot_options_dialog.top.destroy()
-        except:
-            pass
+        self.close_plot_option_windows()
+        
         self.analysis_dialog=VerticalScrolledDialog(self,'Analyze Data','',buttons=buttons,button_width=13)
-        self.analysis_dialog.top.attributes('-topmost', True)
+#         self.analysis_dialog.top.attributes('-topmost', True)
         
         self.outer_normalize_frame=Frame(self.analysis_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
         self.outer_normalize_frame.pack(expand=True,fill=BOTH)
@@ -4859,12 +4899,26 @@ class Controller():
         if tab.exclude_artifacts:
             self.exclude_artifacts_check.select()
 
-
-
-
         self.analysis_dialog.interior.configure(highlightthickness=1,highlightcolor='white')
         
-
+    def close_plot_option_windows(self):
+        try:
+            self.analysis_dialog.top.destroy()
+        except:
+            pass
+        try:
+            self.edit_plot_dialog.top.destroy()
+        except:
+            pass        
+        try:
+            self.plot_options_dialog.top.destroy()
+        except:
+            pass
+        try:
+            self.plot_settings_dialog.top.destroy()
+        except:
+            pass
+        
         
     #This gets called when the user clicks 'Edit plot' from the right-click menu on a plot.
     #Pops up a scrollable listbox with sample options.
@@ -4886,18 +4940,7 @@ class Controller():
                 lambda: tab.set_samples(list(map(lambda y:sample_options[y],self.plot_samples_listbox.curselection())),self.new_plot_title_entry.get(), self.i_entry.get(),self.e_entry.get(), self.exclude_specular.get(), self.spec_tolerance_entry.get()):[]
                 }
             }
-        try:
-            self.analysis_dialog.top.destroy()
-        except:
-            pass
-        try:
-            self.edit_plot_dialog.top.destroy()
-        except:
-            pass        
-        try:
-            self.plot_options_dialog.top.destroy()
-        except:
-            pass
+        self.close_plot_option_windows()
             
         self.edit_plot_dialog=Dialog(self,'Edit Plot','\nPlot title:',buttons=buttons)
         self.new_plot_title_entry=Entry(self.edit_plot_dialog.top, width=20, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
@@ -5982,8 +6025,6 @@ class Dialog:
         if controller==None:
             self.top=Tk()
             start_mainloop=True
-            #global tk_master
-            #tk_master=self.top
             self.top.configure(background=self.bg)
         else:
             if width==None or height==None:
@@ -7599,7 +7640,7 @@ class IntInputDialog(Dialog):
         
             
 class NewDirDialog(Dialog):
-    def __init__(self, controller, fexplorer,label='Enter input', title='Enter input'):
+    def __init__(self, controller, fexplorer,label='Name: ', title='New Directoy'):
         super().__init__(controller,label=label,title=title, buttons={'ok':{self.get:[]},'cancel':{}},button_width=15)
         self.dir_entry=Entry(self.top,width=40,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
         self.dir_entry.pack(padx=(10,10))
@@ -7613,6 +7654,24 @@ class NewDirDialog(Dialog):
             self.fexplorer.mkdir(self.fexplorer.current_parent+'\\'+subdir) 
         else:self.fexplorer.mkdir(subdir)
         
+class CustomColorDialog(Dialog):
+    def __init__(self, controller, func, color_variable, title='Custom Color'):
+        super().__init__(controller,label='Enter custom hue: ',title=title, buttons={'ok':{self.ok:[]}},button_width=15)
+#         self.hue_label=Label(self.top, text='Hue: ')
+#         self.hue_label.pack(side=LEFT, padx=(10,10))
+        self.hue_entry=Entry(self.top,width=10,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+        self.hue_entry.pack(padx=(10,10))
+        self.func=func
+
+    def ok(self):
+        try:
+            color_variable=int(self.hue_entry.get())
+            if color_variable<0 or color_variable>359: raise Exception()
+        except:
+            dialog=ErrorDialog(self.controller, 'Error','Error: Invalid custom hue.\n\nEnter a number 0-359.')
+            return
+        self.func(int(self.hue_entry.get()))
+        self.top.destroy()
         
 class Listener(Thread):
     def __init__(self, read_command_loc, OFFLINE, test=False):
