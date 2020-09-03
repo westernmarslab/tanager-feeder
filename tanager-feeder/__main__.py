@@ -3979,518 +3979,505 @@ class Controller():
                 with open(final_log_destination, 'w+') as f:
                     f.write(log_data)
         
-    #Not used, replaced by open_plot_settings.
-    def open_options(self, tab,current_title):
-        #If the user already has dialogs open for editing the plot, close the extras to avoid confusion.
-        self.close_plot_option_windows()
-        def select_tab():
-            self.view_notebook.select(tab.top)
-        buttons={
-            'ok':{
-                select_tab:[],
-                lambda: tab.set_title(self.new_plot_title_entry.get()):[]
-            }
-        }
-        def set_markerstyle():
-            tab.set_markerstyle(self.markerstyle_sample_var.get(), self.markerstyle_markerstyle_var.get())
-        
-        def apply_x():
-            self.view_notebook.select(tab.top)
-
-            try:
-                x1=float(self.left_zoom_entry.get())
-                x2=float(self.right_zoom_entry.get())
-                tab.adjust_x(x1,x2)
-            except:
-                ErrorDialog(self, title='Invalid Zoom Range',label='Error: Invalid x limits: '+self.left_zoom_entry.get()+', '+self.right_zoom_entry.get())
-                
-        def apply_y():
-            self.view_notebook.select(tab.top)
-            try:
-                y1=float(self.left_zoom_entry2.get())
-                y2=float(self.right_zoom_entry2.get())
-                tab.adjust_y(y1,y2)
-            except Exception as e:
-                print(e)
-                ErrorDialog(self, title='Invalid Zoom Range',label='Error! Invalid y limits: '+self.left_zoom_entry2.get()+', '+self.right_zoom_entry2.get())
-                
-        def apply_z():
-            self.view_notebook.select(tab.top)
-
-            try:
-                z1=float(self.left_zoom_entry_z.get())
-                z2=float(self.right_zoom_entry_z.get())
-                tab.adjust_z(z1,z2)
-            except Exception as e:
-                print(e)
-                ErrorDialog(self, title='Invalid Zoom Range',label='Error: Invalid z limits: '+self.left_zoom_entry.get()+', '+self.right_zoom_entry.get())
-        
-        self.plot_options_dialog=Dialog(self,'Plot Options','\nPlot title:',buttons=buttons)
-        self.new_plot_title_entry=Entry(self.plot_options_dialog.top, width=20, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-        self.new_plot_title_entry.insert(0,current_title)
-        self.new_plot_title_entry.pack()
-        
-        self.outer_outer_zoom_frame=Frame(self.plot_options_dialog.top,bg=self.bg,padx=self.padx,pady=15)
-        self.outer_outer_zoom_frame.pack(expand=True,fill=BOTH)
-
-        self.zoom_title_frame=Frame(self.outer_outer_zoom_frame,bg=self.bg)
-        self.zoom_title_frame.pack(pady=(5,10))
-        self.zoom_title_label=Label(self.zoom_title_frame,text='Adjust plot x and y limits:',bg=self.bg,fg=self.textcolor)
-        self.zoom_title_label.pack(side=LEFT,pady=(0,4)) 
-        
-        self.outer_zoom_frame=Frame(self.outer_outer_zoom_frame,bg=self.bg,padx=self.padx)
-        self.outer_zoom_frame.pack(expand=True,fill=BOTH,pady=(0,10))
-        self.zoom_frame=Frame(self.outer_zoom_frame,bg=self.bg,padx=self.padx)
-        self.zoom_frame.pack()
-        
-        self.zoom_label=Label(self.zoom_frame,text='x1:',bg=self.bg,fg=self.textcolor)
-        self.left_zoom_entry=Entry(self.zoom_frame, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-        self.zoom_label2=Label(self.zoom_frame,text='x2:',bg=self.bg,fg=self.textcolor)
-        self.right_zoom_entry=Entry(self.zoom_frame, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-        self.zoom_button=Button(self.zoom_frame,text='Apply',  command=apply_x,width=7, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-        self.zoom_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-        self.zoom_button.pack(side=RIGHT,padx=(10,10))
-        self.right_zoom_entry.pack(side=RIGHT,padx=self.padx)
-        self.zoom_label2.pack(side=RIGHT,padx=self.padx)
-        self.left_zoom_entry.pack(side=RIGHT,padx=self.padx)
-        self.zoom_label.pack(side=RIGHT,padx=self.padx)
-        
-        
-        self.outer_zoom_frame2=Frame(self.outer_outer_zoom_frame,bg=self.bg,padx=self.padx)
-        self.outer_zoom_frame2.pack(expand=True,fill=BOTH,pady=(0,10))
-        self.zoom_frame2=Frame(self.outer_zoom_frame2,bg=self.bg,padx=self.padx)
-        self.zoom_frame2.pack()
-        self.zoom_label3=Label(self.zoom_frame2,text='y1:',bg=self.bg,fg=self.textcolor)
-        self.left_zoom_entry2=Entry(self.zoom_frame2, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-        self.zoom_label4=Label(self.zoom_frame2,text='y2:',bg=self.bg,fg=self.textcolor)
-        self.right_zoom_entry2=Entry(self.zoom_frame2, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-        self.zoom_button2=Button(self.zoom_frame2,text='Apply',  command=apply_y,width=7, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-        self.zoom_button2.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-        
-        self.zoom_button2.pack(side=RIGHT,padx=(10,10))
-        self.right_zoom_entry2.pack(side=RIGHT,padx=self.padx)
-        self.zoom_label4.pack(side=RIGHT,padx=self.padx)
-        self.left_zoom_entry2.pack(side=RIGHT,padx=self.padx)
-        self.zoom_label3.pack(side=RIGHT,padx=self.padx)
-        
-        if tab.plot.x_axis=='contour':
-            self.outer_zoom_frame_z=Frame(self.outer_outer_zoom_frame,bg=self.bg,padx=self.padx)
-            self.outer_zoom_frame_z.pack(expand=True,fill=BOTH,pady=(0,10))
-            self.zoom_frame_z=Frame(self.outer_zoom_frame_z,bg=self.bg,padx=self.padx)
-            self.zoom_frame_z.pack()
-            self.zoom_label_z1=Label(self.zoom_frame_z,text='z1:',bg=self.bg,fg=self.textcolor)
-            self.left_zoom_entry_z=Entry(self.zoom_frame_z, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-            self.zoom_label_z2=Label(self.zoom_frame_z,text='z2:',bg=self.bg,fg=self.textcolor)
-            self.right_zoom_entry_z=Entry(self.zoom_frame_z, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-            self.zoom_button_z=Button(self.zoom_frame_z,text='Apply',  command=apply_z,width=7, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-            self.zoom_button_z.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-    
-    
-            
-            self.zoom_button_z.pack(side=RIGHT,padx=(10,10))
-            self.right_zoom_entry_z.pack(side=RIGHT,padx=self.padx)
-            self.zoom_label_z2.pack(side=RIGHT,padx=self.padx)
-            self.left_zoom_entry_z.pack(side=RIGHT,padx=self.padx)
-            self.zoom_label_z1.pack(side=RIGHT,padx=self.padx)
-        if tab.plot.markers:
-            self.outer_markerstyle_frame=Frame(self.plot_options_dialog.top,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
-            self.outer_markerstyle_frame.pack(expand=True,fill=BOTH)
-            self.markerstyle_label=Label(self.outer_markerstyle_frame,text='Markerstyle settings',bg=self.bg,fg=self.textcolor)
-            self.markerstyle_label.pack()
-    
-            self.markerstyle_frame=Frame(self.outer_markerstyle_frame,bg=self.bg,padx=self.padx,pady=15)
-            self.markerstyle_frame.pack(fill=BOTH, expand=True)
-            self.markerstyle_sample_frame=Frame(self.markerstyle_frame,bg=self.bg,padx=30,pady=0)
-            self.markerstyle_sample_frame.pack(fill=BOTH, expand=True)
-    
-            self.markerstyle_sample_label=Label(self.markerstyle_sample_frame,text='Sample: ',bg=self.bg,fg=self.textcolor)
-            self.markerstyle_sample_label.pack(side=LEFT)
-            self.markerstyle_sample_var=StringVar()
-            sample_names=[]
-            repeats=False
-            max_len=0
-            for sample in tab.samples:
-                if sample.name in sample_names:
-                    repeats=True
-                else:
-                    sample_names.append(sample.name)
-                    max_len=np.max([max_len, len(sample.name)])
-            if repeats:
-                sample_names=[]
-                for sample in tab.samples:
-                    sample_names.append(sample.title+': '+sample.name)
-                    max_len=np.max([max_len, len(sample_names[-1])])
-            self.markerstyle_sample_var.set(sample_names[0])
-            self.markerstyle_menu=OptionMenu(self.markerstyle_sample_frame, self.markerstyle_sample_var,*sample_names)
-            self.markerstyle_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
-            self.markerstyle_menu.pack(side=LEFT)
-            
-            self.markerstyle_markerstyle_frame=Frame(self.markerstyle_frame,bg=self.bg,padx=44,pady=0)
-            self.markerstyle_markerstyle_frame.pack(fill=BOTH, expand=True)
-            self.markerstyle_sample_label=Label(self.markerstyle_markerstyle_frame,text='Style: ',bg=self.bg,fg=self.textcolor)
-            self.markerstyle_sample_label.pack(side=LEFT)
-            self.markerstyle_markerstyle_var=StringVar()
-            markerstyle_names=['Circle','X','Diamond','Triangle']
-    
-            self.markerstyle_markerstyle_var.set(markerstyle_names[0])
-            self.markerstyle_menu=OptionMenu(self.markerstyle_markerstyle_frame, self.markerstyle_markerstyle_var,*markerstyle_names)
-            self.markerstyle_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
-            self.markerstyle_menu.pack(side=LEFT)
-            self.markerstyle_button=Button(self.markerstyle_frame,text='Apply',  command=set_markerstyle,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-            self.markerstyle_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-            self.markerstyle_button.pack()
-        
-        
-    def open_plot_settings(self, tab):
-        #If the user already has dialogs open for editing the plot, close the extras to avoid confusion.
-        self.close_plot_option_windows()
-        
-        def select_tab():
-            self.view_notebook.select(tab.top)
-            self.lift_widget(self.plot_settings_dialog.top)
-
-        def set_markerstyle():
-            tab.set_markerstyle(self.markerstyle_sample_var.get(), self.markerstyle_markerstyle_var.get())
-            self.lift_widget(self.plot_settings_dialog.top)
-        
-        def apply_x():
-            self.view_notebook.select(tab.top)
-
-            try:
-                x1=float(self.left_zoom_entry.get())
-                x2=float(self.right_zoom_entry.get())
-                tab.adjust_x(x1,x2)
-                self.lift_widget(self.plot_settings_dialog.top)
-            except:
-                self.lift_widget(self.plot_settings_dialog.top)
-                ErrorDialog(self, title='Invalid Zoom Range',label='Error: Invalid x limits: '+self.left_zoom_entry.get()+', '+self.right_zoom_entry.get())            
-            
-        def apply_y():
-            self.view_notebook.select(tab.top)
-            try:
-                y1=float(self.left_zoom_entry2.get())
-                y2=float(self.right_zoom_entry2.get())
-                tab.adjust_y(y1,y2)
-                self.lift_widget(self.plot_settings_dialog.top)
-            except Exception as e:
-                print(e)
-                self.lift_widget(self.plot_settings_dialog.top)
-                ErrorDialog(self, title='Invalid Zoom Range',label='Error! Invalid y limits: '+self.left_zoom_entry2.get()+', '+self.right_zoom_entry2.get())
-                
-        def apply_z():
-            self.view_notebook.select(tab.top)
-
-            try:
-                z1=float(self.left_zoom_entry_z.get())
-                z2=float(self.right_zoom_entry_z.get())
-                tab.adjust_z(z1,z2)
-                self.lift_widget(self.plot_settings_dialog.top)
-            except Exception as e:
-                print(e)
-                self.lift_widget(self.plot_settings_dialog.top)
-                ErrorDialog(self, title='Invalid Zoom Range',label='Error: Invalid z limits: '+self.left_zoom_entry.get()+', '+self.right_zoom_entry.get())
-        
+#     #Not used, replaced by open_plot_settings.
+#     def open_options(self, tab,current_title):
+#         #If the user already has dialogs open for editing the plot, close the extras to avoid confusion.
+#         self.close_plot_option_windows()
 #         def select_tab():
 #             self.view_notebook.select(tab.top)
-        
-        def set_title():
-            tab.set_title(self.title_entry.get())
-            self.lift_widget(self.plot_settings_dialog.top)
-            
-        def set_custom_color(custom_color):
-            print('foo')
-            print(self.custom_color)
-            tab.set_color(self.color_sample_var.get(), custom_color)
-            self.lift_widget(self.plot_settings_dialog.top)
-        
-        def set_color():
-            if self.color_color_var.get()=='Custom':
-                self.custom_color=None
-                try:
-                    self.custom_color_dialog.top.destroy()
-                except:
-                    pass
-                self.custom_color_dialog=CustomColorDialog(self,set_custom_color, self.custom_color)
-                self.lift_widget(self.custom_color_dialog.top)
-            else:
-                tab.set_color(self.color_sample_var.get(), self.color_color_var.get())
-            
-            self.lift_widget(self.plot_settings_dialog.top)
-        
-        def set_linestyle():
-            tab.set_linestyle(self.linestyle_sample_var.get(), self.linestyle_linestyle_var.get())
-            self.lift_widget(self.plot_settings_dialog.top)
-            
-        def set_markerstyle():
-            tab.set_markerstyle(self.markerstyle_sample_var.get(), self.markerstyle_markerstyle_var.get())
-            self.lift_widget(self.plot_settings_dialog.top)
-            
-        tab.freeze() #You have to finish dealing with this before, say, opening another analysis box.
-        buttons={
-#             'reset':{
-#                 select_tab:[],
-#                 tab.reset:[],
-#             },
-            'close':{}
-        }
 #         buttons={
 #             'ok':{
 #                 select_tab:[],
 #                 lambda: tab.set_title(self.new_plot_title_entry.get()):[]
 #             }
 #         }
-        def set_legend():
-            tab.set_legend_style(self.legend_legend_var.get())
-            self.lift_widget(self.plot_settings_dialog.top)
+#         def set_markerstyle():
+#             tab.set_markerstyle(self.markerstyle_sample_var.get(), self.markerstyle_markerstyle_var.get())
+#         
+#         def apply_x():
+#             self.view_notebook.select(tab.top)
+# 
+#             try:
+#                 x1=float(self.left_zoom_entry.get())
+#                 x2=float(self.right_zoom_entry.get())
+#                 tab.adjust_x(x1,x2)
+#             except:
+#                 ErrorDialog(self, title='Invalid Zoom Range',label='Error: Invalid x limits: '+self.left_zoom_entry.get()+', '+self.right_zoom_entry.get())
+#                 
+#         def apply_y():
+#             self.view_notebook.select(tab.top)
+#             try:
+#                 y1=float(self.left_zoom_entry2.get())
+#                 y2=float(self.right_zoom_entry2.get())
+#                 tab.adjust_y(y1,y2)
+#             except Exception as e:
+#                 print(e)
+#                 ErrorDialog(self, title='Invalid Zoom Range',label='Error! Invalid y limits: '+self.left_zoom_entry2.get()+', '+self.right_zoom_entry2.get())
+#                 
+#         def apply_z():
+#             self.view_notebook.select(tab.top)
+# 
+#             try:
+#                 z1=float(self.left_zoom_entry_z.get())
+#                 z2=float(self.right_zoom_entry_z.get())
+#                 tab.adjust_z(z1,z2)
+#             except Exception as e:
+#                 print(e)
+#                 ErrorDialog(self, title='Invalid Zoom Range',label='Error: Invalid z limits: '+self.left_zoom_entry.get()+', '+self.right_zoom_entry.get())
+#         
+#         self.plot_options_dialog=Dialog(self,'Plot Options','\nPlot title:',buttons=buttons)
+#         self.new_plot_title_entry=Entry(self.plot_options_dialog.top, width=20, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+#         self.new_plot_title_entry.insert(0,current_title)
+#         self.new_plot_title_entry.pack()
+#         
+#         self.outer_outer_zoom_frame=Frame(self.plot_options_dialog.top,bg=self.bg,padx=self.padx,pady=15)
+#         self.outer_outer_zoom_frame.pack(expand=True,fill=BOTH)
+# 
+#         self.zoom_title_frame=Frame(self.outer_outer_zoom_frame,bg=self.bg)
+#         self.zoom_title_frame.pack(pady=(5,10))
+#         self.zoom_title_label=Label(self.zoom_title_frame,text='Adjust plot x and y limits:',bg=self.bg,fg=self.textcolor)
+#         self.zoom_title_label.pack(side=LEFT,pady=(0,4)) 
+#         
+#         self.outer_zoom_frame=Frame(self.outer_outer_zoom_frame,bg=self.bg,padx=self.padx)
+#         self.outer_zoom_frame.pack(expand=True,fill=BOTH,pady=(0,10))
+#         self.zoom_frame=Frame(self.outer_zoom_frame,bg=self.bg,padx=self.padx)
+#         self.zoom_frame.pack()
+#         
+#         self.zoom_label=Label(self.zoom_frame,text='x1:',bg=self.bg,fg=self.textcolor)
+#         self.left_zoom_entry=Entry(self.zoom_frame, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+#         self.zoom_label2=Label(self.zoom_frame,text='x2:',bg=self.bg,fg=self.textcolor)
+#         self.right_zoom_entry=Entry(self.zoom_frame, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+#         self.zoom_button=Button(self.zoom_frame,text='Apply',  command=apply_x,width=7, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
+#         self.zoom_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
+#         self.zoom_button.pack(side=RIGHT,padx=(10,10))
+#         self.right_zoom_entry.pack(side=RIGHT,padx=self.padx)
+#         self.zoom_label2.pack(side=RIGHT,padx=self.padx)
+#         self.left_zoom_entry.pack(side=RIGHT,padx=self.padx)
+#         self.zoom_label.pack(side=RIGHT,padx=self.padx)
+#         
+#         
+#         self.outer_zoom_frame2=Frame(self.outer_outer_zoom_frame,bg=self.bg,padx=self.padx)
+#         self.outer_zoom_frame2.pack(expand=True,fill=BOTH,pady=(0,10))
+#         self.zoom_frame2=Frame(self.outer_zoom_frame2,bg=self.bg,padx=self.padx)
+#         self.zoom_frame2.pack()
+#         self.zoom_label3=Label(self.zoom_frame2,text='y1:',bg=self.bg,fg=self.textcolor)
+#         self.left_zoom_entry2=Entry(self.zoom_frame2, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+#         self.zoom_label4=Label(self.zoom_frame2,text='y2:',bg=self.bg,fg=self.textcolor)
+#         self.right_zoom_entry2=Entry(self.zoom_frame2, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+#         self.zoom_button2=Button(self.zoom_frame2,text='Apply',  command=apply_y,width=7, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
+#         self.zoom_button2.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
+#         
+#         self.zoom_button2.pack(side=RIGHT,padx=(10,10))
+#         self.right_zoom_entry2.pack(side=RIGHT,padx=self.padx)
+#         self.zoom_label4.pack(side=RIGHT,padx=self.padx)
+#         self.left_zoom_entry2.pack(side=RIGHT,padx=self.padx)
+#         self.zoom_label3.pack(side=RIGHT,padx=self.padx)
+#         
+#         if tab.plot.x_axis=='contour':
+#             self.outer_zoom_frame_z=Frame(self.outer_outer_zoom_frame,bg=self.bg,padx=self.padx)
+#             self.outer_zoom_frame_z.pack(expand=True,fill=BOTH,pady=(0,10))
+#             self.zoom_frame_z=Frame(self.outer_zoom_frame_z,bg=self.bg,padx=self.padx)
+#             self.zoom_frame_z.pack()
+#             self.zoom_label_z1=Label(self.zoom_frame_z,text='z1:',bg=self.bg,fg=self.textcolor)
+#             self.left_zoom_entry_z=Entry(self.zoom_frame_z, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+#             self.zoom_label_z2=Label(self.zoom_frame_z,text='z2:',bg=self.bg,fg=self.textcolor)
+#             self.right_zoom_entry_z=Entry(self.zoom_frame_z, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+#             self.zoom_button_z=Button(self.zoom_frame_z,text='Apply',  command=apply_z,width=7, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
+#             self.zoom_button_z.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
+#     
+#     
+#             
+#             self.zoom_button_z.pack(side=RIGHT,padx=(10,10))
+#             self.right_zoom_entry_z.pack(side=RIGHT,padx=self.padx)
+#             self.zoom_label_z2.pack(side=RIGHT,padx=self.padx)
+#             self.left_zoom_entry_z.pack(side=RIGHT,padx=self.padx)
+#             self.zoom_label_z1.pack(side=RIGHT,padx=self.padx)
+#         if tab.plot.markers:
+#             self.outer_markerstyle_frame=Frame(self.plot_options_dialog.top,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
+#             self.outer_markerstyle_frame.pack(expand=True,fill=BOTH)
+#             self.markerstyle_label=Label(self.outer_markerstyle_frame,text='Markerstyle settings',bg=self.bg,fg=self.textcolor)
+#             self.markerstyle_label.pack()
+#     
+#             self.markerstyle_frame=Frame(self.outer_markerstyle_frame,bg=self.bg,padx=self.padx,pady=15)
+#             self.markerstyle_frame.pack(fill=BOTH, expand=True)
+#             self.markerstyle_sample_frame=Frame(self.markerstyle_frame,bg=self.bg,padx=30,pady=0)
+#             self.markerstyle_sample_frame.pack(fill=BOTH, expand=True)
+#     
+#             self.markerstyle_sample_label=Label(self.markerstyle_sample_frame,text='Sample: ',bg=self.bg,fg=self.textcolor)
+#             self.markerstyle_sample_label.pack(side=LEFT)
+#             self.markerstyle_sample_var=StringVar()
+#             sample_names=[]
+#             repeats=False
+#             max_len=0
+#             for sample in tab.samples:
+#                 if sample.name in sample_names:
+#                     repeats=True
+#                 else:
+#                     sample_names.append(sample.name)
+#                     max_len=np.max([max_len, len(sample.name)])
+#             if repeats:
+#                 sample_names=[]
+#                 for sample in tab.samples:
+#                     sample_names.append(sample.title+': '+sample.name)
+#                     max_len=np.max([max_len, len(sample_names[-1])])
+#             self.markerstyle_sample_var.set(sample_names[0])
+#             self.markerstyle_menu=OptionMenu(self.markerstyle_sample_frame, self.markerstyle_sample_var,*sample_names)
+#             self.markerstyle_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
+#             self.markerstyle_menu.pack(side=LEFT)
+#             
+#             self.markerstyle_markerstyle_frame=Frame(self.markerstyle_frame,bg=self.bg,padx=44,pady=0)
+#             self.markerstyle_markerstyle_frame.pack(fill=BOTH, expand=True)
+#             self.markerstyle_sample_label=Label(self.markerstyle_markerstyle_frame,text='Style: ',bg=self.bg,fg=self.textcolor)
+#             self.markerstyle_sample_label.pack(side=LEFT)
+#             self.markerstyle_markerstyle_var=StringVar()
+#             markerstyle_names=['Circle','X','Diamond','Triangle']
+#     
+#             self.markerstyle_markerstyle_var.set(markerstyle_names[0])
+#             self.markerstyle_menu=OptionMenu(self.markerstyle_markerstyle_frame, self.markerstyle_markerstyle_var,*markerstyle_names)
+#             self.markerstyle_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
+#             self.markerstyle_menu.pack(side=LEFT)
+#             self.markerstyle_button=Button(self.markerstyle_frame,text='Apply',  command=set_markerstyle,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
+#             self.markerstyle_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
+#             self.markerstyle_button.pack()
+#         
+#         
+#     def open_plot_settings(self, tab):
+#         #If the user already has dialogs open for editing the plot, close the extras to avoid confusion.
+#         self.close_plot_option_windows()
+#         
+#         def select_tab():
+#             self.view_notebook.select(tab.top)
+#             self.lift_widget(self.plot_settings_dialog.top)
+# 
+#         def set_markerstyle():
+#             tab.set_markerstyle(self.markerstyle_sample_var.get(), self.markerstyle_markerstyle_var.get())
+#             self.lift_widget(self.plot_settings_dialog.top)
+#         
+#         def apply_x():
+#             self.view_notebook.select(tab.top)
+# 
+#             try:
+#                 x1=float(self.left_zoom_entry.get())
+#                 x2=float(self.right_zoom_entry.get())
+#                 tab.adjust_x(x1,x2)
+#                 self.lift_widget(self.plot_settings_dialog.top)
+#             except:
+#                 self.lift_widget(self.plot_settings_dialog.top)
+#                 ErrorDialog(self, title='Invalid Zoom Range',label='Error: Invalid x limits: '+self.left_zoom_entry.get()+', '+self.right_zoom_entry.get())            
+#             
+#         def apply_y():
+#             self.view_notebook.select(tab.top)
+#             try:
+#                 y1=float(self.left_zoom_entry2.get())
+#                 y2=float(self.right_zoom_entry2.get())
+#                 tab.adjust_y(y1,y2)
+#                 self.lift_widget(self.plot_settings_dialog.top)
+#             except Exception as e:
+#                 print(e)
+#                 self.lift_widget(self.plot_settings_dialog.top)
+#                 ErrorDialog(self, title='Invalid Zoom Range',label='Error! Invalid y limits: '+self.left_zoom_entry2.get()+', '+self.right_zoom_entry2.get())
+#                 
+#         def apply_z():
+#             self.view_notebook.select(tab.top)
+# 
+#             try:
+#                 z1=float(self.left_zoom_entry_z.get())
+#                 z2=float(self.right_zoom_entry_z.get())
+#                 tab.adjust_z(z1,z2)
+#                 self.lift_widget(self.plot_settings_dialog.top)
+#             except Exception as e:
+#                 print(e)
+#                 self.lift_widget(self.plot_settings_dialog.top)
+#                 ErrorDialog(self, title='Invalid Zoom Range',label='Error: Invalid z limits: '+self.left_zoom_entry.get()+', '+self.right_zoom_entry.get())
+#         
+#         def set_title():
+#             tab.set_title(self.title_entry.get())
+#             self.lift_widget(self.plot_settings_dialog.top)
+#             
+#         def set_custom_color(custom_color):
+#             print('foo')
+#             print(self.custom_color)
+#             tab.set_color(self.color_sample_var.get(), custom_color)
+#             self.lift_widget(self.plot_settings_dialog.top)
+#         
+#         def set_color():
+#             if self.color_color_var.get()=='Custom':
+#                 self.custom_color=None
+#                 try:
+#                     self.custom_color_dialog.top.destroy()
+#                 except:
+#                     pass
+#                 self.custom_color_dialog=CustomColorDialog(self,set_custom_color, self.custom_color)
+#                 self.lift_widget(self.custom_color_dialog.top)
+#             else:
+#                 tab.set_color(self.color_sample_var.get(), self.color_color_var.get())
+#             
+#             self.lift_widget(self.plot_settings_dialog.top)
+#         
+#         def set_linestyle():
+#             tab.set_linestyle(self.linestyle_sample_var.get(), self.linestyle_linestyle_var.get())
+#             self.lift_widget(self.plot_settings_dialog.top)
+#             
+#         def set_markerstyle():
+#             tab.set_markerstyle(self.markerstyle_sample_var.get(), self.markerstyle_markerstyle_var.get())
+#             self.lift_widget(self.plot_settings_dialog.top)
+#             
+#         tab.freeze() #You have to finish dealing with this before, say, opening another analysis box.
+#         buttons={
+#             'close':{}
+#         }
+# 
+#         def set_legend():
+#             tab.set_legend_style(self.legend_legend_var.get())
+#             self.lift_widget(self.plot_settings_dialog.top)
+#         
+#         self.plot_settings_dialog=VerticalScrolledDialog(self,'Plot Settings','',buttons=buttons,button_width=13, min_height=715, width=360)
+#         self.plot_settings_dialog.top.wm_geometry('380x756')
+# #         self.plot_settings_dialog.top.attributes('-topmost', True)
+#         
+#         self.outer_title_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
+#         self.outer_title_frame.pack(expand=True,fill=BOTH)
+# 
+#         self.title_frame=Frame(self.outer_title_frame,bg=self.bg,padx=self.padx,pady=15)
+#         self.title_frame.pack(fill=BOTH, expand=True)
+# 
+#         self.title_label=Label(self.title_frame,text='Plot title:',bg=self.bg,fg=self.textcolor)
+#         self.title_entry=Entry(self.title_frame, width=20, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+#         self.title_button=Button(self.title_frame,text='Apply',  command=set_title,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
+#         self.title_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
+#         self.title_button.pack(side=RIGHT,padx=(10,20))
+#         self.title_entry.pack(side=RIGHT,padx=self.padx)
+#         self.title_label.pack(side=RIGHT,padx=self.padx)
+#         
+#         self.outer_outer_zoom_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15, highlightthickness=1)
+#         self.outer_outer_zoom_frame.pack(expand=True,fill=BOTH)
+# 
+#         self.zoom_title_frame=Frame(self.outer_outer_zoom_frame,bg=self.bg)
+#         self.zoom_title_frame.pack(pady=(5,10))
+#         self.zoom_title_label=Label(self.zoom_title_frame,text='Adjust plot x and y limits:',bg=self.bg,fg=self.textcolor)
+#         self.zoom_title_label.pack(side=LEFT,pady=(0,4)) 
+#         
+#         self.outer_zoom_frame=Frame(self.outer_outer_zoom_frame,bg=self.bg,padx=self.padx)
+#         self.outer_zoom_frame.pack(expand=True,fill=BOTH,pady=(0,10))
+#         self.zoom_frame=Frame(self.outer_zoom_frame,bg=self.bg,padx=self.padx)
+#         self.zoom_frame.pack()
+#         
+#         self.zoom_label=Label(self.zoom_frame,text='x1:',bg=self.bg,fg=self.textcolor)
+#         self.left_zoom_entry=Entry(self.zoom_frame, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+#         self.zoom_label2=Label(self.zoom_frame,text='x2:',bg=self.bg,fg=self.textcolor)
+#         self.right_zoom_entry=Entry(self.zoom_frame, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+#         self.zoom_button=Button(self.zoom_frame,text='Apply',  command=apply_x,width=7, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
+#         self.zoom_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
+#         self.zoom_button.pack(side=RIGHT,padx=(10,10))
+#         self.right_zoom_entry.pack(side=RIGHT,padx=self.padx)
+#         self.zoom_label2.pack(side=RIGHT,padx=self.padx)
+#         self.left_zoom_entry.pack(side=RIGHT,padx=self.padx)
+#         self.zoom_label.pack(side=RIGHT,padx=self.padx)
+#         
+#         
+#         self.outer_zoom_frame2=Frame(self.outer_outer_zoom_frame,bg=self.bg,padx=self.padx)
+#         self.outer_zoom_frame2.pack(expand=True,fill=BOTH,pady=(0,10))
+#         self.zoom_frame2=Frame(self.outer_zoom_frame2,bg=self.bg,padx=self.padx)
+#         self.zoom_frame2.pack()
+#         self.zoom_label3=Label(self.zoom_frame2,text='y1:',bg=self.bg,fg=self.textcolor)
+#         self.left_zoom_entry2=Entry(self.zoom_frame2, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+#         self.zoom_label4=Label(self.zoom_frame2,text='y2:',bg=self.bg,fg=self.textcolor)
+#         self.right_zoom_entry2=Entry(self.zoom_frame2, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+#         self.zoom_button2=Button(self.zoom_frame2,text='Apply',  command=apply_y,width=7, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
+#         self.zoom_button2.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
+#         
+#         self.zoom_button2.pack(side=RIGHT,padx=(10,10))
+#         self.right_zoom_entry2.pack(side=RIGHT,padx=self.padx)
+#         self.zoom_label4.pack(side=RIGHT,padx=self.padx)
+#         self.left_zoom_entry2.pack(side=RIGHT,padx=self.padx)
+#         self.zoom_label3.pack(side=RIGHT,padx=self.padx)
+#         
+#         if tab.plot.x_axis=='contour':
+#             self.outer_zoom_frame_z=Frame(self.outer_outer_zoom_frame,bg=self.bg,padx=self.padx)
+#             self.outer_zoom_frame_z.pack(expand=True,fill=BOTH,pady=(0,10))
+#             self.zoom_frame_z=Frame(self.outer_zoom_frame_z,bg=self.bg,padx=self.padx)
+#             self.zoom_frame_z.pack()
+#             self.zoom_label_z1=Label(self.zoom_frame_z,text='z1:',bg=self.bg,fg=self.textcolor)
+#             self.left_zoom_entry_z=Entry(self.zoom_frame_z, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+#             self.zoom_label_z2=Label(self.zoom_frame_z,text='z2:',bg=self.bg,fg=self.textcolor)
+#             self.right_zoom_entry_z=Entry(self.zoom_frame_z, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+#             self.zoom_button_z=Button(self.zoom_frame_z,text='Apply',  command=apply_z,width=7, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
+#             self.zoom_button_z.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
+#     
+#     
+#             
+#             self.zoom_button_z.pack(side=RIGHT,padx=(10,10))
+#             self.right_zoom_entry_z.pack(side=RIGHT,padx=self.padx)
+#             self.zoom_label_z2.pack(side=RIGHT,padx=self.padx)
+#             self.left_zoom_entry_z.pack(side=RIGHT,padx=self.padx)
+#             self.zoom_label_z1.pack(side=RIGHT,padx=self.padx)
+#         
+#         self.outer_color_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
+#         self.outer_color_frame.pack(expand=True,fill=BOTH)
+#         self.color_label=Label(self.outer_color_frame,text='Color settings',bg=self.bg,fg=self.textcolor)
+#         self.color_label.pack()
+# 
+#         self.color_frame=Frame(self.outer_color_frame,bg=self.bg,padx=self.padx,pady=15)
+#         self.color_frame.pack(fill=BOTH, expand=True)
+#         self.color_sample_frame=Frame(self.color_frame,bg=self.bg,padx=30,pady=0)
+#         self.color_sample_frame.pack(fill=BOTH, expand=True)
+# 
+#         self.color_sample_label=Label(self.color_sample_frame,text='Sample: ',bg=self.bg,fg=self.textcolor)
+#         self.color_sample_label.pack(side=LEFT)
+#         self.color_sample_var=StringVar()
+#         sample_names=[]
+#         repeats=False
+#         max_len=0
+#         for sample in tab.samples:
+#             if sample.name in sample_names:
+#                 repeats=True
+#             else:
+#                 sample_names.append(sample.name)
+#                 max_len=np.max([max_len, len(sample.name)])
+#         if repeats:
+#             sample_names=[]
+#             for sample in tab.samples:
+#                 sample_names.append(sample.title+': '+sample.name)
+#                 max_len=np.max([max_len, len(sample_names[-1])])
+#         self.color_sample_var.set(sample_names[0])
+#         self.color_menu=OptionMenu(self.color_sample_frame, self.color_sample_var,*sample_names)
+#         self.color_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
+#         self.color_menu.pack(side=LEFT)
+#         
+#         self.color_color_frame=Frame(self.color_frame,bg=self.bg,padx=40,pady=0)
+#         self.color_color_frame.pack(fill=BOTH, expand=True)
+#         self.color_sample_label=Label(self.color_color_frame,text='Color: ',bg=self.bg,fg=self.textcolor)
+#         self.color_sample_label.pack(side=LEFT)
+#         self.color_color_var=StringVar()
+#         color_names=tab.plot.color_names
+# 
+#         self.color_color_var.set(color_names[0])
+#         self.color_menu=OptionMenu(self.color_color_frame, self.color_color_var,*color_names)
+#         self.color_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
+#         self.color_menu.pack(side=LEFT)
+#         self.color_button=Button(self.color_frame,text='Apply',  command=set_color,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
+#         self.color_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
+#         self.color_button.pack()
+#         
+#         if tab.plot.lines_drawn:
+#             self.outer_linestyle_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
+#             self.outer_linestyle_frame.pack(expand=True,fill=BOTH)
+#             self.linestyle_label=Label(self.outer_linestyle_frame,text='Linestyle settings',bg=self.bg,fg=self.textcolor)
+#             self.linestyle_label.pack()
+#     
+#             self.linestyle_frame=Frame(self.outer_linestyle_frame,bg=self.bg,padx=self.padx,pady=15)
+#             self.linestyle_frame.pack(fill=BOTH, expand=True)
+#             self.linestyle_sample_frame=Frame(self.linestyle_frame,bg=self.bg,padx=30,pady=0)
+#             self.linestyle_sample_frame.pack(fill=BOTH, expand=True)
+#     
+#             self.linestyle_sample_label=Label(self.linestyle_sample_frame,text='Sample: ',bg=self.bg,fg=self.textcolor)
+#             self.linestyle_sample_label.pack(side=LEFT)
+#             self.linestyle_sample_var=StringVar()
+#             sample_names=[]
+#             repeats=False
+#             max_len=0
+#             for sample in tab.samples:
+#                 if sample.name in sample_names:
+#                     repeats=True
+#                 else:
+#                     sample_names.append(sample.name)
+#                     max_len=np.max([max_len, len(sample.name)])
+#             if repeats:
+#                 sample_names=[]
+#                 for sample in tab.samples:
+#                     sample_names.append(sample.title+': '+sample.name)
+#                     max_len=np.max([max_len, len(sample_names[-1])])
+#             self.linestyle_sample_var.set(sample_names[0])
+#             self.linestyle_menu=OptionMenu(self.linestyle_sample_frame, self.linestyle_sample_var,*sample_names)
+#             self.linestyle_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
+#             self.linestyle_menu.pack(side=LEFT)
+#             
+#             self.linestyle_linestyle_frame=Frame(self.linestyle_frame,bg=self.bg,padx=44,pady=0)
+#             self.linestyle_linestyle_frame.pack(fill=BOTH, expand=True)
+#             self.linestyle_sample_label=Label(self.linestyle_linestyle_frame,text='Style: ',bg=self.bg,fg=self.textcolor)
+#             self.linestyle_sample_label.pack(side=LEFT)
+#             self.linestyle_linestyle_var=StringVar()
+#             linestyle_names=['Solid','Dash','Dot','Dot-dash']
+#     
+#             self.linestyle_linestyle_var.set(linestyle_names[0])
+#             self.linestyle_menu=OptionMenu(self.linestyle_linestyle_frame, self.linestyle_linestyle_var,*linestyle_names)
+#             self.linestyle_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
+#             self.linestyle_menu.pack(side=LEFT)
+#             self.linestyle_button=Button(self.linestyle_frame,text='Apply',  command=set_linestyle,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
+#             self.linestyle_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
+#             self.linestyle_button.pack()
+#         
+#         if tab.plot.markers_drawn:
+#             self.outer_markerstyle_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
+#             self.outer_markerstyle_frame.pack(expand=True,fill=BOTH)
+#             self.markerstyle_label=Label(self.outer_markerstyle_frame,text='Markerstyle settings',bg=self.bg,fg=self.textcolor)
+#             self.markerstyle_label.pack()
+#     
+#             self.markerstyle_frame=Frame(self.outer_markerstyle_frame,bg=self.bg,padx=self.padx,pady=15)
+#             self.markerstyle_frame.pack(fill=BOTH, expand=True)
+#             self.markerstyle_sample_frame=Frame(self.markerstyle_frame,bg=self.bg,padx=30,pady=0)
+#             self.markerstyle_sample_frame.pack(fill=BOTH, expand=True)
+#     
+#             self.markerstyle_sample_label=Label(self.markerstyle_sample_frame,text='Sample: ',bg=self.bg,fg=self.textcolor)
+#             self.markerstyle_sample_label.pack(side=LEFT)
+#             self.markerstyle_sample_var=StringVar()
+#             sample_names=[]
+#             repeats=False
+#             max_len=0
+#             for sample in tab.samples:
+#                 if sample.name in sample_names:
+#                     repeats=True
+#                 else:
+#                     sample_names.append(sample.name)
+#                     max_len=np.max([max_len, len(sample.name)])
+#             if repeats:
+#                 sample_names=[]
+#                 for sample in tab.samples:
+#                     sample_names.append(sample.title+': '+sample.name)
+#                     max_len=np.max([max_len, len(sample_names[-1])])
+#             self.markerstyle_sample_var.set(sample_names[0])
+#             self.markerstyle_menu=OptionMenu(self.markerstyle_sample_frame, self.markerstyle_sample_var,*sample_names)
+#             self.markerstyle_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
+#             self.markerstyle_menu.pack(side=LEFT)
+#             
+#             self.markerstyle_markerstyle_frame=Frame(self.markerstyle_frame,bg=self.bg,padx=44,pady=0)
+#             self.markerstyle_markerstyle_frame.pack(fill=BOTH, expand=True)
+#             self.markerstyle_sample_label=Label(self.markerstyle_markerstyle_frame,text='Style: ',bg=self.bg,fg=self.textcolor)
+#             self.markerstyle_sample_label.pack(side=LEFT)
+#             self.markerstyle_markerstyle_var=StringVar()
+#             markerstyle_names=['Circle','X','Diamond','Triangle']
+#     
+#             self.markerstyle_markerstyle_var.set(markerstyle_names[0])
+#             self.markerstyle_menu=OptionMenu(self.markerstyle_markerstyle_frame, self.markerstyle_markerstyle_var,*markerstyle_names)
+#             self.markerstyle_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
+#             self.markerstyle_menu.pack(side=LEFT)
+#             self.markerstyle_button=Button(self.markerstyle_frame,text='Apply',  command=set_markerstyle,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
+#             self.markerstyle_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
+#             self.markerstyle_button.pack()
+#             
+#         self.outer_legend_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
+#         self.outer_legend_frame.pack(expand=True,fill=BOTH)
+# 
+#         self.legend_frame=Frame(self.outer_legend_frame,bg=self.bg,padx=self.padx,pady=15)
+#         self.legend_frame.pack(fill=BOTH, expand=True)
+#         
+#         self.legend_legend_frame=Frame(self.legend_frame,bg=self.bg,padx=20,pady=0)
+#         self.legend_legend_frame.pack(fill=BOTH, expand=True)
+#         self.legend_sample_label=Label(self.legend_legend_frame,text='Legend style: ',bg=self.bg,fg=self.textcolor)
+#         self.legend_sample_label.pack(side=LEFT)
+#         self.legend_legend_var=StringVar()
+#         legend_names=['Full list','Gradient']
+# 
+#         self.legend_legend_var.set(legend_names[0])
+#         self.legend_menu=OptionMenu(self.legend_legend_frame, self.legend_legend_var,*legend_names)
+#         self.legend_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
+#         self.legend_menu.pack(side=LEFT)
+#         self.legend_button=Button(self.legend_legend_frame,text='Apply',  command=set_legend,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
+#         self.legend_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
+#         self.legend_button.pack(side=LEFT, padx=(5,5),pady=(5,3))
         
-        self.plot_settings_dialog=VerticalScrolledDialog(self,'Plot Settings','',buttons=buttons,button_width=13, min_height=680, width=360)
-        self.plot_settings_dialog.top.wm_geometry('360x730')
-#         self.plot_settings_dialog.top.attributes('-topmost', True)
-        
-        self.outer_title_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
-        self.outer_title_frame.pack(expand=True,fill=BOTH)
 
-        self.title_frame=Frame(self.outer_title_frame,bg=self.bg,padx=self.padx,pady=15)
-        self.title_frame.pack(fill=BOTH, expand=True)
 
-        self.title_label=Label(self.title_frame,text='Plot title:',bg=self.bg,fg=self.textcolor)
-        self.title_entry=Entry(self.title_frame, width=20, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-        self.title_button=Button(self.title_frame,text='Apply',  command=set_title,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-        self.title_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-        self.title_button.pack(side=RIGHT,padx=(10,20))
-        self.title_entry.pack(side=RIGHT,padx=self.padx)
-        self.title_label.pack(side=RIGHT,padx=self.padx)
-        
-        self.outer_outer_zoom_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15, highlightthickness=1)
-        self.outer_outer_zoom_frame.pack(expand=True,fill=BOTH)
-
-        self.zoom_title_frame=Frame(self.outer_outer_zoom_frame,bg=self.bg)
-        self.zoom_title_frame.pack(pady=(5,10))
-        self.zoom_title_label=Label(self.zoom_title_frame,text='Adjust plot x and y limits:',bg=self.bg,fg=self.textcolor)
-        self.zoom_title_label.pack(side=LEFT,pady=(0,4)) 
-        
-        self.outer_zoom_frame=Frame(self.outer_outer_zoom_frame,bg=self.bg,padx=self.padx)
-        self.outer_zoom_frame.pack(expand=True,fill=BOTH,pady=(0,10))
-        self.zoom_frame=Frame(self.outer_zoom_frame,bg=self.bg,padx=self.padx)
-        self.zoom_frame.pack()
-        
-        self.zoom_label=Label(self.zoom_frame,text='x1:',bg=self.bg,fg=self.textcolor)
-        self.left_zoom_entry=Entry(self.zoom_frame, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-        self.zoom_label2=Label(self.zoom_frame,text='x2:',bg=self.bg,fg=self.textcolor)
-        self.right_zoom_entry=Entry(self.zoom_frame, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-        self.zoom_button=Button(self.zoom_frame,text='Apply',  command=apply_x,width=7, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-        self.zoom_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-        self.zoom_button.pack(side=RIGHT,padx=(10,10))
-        self.right_zoom_entry.pack(side=RIGHT,padx=self.padx)
-        self.zoom_label2.pack(side=RIGHT,padx=self.padx)
-        self.left_zoom_entry.pack(side=RIGHT,padx=self.padx)
-        self.zoom_label.pack(side=RIGHT,padx=self.padx)
-        
-        
-        self.outer_zoom_frame2=Frame(self.outer_outer_zoom_frame,bg=self.bg,padx=self.padx)
-        self.outer_zoom_frame2.pack(expand=True,fill=BOTH,pady=(0,10))
-        self.zoom_frame2=Frame(self.outer_zoom_frame2,bg=self.bg,padx=self.padx)
-        self.zoom_frame2.pack()
-        self.zoom_label3=Label(self.zoom_frame2,text='y1:',bg=self.bg,fg=self.textcolor)
-        self.left_zoom_entry2=Entry(self.zoom_frame2, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-        self.zoom_label4=Label(self.zoom_frame2,text='y2:',bg=self.bg,fg=self.textcolor)
-        self.right_zoom_entry2=Entry(self.zoom_frame2, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-        self.zoom_button2=Button(self.zoom_frame2,text='Apply',  command=apply_y,width=7, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-        self.zoom_button2.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-        
-        self.zoom_button2.pack(side=RIGHT,padx=(10,10))
-        self.right_zoom_entry2.pack(side=RIGHT,padx=self.padx)
-        self.zoom_label4.pack(side=RIGHT,padx=self.padx)
-        self.left_zoom_entry2.pack(side=RIGHT,padx=self.padx)
-        self.zoom_label3.pack(side=RIGHT,padx=self.padx)
-        
-        if tab.plot.x_axis=='contour':
-            self.outer_zoom_frame_z=Frame(self.outer_outer_zoom_frame,bg=self.bg,padx=self.padx)
-            self.outer_zoom_frame_z.pack(expand=True,fill=BOTH,pady=(0,10))
-            self.zoom_frame_z=Frame(self.outer_zoom_frame_z,bg=self.bg,padx=self.padx)
-            self.zoom_frame_z.pack()
-            self.zoom_label_z1=Label(self.zoom_frame_z,text='z1:',bg=self.bg,fg=self.textcolor)
-            self.left_zoom_entry_z=Entry(self.zoom_frame_z, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-            self.zoom_label_z2=Label(self.zoom_frame_z,text='z2:',bg=self.bg,fg=self.textcolor)
-            self.right_zoom_entry_z=Entry(self.zoom_frame_z, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-            self.zoom_button_z=Button(self.zoom_frame_z,text='Apply',  command=apply_z,width=7, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-            self.zoom_button_z.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-    
-    
-            
-            self.zoom_button_z.pack(side=RIGHT,padx=(10,10))
-            self.right_zoom_entry_z.pack(side=RIGHT,padx=self.padx)
-            self.zoom_label_z2.pack(side=RIGHT,padx=self.padx)
-            self.left_zoom_entry_z.pack(side=RIGHT,padx=self.padx)
-            self.zoom_label_z1.pack(side=RIGHT,padx=self.padx)
-        
-        self.outer_color_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
-        self.outer_color_frame.pack(expand=True,fill=BOTH)
-        self.color_label=Label(self.outer_color_frame,text='Color settings',bg=self.bg,fg=self.textcolor)
-        self.color_label.pack()
-
-        self.color_frame=Frame(self.outer_color_frame,bg=self.bg,padx=self.padx,pady=15)
-        self.color_frame.pack(fill=BOTH, expand=True)
-        self.color_sample_frame=Frame(self.color_frame,bg=self.bg,padx=30,pady=0)
-        self.color_sample_frame.pack(fill=BOTH, expand=True)
-
-        self.color_sample_label=Label(self.color_sample_frame,text='Sample: ',bg=self.bg,fg=self.textcolor)
-        self.color_sample_label.pack(side=LEFT)
-        self.color_sample_var=StringVar()
-        sample_names=[]
-        repeats=False
-        max_len=0
-        for sample in tab.samples:
-            if sample.name in sample_names:
-                repeats=True
-            else:
-                sample_names.append(sample.name)
-                max_len=np.max([max_len, len(sample.name)])
-        if repeats:
-            sample_names=[]
-            for sample in tab.samples:
-                sample_names.append(sample.title+': '+sample.name)
-                max_len=np.max([max_len, len(sample_names[-1])])
-        self.color_sample_var.set(sample_names[0])
-        self.color_menu=OptionMenu(self.color_sample_frame, self.color_sample_var,*sample_names)
-        self.color_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
-        self.color_menu.pack(side=LEFT)
-        
-        self.color_color_frame=Frame(self.color_frame,bg=self.bg,padx=40,pady=0)
-        self.color_color_frame.pack(fill=BOTH, expand=True)
-        self.color_sample_label=Label(self.color_color_frame,text='Color: ',bg=self.bg,fg=self.textcolor)
-        self.color_sample_label.pack(side=LEFT)
-        self.color_color_var=StringVar()
-        color_names=tab.plot.color_names
-
-        self.color_color_var.set(color_names[0])
-        self.color_menu=OptionMenu(self.color_color_frame, self.color_color_var,*color_names)
-        self.color_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
-        self.color_menu.pack(side=LEFT)
-        self.color_button=Button(self.color_frame,text='Apply',  command=set_color,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-        self.color_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-        self.color_button.pack()
-        
-        if tab.plot.lines_drawn:
-            self.outer_linestyle_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
-            self.outer_linestyle_frame.pack(expand=True,fill=BOTH)
-            self.linestyle_label=Label(self.outer_linestyle_frame,text='Linestyle settings',bg=self.bg,fg=self.textcolor)
-            self.linestyle_label.pack()
-    
-            self.linestyle_frame=Frame(self.outer_linestyle_frame,bg=self.bg,padx=self.padx,pady=15)
-            self.linestyle_frame.pack(fill=BOTH, expand=True)
-            self.linestyle_sample_frame=Frame(self.linestyle_frame,bg=self.bg,padx=30,pady=0)
-            self.linestyle_sample_frame.pack(fill=BOTH, expand=True)
-    
-            self.linestyle_sample_label=Label(self.linestyle_sample_frame,text='Sample: ',bg=self.bg,fg=self.textcolor)
-            self.linestyle_sample_label.pack(side=LEFT)
-            self.linestyle_sample_var=StringVar()
-            sample_names=[]
-            repeats=False
-            max_len=0
-            for sample in tab.samples:
-                if sample.name in sample_names:
-                    repeats=True
-                else:
-                    sample_names.append(sample.name)
-                    max_len=np.max([max_len, len(sample.name)])
-            if repeats:
-                sample_names=[]
-                for sample in tab.samples:
-                    sample_names.append(sample.title+': '+sample.name)
-                    max_len=np.max([max_len, len(sample_names[-1])])
-            self.linestyle_sample_var.set(sample_names[0])
-            self.linestyle_menu=OptionMenu(self.linestyle_sample_frame, self.linestyle_sample_var,*sample_names)
-            self.linestyle_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
-            self.linestyle_menu.pack(side=LEFT)
-            
-            self.linestyle_linestyle_frame=Frame(self.linestyle_frame,bg=self.bg,padx=44,pady=0)
-            self.linestyle_linestyle_frame.pack(fill=BOTH, expand=True)
-            self.linestyle_sample_label=Label(self.linestyle_linestyle_frame,text='Style: ',bg=self.bg,fg=self.textcolor)
-            self.linestyle_sample_label.pack(side=LEFT)
-            self.linestyle_linestyle_var=StringVar()
-            linestyle_names=['Solid','Dash','Dot','Dot-dash']
-    
-            self.linestyle_linestyle_var.set(linestyle_names[0])
-            self.linestyle_menu=OptionMenu(self.linestyle_linestyle_frame, self.linestyle_linestyle_var,*linestyle_names)
-            self.linestyle_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
-            self.linestyle_menu.pack(side=LEFT)
-            self.linestyle_button=Button(self.linestyle_frame,text='Apply',  command=set_linestyle,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-            self.linestyle_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-            self.linestyle_button.pack()
-        
-        if tab.plot.markers_drawn:
-            self.outer_markerstyle_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
-            self.outer_markerstyle_frame.pack(expand=True,fill=BOTH)
-            self.markerstyle_label=Label(self.outer_markerstyle_frame,text='Markerstyle settings',bg=self.bg,fg=self.textcolor)
-            self.markerstyle_label.pack()
-    
-            self.markerstyle_frame=Frame(self.outer_markerstyle_frame,bg=self.bg,padx=self.padx,pady=15)
-            self.markerstyle_frame.pack(fill=BOTH, expand=True)
-            self.markerstyle_sample_frame=Frame(self.markerstyle_frame,bg=self.bg,padx=30,pady=0)
-            self.markerstyle_sample_frame.pack(fill=BOTH, expand=True)
-    
-            self.markerstyle_sample_label=Label(self.markerstyle_sample_frame,text='Sample: ',bg=self.bg,fg=self.textcolor)
-            self.markerstyle_sample_label.pack(side=LEFT)
-            self.markerstyle_sample_var=StringVar()
-            sample_names=[]
-            repeats=False
-            max_len=0
-            for sample in tab.samples:
-                if sample.name in sample_names:
-                    repeats=True
-                else:
-                    sample_names.append(sample.name)
-                    max_len=np.max([max_len, len(sample.name)])
-            if repeats:
-                sample_names=[]
-                for sample in tab.samples:
-                    sample_names.append(sample.title+': '+sample.name)
-                    max_len=np.max([max_len, len(sample_names[-1])])
-            self.markerstyle_sample_var.set(sample_names[0])
-            self.markerstyle_menu=OptionMenu(self.markerstyle_sample_frame, self.markerstyle_sample_var,*sample_names)
-            self.markerstyle_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
-            self.markerstyle_menu.pack(side=LEFT)
-            
-            self.markerstyle_markerstyle_frame=Frame(self.markerstyle_frame,bg=self.bg,padx=44,pady=0)
-            self.markerstyle_markerstyle_frame.pack(fill=BOTH, expand=True)
-            self.markerstyle_sample_label=Label(self.markerstyle_markerstyle_frame,text='Style: ',bg=self.bg,fg=self.textcolor)
-            self.markerstyle_sample_label.pack(side=LEFT)
-            self.markerstyle_markerstyle_var=StringVar()
-            markerstyle_names=['Circle','X','Diamond','Triangle']
-    
-            self.markerstyle_markerstyle_var.set(markerstyle_names[0])
-            self.markerstyle_menu=OptionMenu(self.markerstyle_markerstyle_frame, self.markerstyle_markerstyle_var,*markerstyle_names)
-            self.markerstyle_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
-            self.markerstyle_menu.pack(side=LEFT)
-            self.markerstyle_button=Button(self.markerstyle_frame,text='Apply',  command=set_markerstyle,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-            self.markerstyle_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-            self.markerstyle_button.pack()
-            
-        self.outer_legend_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
-        self.outer_legend_frame.pack(expand=True,fill=BOTH)
-
-        self.legend_frame=Frame(self.outer_legend_frame,bg=self.bg,padx=self.padx,pady=15)
-        self.legend_frame.pack(fill=BOTH, expand=True)
-        
-        self.legend_legend_frame=Frame(self.legend_frame,bg=self.bg,padx=20,pady=0)
-        self.legend_legend_frame.pack(fill=BOTH, expand=True)
-        self.legend_sample_label=Label(self.legend_legend_frame,text='Legend style: ',bg=self.bg,fg=self.textcolor)
-        self.legend_sample_label.pack(side=LEFT)
-        self.legend_legend_var=StringVar()
-        legend_names=['Full list','Gradient']
-
-        self.legend_legend_var.set(legend_names[0])
-        self.legend_menu=OptionMenu(self.legend_legend_frame, self.legend_legend_var,*legend_names)
-        self.legend_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
-        self.legend_menu.pack(side=LEFT)
-        self.legend_button=Button(self.legend_legend_frame,text='Apply',  command=set_legend,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-        self.legend_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-        self.legend_button.pack(side=LEFT, padx=(5,5),pady=(5,3))
-        
-
-#         self.color_entry.pack(side=RIGHT,padx=self.padx)
-#         self.color_label.pack(side=RIGHT,padx=self.padx)
     def lift_widget(self, widget):
         widget.focus_set()
         widget.lift()
@@ -4937,9 +4924,40 @@ class Controller():
             'ok':{
                 select_tab:[],
                 #The lambda sends a list of the currently selected samples back to the tab along with the new title and selected incidence/emission angles
-                lambda: tab.set_samples(list(map(lambda y:sample_options[y],self.plot_samples_listbox.curselection())),self.new_plot_title_entry.get(), self.i_entry.get(),self.e_entry.get(), self.exclude_specular.get(), self.spec_tolerance_entry.get()):[]
+                lambda: tab.set_samples(list(map(lambda y:sample_options[y],self.plot_samples_listbox.curselection())),self.new_plot_title_entry.get(), *check_angle_lists(self.i_entry.get(),self.e_entry.get(), self.az_entry.get()), self.exclude_specular.get(), self.spec_tolerance_entry.get()):[]
                 }
             }
+        
+        def check_angle_lists(incidences, emissions, azimuths):
+            def check_list(angle_list):
+                invalid_list=[]
+                angle_list=angle_list.split(',')
+                if 'None' in angle_list or 'none' in angle_list:
+                    while 'None' in angle_list: angle_list.remove('None')
+                    while 'none' in angle_list: angle_list.remove('none')
+                    angle_list.append(None)
+                if angle_list==['']: angle_list=[]
+                for n, angle in enumerate(angle_list):
+                    if angle!=None: 
+                        try:
+                            angle_list[n]=int(angle)
+                        except:
+                            invalid_list.append(angle)
+                
+                return angle_list, invalid_list
+                        
+            incidences, invalid_incidences=check_list(incidences)
+            emissions, invalid_emissions=check_list(emissions)
+            azimuths, invalid_azimuths=check_list(azimuths)
+            if invalid_incidences!=[] or invalid_emissions!=[] or invalid_azimuths!=[]:
+                error_string='Warning! Not all angles entered are valid.\n'
+                if invalid_incidences!=[]:error_string+='\nInvalid incidences: '+str(invalid_incidences)
+                if invalid_emissions!=[]:error_string+='\nInvalid emissions: '+str(invalid_emissions)
+                if invalid_azimuths!=[]:error_string+='\nInvalid azimuths: '+str(invalid_azimuths)
+                ErrorDialog(self, 'Warning!', error_string)
+            
+            return incidences, emissions, azimuths
+            
         self.close_plot_option_windows()
             
         self.edit_plot_dialog=Dialog(self,'Edit Plot','\nPlot title:',buttons=buttons)
@@ -4957,24 +4975,35 @@ class Controller():
         self.geom_frame.pack(padx=(20,20),pady=(0,10))
         self.i_label=Label(self.geom_frame,padx=self.padx,pady=self.pady,bg=self.bg,fg=self.textcolor,text='i: ')
         self.i_label.pack(side=LEFT)
-        self.i_entry=Entry(self.geom_frame, width=12, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+        self.i_entry=Entry(self.geom_frame, width=8, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
         for i, incidence in enumerate(existing_geoms['i']):
             if i==0:
-                self.i_entry.insert(0,incidence)
+                self.i_entry.insert(0,str(incidence))
             else:
-                self.i_entry.insert('end',','+incidence)
+                self.i_entry.insert('end',','+str(incidence))
                 
         self.i_entry.pack(side=LEFT)
         
         self.e_label=Label(self.geom_frame,padx=self.padx,pady=self.pady,bg=self.bg,fg=self.textcolor,text='    e: ')
         self.e_label.pack(side=LEFT)
-        self.e_entry=Entry(self.geom_frame, width=12, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+        self.e_entry=Entry(self.geom_frame, width=8, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
         for i, emission in enumerate(existing_geoms['e']):
             if i==0:
-                self.e_entry.insert(0,emission)
+                self.e_entry.insert(0,str(emission))
             else:
-                self.e_entry.insert('end',','+emission)
+                self.e_entry.insert('end',','+str(emission))
         self.e_entry.pack(side=LEFT)
+        
+        self.az_label=Label(self.geom_frame,padx=self.padx,pady=self.pady,bg=self.bg,fg=self.textcolor,text='    az: ')
+        self.az_label.pack(side=LEFT)
+        self.az_entry=Entry(self.geom_frame, width=8, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
+        for i, azimuth in enumerate(existing_geoms['az']):
+            if i==0:
+                self.az_entry.insert(0,str(azimuth))
+            else:
+                self.az_entry.insert('end',','+str(azimuth))
+        self.az_entry.pack(side=LEFT)
+        print('packed')
         
         self.exclude_specular_frame=Frame(self.edit_plot_dialog.top,bg=self.bg,padx=self.padx, pady=self.pady)
         self.exclude_specular_frame.pack()
