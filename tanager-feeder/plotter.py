@@ -1948,6 +1948,7 @@ class Plot():
     
         
     def draw(self, exclude_wr=True):
+        print('starting to draw')
         self.ax.cla()
         self.white_ax.cla()
         
@@ -1992,7 +1993,8 @@ class Plot():
                        
         else:   
             min=None #we'll use these for setting polar r limits if we are doing a polar plot.
-            max=None                
+            max=None     
+                       
             for j, sample in enumerate(self.samples):
                 for i, label in enumerate(sample.spectrum_labels):
                     legend_label=self.legend_labels[sample][i]
