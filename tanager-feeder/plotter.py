@@ -118,6 +118,7 @@ class Plotter():
                 new=Sample(sample_label, file,title)
                 self.samples[file][sample_label]=new
                 self.sample_objects.append(new)
+                
             #If there is already data associated with this file, check if we've already got the sample in question there. If it doesn't exist, make it. If it does, just add this spectrum and label into its data dictionary.
             else:
                 sample_exists=False 
@@ -130,9 +131,17 @@ class Plotter():
                     self.samples[file][sample_label]=new
                     self.sample_objects.append(new)
                     
-            #if spectrum_label not in self.samples[file][sample_label].spectrum_labels: #This should do better and actually check that all the data is an exact duplicate, but that seems hard. Just don't label things exactly the same and save them in the same file with the same viewing geometry.
+            #if spectrum_label not in self.samples[file][sample_label].geoms: #This should do better and actually check that all the data is an exact duplicate, but that seems hard. Just don't label things exactly the same and save them in the same file with the same viewing geometry.
                # self.samples[file][sample_label].add_spectrum(spectrum_label, reflectance[i], wavelengths)
-            self.samples[file][sample_label].add_spectrum(spectrum_label, reflectance[i], wavelengths)
+            spectrum_label=spectrum_label.replace(')','').replace('(','')
+            if 'i=' in spectrum_label.replace(' ',''): incidence=spectrum_label.split('i=')[1].split(' ')[0]
+            else: incidence=None
+            if 'e=' in spectrum_label.replace(' ',''): emission=spectrum_label.split('e=')[1].split(' ')[0]
+            else: emission=None
+            if 'az=' in spectrum_label.replace(' ',''): azimuth=spectrum_label.split('az=')[1]
+            else: azimuth=None
+            geom=(incidence, emission, azimuth)
+            self.samples[file][sample_label].add_spectrum(geom, reflectance[i], wavelengths)
 
 
         new_samples=[]
@@ -153,7 +162,7 @@ class Plotter():
             data = np.genfromtxt(file, names=True, dtype=float,encoding=None,delimiter='\t',deletechars='')
             labels=list(data.dtype.names)[1:] #the first label is wavelengths
             for i in range(len(labels)):
-                labels[i]=labels[i].replace('_(i=',' (i=').replace('_e=',' e=')
+                labels[i]=labels[i].replace('_(i=',' (i=').replace('_e=',' e=').replace('( i','(i')
         #This is the current format, which is compatible with the WWU spectral library format.
         elif format=='spectral_database_csv':
             skip_header=1
@@ -164,24 +173,24 @@ class Plotter():
                 i=0
                 while line.split(',')[0].lower()!='wavelength' and line !='' and line.lower()!='wavelength\n': #Formatting can change slightly if you edit your .csv in libreoffice or some other editor, this captures different options. line will be '' only at the end of the file (it is \n for empty lines)
                     i+=1
-                    if line[0:11]=='Sample Name':
+                    if line[0:11].lower()=='sample name':
                         labels=line.split(',')[1:]
                         labels[-1]=labels[-1].strip('\n')
                         labels_found=True #
-                    elif line[0:16]=='Viewing Geometry':
+                    elif line[0:16].lower()=='viewing geometry':
                         for i, geom in enumerate(line.split(',')[1:]):
-                            geom=geom.strip('\n')
+                            geom=geom.strip('\n').replace(' i', 'i')
                             labels[i]+=' ('+geom+')'
-                    elif line[0:7]=='Data ID':
+                    elif line[0:7].lower()=='data id':
                         if labels_found==False: #Only use Data ID for labels if we haven't found the Sample Name field.
                             labels=line.split(',')[1:]
                             labels[-1]=labels[-1].strip('\n')
-                    elif line[0:9]=='Sample ID':
+                    elif line[0:9].lower()=='sample id':
                         if labels_found==False: #Only use Sample ID for labels if we haven't found the Sample Name field.
                             labels=line.split(',')[1:]
                             labels[-1]=labels[-1].strip('\n')
-                    elif line[0:12]=='Mineral Name':
-                        if labels_found==False: #Only use Data ID for labels if we haven't found the Sample Name field.
+                    elif line[0:12].lower()=='mineral name':
+                        if labels_found==False: #Only use mineral ID for labels if we haven't found the Sample Name field.
                             labels=line.split(',')[1:]
                             labels[-1]=labels[-1].strip('\n')
                     skip_header+=1
@@ -202,9 +211,6 @@ class Plotter():
             else:
                 d=np.array(d)
                 reflectance.append(d)
-                #d2=d/np.max(d) #d2 is normalized reflectance
-                #reflectance[0].append(d)
-                #reflectance[1].append(d2)
         return wavelengths, reflectance, labels
         
     def maybe_close_tab(self,event):
@@ -294,15 +300,15 @@ class Sample():
         self.name=name
         self.file=file
         self.data={}
-        self.spectrum_labels=[]
+        self.geoms=[]
         self.linestyle='-'
         self.markerstyle='o'
     
-    def add_spectrum(self,spectrum_label, reflectance, wavelengths):
-        self.spectrum_labels.append(spectrum_label)
-        self.data[spectrum_label]={'reflectance':[],'wavelength':[]}
-        self.data[spectrum_label]['reflectance']=reflectance
-        self.data[spectrum_label]['wavelength']=wavelengths
+    def add_spectrum(self, geom, reflectance, wavelengths):
+        self.geoms.append(geom)
+        self.data[geom]={'reflectance':[],'wavelength':[]}
+        self.data[geom]['reflectance']=reflectance
+        self.data[geom]['wavelength']=wavelengths
     
     def set_linestyle(self, linestyle):
         self.linestyle=linestyle
@@ -325,9 +331,9 @@ class Sample():
     #generate a list of hex colors that are evenly distributed from dark to light across a single hue. 
     def set_colors(self, hue):
         
-        if len(self.spectrum_labels)>3:
-            N=len(self.spectrum_labels)/2
-            if len(self.spectrum_labels)%2!=0:
+        if len(self.geoms)>3:
+            N=len(self.geoms)/2
+            if len(self.geoms)%2!=0:
                 N+=1
             N=int(N)+2
     
@@ -346,7 +352,7 @@ class Sample():
                 self.white_colors.append(colorutils.hsv_to_hex(tuple))
         
         #For small numbers of spectra, you end up with a couple extra and the first plotted are darker than you want.
-        elif len(self.spectrum_labels)==3:
+        elif len(self.geoms)==3:
             self.colors=[]
             self.colors.append(colorutils.hsv_to_hex((hue,1,0.8))) #dark spectrum
             self.colors.append(colorutils.hsv_to_hex((hue,0.8,1)))
@@ -358,7 +364,7 @@ class Sample():
             self.white_colors.append(colorutils.hsv_to_hex((hue,1,0.9)))
             self.white_colors.append(colorutils.hsv_to_hex((hue,0.5,1))) #light spectrum
             
-        elif len(self.spectrum_labels)==2:
+        elif len(self.geoms)==2:
             self.colors=[]
             self.colors.append(colorutils.hsv_to_hex((hue,1,0.9))) #dark spectrum
             self.colors.append(colorutils.hsv_to_hex((hue,0.5,1)))
@@ -367,7 +373,7 @@ class Sample():
             self.white_colors=[]
             self.white_colors.append(colorutils.hsv_to_hex((hue,0.7,1))) #light spectrum
             self.white_colors.append(colorutils.hsv_to_hex((hue,1,0.8))) #dark spectrum
-        elif len(self.spectrum_labels)==1:
+        elif len(self.geoms)==1:
             self.colors=[]
             self.colors.append(colorutils.hsv_to_hex((hue,1,1)))
             
@@ -395,7 +401,7 @@ class Sample():
 class Tab():
     #Title override is true if the title of this individual tab is set manually by user.
     #If it is False, then the tab and plot title will be a combo of the file title plus the sample that is plotted.
-    def __init__(self, plotter, title, samples,tab_index=None,title_override=False, geoms={'i':[],'e':[]}, scrollable=True,original=None,x_axis='wavelength',y_axis='reflectance',xlim=None,ylim=None, exclude_artifacts=False, exclude_specular=False, specularity_tolerance=None, draw=True):
+    def __init__(self, plotter, title, samples,tab_index=None,title_override=False, geoms={'i':[],'e':[],'az':[]}, scrollable=True,original=None,x_axis='wavelength',y_axis='reflectance',xlim=None,ylim=None, exclude_artifacts=False, exclude_specular=False, specularity_tolerance=None, draw=True):
         self.plotter=plotter
         if original==None: #This is true if we're not normalizing anything. holding on to the original data lets us reset.
             self.original_samples=list(samples)
@@ -429,7 +435,7 @@ class Tab():
         #If we need a bigger frame to hold a giant long legend, expand.
         self.legend_len=0
         for sample in self.samples:
-            self.legend_len+=len(sample.spectrum_labels)
+            self.legend_len+=len(sample.geoms)
         self.legend_height=self.legend_len*21+100 #21 px per legend entry.
         self.plot_scale=(self.height-130)/21
         self.plot_width=self.width/9#very vague character approximation of plot width
@@ -649,7 +655,7 @@ class Tab():
             new_sample.data[key]={}
             for key2 in sample.data[key]:
                 new_sample.data[key][key2]=list(sample.data[key][key2])
-        new_sample.spectrum_labels=list(sample.spectrum_labels)
+        new_sample.geoms=list(sample.geoms)
         new_sample.add_offset(offset, self.y_axis)
         self.samples.insert(i,new_sample)
         self.refresh(original=self.original_samples, y_axis=self.y_axis)
@@ -664,13 +670,15 @@ class Tab():
         
         self.contour_sample=Sample('all samples','file','title')
         self.contour_sample.data={'all samples':{'i':[],'e':[],'average reflectance':[]}}
-        self.contour_sample.spectrum_labels=['all samples']
+        self.contour_sample.geoms=['all samples']
         
         for i, sample in enumerate(self.samples):
             incidence_sample=Sample(sample.name,sample.file,sample.title)
             emission_sample=Sample(sample.name,sample.file,sample.title)
-            for label in sample.spectrum_labels: 
-                e,i,g=self.plotter.get_e_i_g(label)
+            for geom in sample.geoms: 
+                i=geom[0]
+                e=geom[1]
+                az=geom[2]
                 
                 if self.exclude_artifacts: #If we are excluding artifacts, don't calculate reflectance for anything in the range that is considered to be suspect
                     if self.plotter.artifact_danger(g, left, right):
@@ -692,10 +700,10 @@ class Tab():
                 
                 if incidence not in incidence_sample.data:
                     incidence_sample.data[incidence]={'e':[],'theta':[],'g':[],'average reflectance':[]}
-                    incidence_sample.spectrum_labels.append(incidence)
+                    incidence_sample.geoms.append(incidence)
                 if emission not in emission_sample.data:
                     emission_sample.data[emission]={'i':[],'average reflectance':[]}
-                    emission_sample.spectrum_labels.append(emission)
+                    emission_sample.geoms.append(emission)
 
                 
                 incidence_sample.data[incidence]['e'].append(e)
@@ -725,13 +733,13 @@ class Tab():
         
         self.contour_sample=Sample('all samples','file','title')
         self.contour_sample.data={'all samples':{'i':[],'e':[],'band center':[]}}
-        self.contour_sample.spectrum_labels=['all samples']
+        self.contour_sample.geoms=['all samples']
 
         
         for i, sample in enumerate(self.samples):
             incidence_sample=Sample(sample.name,sample.file,sample.title)
             emission_sample=Sample(sample.name,sample.file,sample.title)
-            for label in sample.spectrum_labels: 
+            for label in sample.geoms: 
                 e,i,g=self.plotter.get_e_i_g(label)
                 
                 if self.exclude_artifacts: #If we are excluding artifacts, don't calculate slopes for anything in the range that is considered to be suspect
@@ -782,10 +790,10 @@ class Tab():
                 
                 if incidence not in incidence_sample.data:
                     incidence_sample.data[incidence]={'e':[],'theta':[],'g':[],'band center':[]}
-                    incidence_sample.spectrum_labels.append(incidence)
+                    incidence_sample.geoms.append(incidence)
                 if emission not in emission_sample.data:
                     emission_sample.data[emission]={'i':[],'band center':[]}
-                    emission_sample.spectrum_labels.append(emission)
+                    emission_sample.geoms.append(emission)
 
 
                 
@@ -818,14 +826,14 @@ class Tab():
         
         self.contour_sample=Sample('all samples','file','title')
         self.contour_sample.data={'all samples':{'i':[],'e':[],'band depth':[]}}
-        self.contour_sample.spectrum_labels=['all samples']
+        self.contour_sample.geoms=['all samples']
     
         
         
         for i, sample in enumerate(self.samples):
             incidence_sample=Sample(sample.name,sample.file,sample.title)
             emission_sample=Sample(sample.name,sample.file,sample.title)
-            for label in sample.spectrum_labels: 
+            for label in sample.geoms: 
                 e,i,g=self.plotter.get_e_i_g(label)
                 
                 if self.exclude_artifacts: #If we are excluding artifacts, don't calculate slopes for anything in the range that is considered to be suspect
@@ -875,10 +883,10 @@ class Tab():
                 
                 if incidence not in incidence_sample.data:
                     incidence_sample.data[incidence]={'e':[],'theta':[],'g':[],'band depth':[]}
-                    incidence_sample.spectrum_labels.append(incidence)
+                    incidence_sample.geoms.append(incidence)
                 if emission not in emission_sample.data:
                     emission_sample.data[emission]={'i':[],'band depth':[]}
-                    emission_sample.spectrum_labels.append(emission)
+                    emission_sample.geoms.append(emission)
 
                 
                 incidence_sample.data[incidence]['e'].append(e)
@@ -902,11 +910,9 @@ class Tab():
         
     def get_e_i_g(self, label): #Extract e, i, and g from a label.
         i=int(label.split('i=')[1].split(' ')[0])
-        e=int(label.split('e=')[1].strip(')'))
-        if i<=0:
-            g=e-i
-        else:
-            g=-1*(e-i)
+        e=int(label.split('e=')[1].split(' ')[0].strip(')'))
+        az=int(label.split('az=')[1].strip(')'))
+        g=self.get_phase_angle(i, e, az)
         return e, i, g
 
         
@@ -919,7 +925,7 @@ class Tab():
         
         self.contour_sample=Sample('all samples','file','title')
         self.contour_sample.data={'all samples':{'i':[],'e':[],'slope':[]}}
-        self.contour_sample.spectrum_labels=['all samples']
+        self.contour_sample.geoms=['all samples']
         
         
 
@@ -930,7 +936,7 @@ class Tab():
             incidence_sample=Sample(sample.name,sample.file,sample.title)
             emission_sample=Sample(sample.name,sample.file,sample.title)
             phase_sample=Sample(sample.name,sample.file,sample.title)
-            for label in sample.spectrum_labels: 
+            for label in sample.geoms: 
                 e,i,g=self.plotter.get_e_i_g(label)
                 
                 if self.exclude_artifacts: #If we are excluding artifacts, don't calculate slopes for anything in the range that is considered to be suspect
@@ -958,10 +964,10 @@ class Tab():
                 
                 if incidence not in incidence_sample.data:
                     incidence_sample.data[incidence]={'e':[],'theta':[],'g':[],'slope':[]}
-                    incidence_sample.spectrum_labels.append(incidence)
+                    incidence_sample.geoms.append(incidence)
                 if emission not in emission_sample.data:
                     emission_sample.data[emission]={'i':[],'slope':[]}
-                    emission_sample.spectrum_labels.append(emission)
+                    emission_sample.geoms.append(emission)
 
 
                 
@@ -989,7 +995,7 @@ class Tab():
         except:
             
             for sample in self.samples:
-                for i, label in enumerate(sample.spectrum_labels): 
+                for i, label in enumerate(sample.geoms): 
                     
                     wavelengths=np.array(sample.data[label]['wavelength'])
                     if i==0:
@@ -1001,7 +1007,7 @@ class Tab():
         except:
             
             for sample in self.samples:
-                for i, label in enumerate(sample.spectrum_labels): 
+                for i, label in enumerate(sample.geoms): 
                     
                     wavelengths=np.array(sample.data[label]['wavelength'])
                     if i==0:
@@ -1023,7 +1029,7 @@ class Tab():
         
         self.contour_sample=Sample('all samples','file','title')
         self.contour_sample.data={'all samples':{'i':[],'e':[],'difference':[]}}
-        self.contour_sample.spectrum_labels=['all samples']
+        self.contour_sample.geoms=['all samples']
 
         
         for i, sample in enumerate(self.samples):
@@ -1033,15 +1039,15 @@ class Tab():
                 continue
             elif len(self.samples)==1:
                 #if there is only one sample, we'll use the base to build an error sample with spectra showing difference from middle spectrum in list.
-                i=int(len(sample.spectrum_labels)/2)
-                self.base_spectrum_label=sample.spectrum_labels[i]
+                i=int(len(sample.geoms)/2)
+                self.base_spectrum_label=sample.geoms[i]
                 self.base_sample=Sample(self.base_spectrum_label,'file','title' ) #This is used for putting the title onto the new plot (delta R compared to sample (i=x, e=y))
 
             error_sample=Sample(sample.name,sample.file,sample.title)
             self.error_samples.append(error_sample)
 
 
-            for label in sample.spectrum_labels: 
+            for label in sample.geoms: 
                 wavelengths=np.array(sample.data[label]['wavelength'])
                 reflectance=np.array(sample.data[label][self.y_axis])
                 e,i,g=self.plotter.get_e_i_g(label)
@@ -1057,7 +1063,7 @@ class Tab():
                     error_sample.data[label]={}
                     error_sample.data[label]['difference']=reflectance-sample.data[self.base_spectrum_label]['reflectance']
                     error_sample.data[label]['wavelength']=wavelengths
-                    error_sample.spectrum_labels.append(label)
+                    error_sample.geoms.append(label)
                     
                     self.contour_sample.data['all samples']['e'].append(e)
                     self.contour_sample.data['all samples']['i'].append(i)
@@ -1073,13 +1079,13 @@ class Tab():
                     
                 else:
                     found=False
-                    for existing_label in self.base_sample.spectrum_labels:
+                    for existing_label in self.base_sample.geoms:
                         e_old,i_old,g_old=self.plotter.get_e_i_g(existing_label)
                         if e==e_old and i==i_old:
                             error_sample.data[label]={}
                             error_sample.data[label]['difference']=reflectance-self.base_sample.data[existing_label]['reflectance']
                             error_sample.data[label]['wavelength']=wavelengths
-                            error_sample.spectrum_labels.append(label)
+                            error_sample.geoms.append(label)
                             
                             self.contour_sample.data['all samples']['e'].append(e)
                             self.contour_sample.data['all samples']['i'].append(i)
@@ -1103,7 +1109,7 @@ class Tab():
                         error_sample.data[label]={}
                         error_sample.data[label]['difference']=reflectance
                         error_sample.data[label]['wavelength']=wavelengths
-                        error_sample.spectrum_labels.append(label)
+                        error_sample.geoms.append(label)
                         
                         self.contour_sample.data['all samples']['e'].append(e)
                         self.contour_sample.data['all samples']['i'].append(i)
@@ -1117,7 +1123,7 @@ class Tab():
 
         avg_errs=[]
         for sample in self.error_samples:
-            for label in sample.spectrum_labels:
+            for label in sample.geoms:
                 wavelengths=np.array(sample.data[label]['wavelength'])
                 reflectance=np.array(sample.data[label]['difference'])
                 index_left=self.get_index(wavelengths, left)
@@ -1144,11 +1150,11 @@ class Tab():
         
         self.contour_sample=Sample('all samples','file','title')
         self.contour_sample.data={'all samples':{'i':[],'e':[],'delta R':[]}}
-        self.contour_sample.spectrum_labels=['all samples']
+        self.contour_sample.geoms=['all samples']
         
         for i, sample in enumerate(self.samples):
             recip_sample=Sample(sample.name,sample.file,sample.title)
-            for label in sample.spectrum_labels: 
+            for label in sample.geoms: 
                 e,i,g=self.plotter.get_e_i_g(label)
                 
                 if self.exclude_artifacts: #If we are excluding artifacts, don't calculate for anything in the range that is considered to be suspect
@@ -1171,7 +1177,7 @@ class Tab():
                 diff=None
                 if label not in recip_sample.data and recip_label not in recip_sample.data:
                     recip_sample.data[label]={'e':[],'g':[],'i':[],'average reflectance':[]}
-                    recip_sample.spectrum_labels.append(label)
+                    recip_sample.geoms.append(label)
                     
                 if label in recip_sample.data:
                     recip_sample.data[label]['e'].append(e)
@@ -1284,7 +1290,7 @@ class Tab():
         for i, sample in enumerate(self.samples):
             min_slope=None
             max_slope=None
-            for i, label in enumerate(sample.spectrum_labels): 
+            for i, label in enumerate(sample.geoms): 
 
                 wavelengths=np.array(sample.data[label]['wavelength'])
                 reflectance=np.array(sample.data[label]['reflectance'])
@@ -1324,7 +1330,7 @@ class Tab():
 
             normalized_sample=Sample(sample.name, sample.file, sample.title) #Note that we aren't editing the original samples list, we're making entirely new objects. This way we can reset later.
             multiplier=None
-            for label in sample.spectrum_labels: 
+            for label in sample.geoms: 
                 wavelengths=np.array(sample.data[label]['wavelength'])
                 if 'reflectance' in sample.data[label]:
                     reflectance=np.array(sample.data[label]['reflectance'])
@@ -1339,7 +1345,7 @@ class Tab():
                 #if label not in normalized_sample.data:
                 normalized_sample.data[label]={'wavelength':[],'normalized reflectance':[]}
 
-                normalized_sample.spectrum_labels.append(label)
+                normalized_sample.geoms.append(label)
                 normalized_sample.data[label]['wavelength']=wavelengths
                 normalized_sample.data[label]['normalized reflectance']=reflectance
 
@@ -1460,7 +1466,7 @@ class Tab():
         #We tell the controller which samples are already plotted so it can initiate the listbox with those samples highlighted.
         self.plotter.controller.ask_plot_samples(self,self.existing_indices, self.sample_options_list, self.geoms, self.title)
   
-    def set_samples(self, listbox_labels, title, incidences, emissions, exclude_specular=False, tolerance=None):
+    def set_samples(self, listbox_labels, title, incidences, emissions, azimuths, exclude_specular=False, tolerance=None):
         #we made a dict mapping sample labels for a listbox to available samples to plot. This was passed back when the user clicked ok. Reset this tab's samples to be those ones, then replot.
         self.samples=[]
         if title=='':
@@ -1468,19 +1474,9 @@ class Tab():
         for label in listbox_labels:
             self.samples.append(self.sample_options_dict[label])
             
-        incidences=incidences.split(',')
-        for i in incidences:
-            i=i.replace(' ','')
-        if incidences==['']: 
-            incidences=[]
-        
-        emissions=emissions.split(',')
-        for e in emissions:
-            e=e.replace(' ','')
-        if emissions==['']: 
-            emissions=[]
-            
-        self.geoms={'i':incidences,'e':emissions}
+        self.geoms={'i':incidences,'e':emissions,'az':azimuths}
+        print('azimuths: ')
+        print(azimuths)
         self.exclude_specular=exclude_specular
         if self.exclude_specular:
             try:
@@ -1492,15 +1488,17 @@ class Tab():
         for i, sample in enumerate(self.samples):
             winnowed_sample=Sample(sample.name, sample.file, sample.title)
             
-            for label in sample.spectrum_labels: #For every spectrum associated with the sample, check if it is for a geometry we are going to plot. if it is, attach that spectrum to the winnowed sample data
+            for geom in sample.geoms: #For every spectrum associated with the sample, check if it is for a geometry we are going to plot. if it is, attach that spectrum to the winnowed sample data
                 try: #If there is no geometry information for this sample, this will throw an exception.
-                    i=label.split('i=')[1].split(' ')[0]
-                    e=label.split('e=')[1].strip(')')
-                    if self.check_geom(i, e, exclude_specular, self.specularity_tolerance): #If this is a geometry we are supposed to plot
-                        winnowed_sample.add_spectrum(label, sample.data[label]['reflectance'], sample.data[label]['wavelength'])
-                except: #If there's no geometry information, plot the sample.
+                    i=geom[0]
+                    e=geom[1]
+                    az=geom[2]
+                    if self.check_geom(i, e, az, exclude_specular, self.specularity_tolerance): #If this is a geometry we are supposed to plot
+                        winnowed_sample.add_spectrum(geom, sample.data[geom]['reflectance'], sample.data[geom]['wavelength'])
+                except Exception as e: #If there's no geometry information, plot the sample.
+                    raise(e)
                     print('plotting spectrum with invalid geometry information')
-                    winnowed_sample.add_spectrum(label,sample.data[label]['reflectance'],sample.data[label]['wavelength'])     
+                    winnowed_sample.add_spectrum(geom,sample.data[geom]['reflectance'],sample.data[geom]['wavelength'])     
             winnowed_samples.append(winnowed_sample)
 
         self.samples=winnowed_samples
@@ -1521,16 +1519,43 @@ class Tab():
         tabid=self.plotter.notebook.select()
         self.plotter.notebook.forget(tabid)
         self.plotter.titles.remove(self.notebook_title)
+        
+    def get_phase_angle(self, i, e, az):
+        def get_lat1_lat2_delta_long(i,e,az):
+            if np.sign(i)==np.sign(e):
+                delta_long=az
+            else:
+                delta_long=180-az
+            lat1=90-np.abs(i)
+            lat2=90-np.abs(e)
+            return lat1, lat2, delta_long
+        lat1, lat2, delta_long=get_lat1_lat2_delta_long(i, e, az)
+        dist=np.abs(arccos(sin(lat1)*sin(lat2)+cos(lat1)*cos(lat2)*cos(delta_long)))
+        return dist
 
-    def check_geom(self, i, e, exclude_specular=False, tolerance=None):
+    def check_geom(self, i, e, az, exclude_specular=False, tolerance=None):
+        i=int(float(i)) #Get exception from int('0.0')
+        e=int(float(e))
+        if az!=None: az=int(float(az))
+        
         if exclude_specular:
             if np.abs(int(i)-(-1*int(e)))<=tolerance:
                 return False
-        if i in self.geoms['i'] and e in self.geoms['e']: return True
-        elif i in self.geoms['i'] and self.geoms['e']==[]: return True
-        elif self.geoms['i']==[] and e in self.geoms['e']: return True
-        elif self.geoms['i']==[] and self.geoms['e']==[]: return True
-        else: return False
+            
+        good_i=False
+        if i in self.geoms['i'] or self.geoms['i']==[]: good_i=True
+        
+        good_e=False
+        if e in self.geoms['e'] or self.geoms['e']==[]: good_e=True
+        
+        good_az=False
+        if az in self.geoms['az'] or self.geoms['az']==[]: good_az=True
+        
+        if good_i and good_e and good_az: return True
+        else:
+            return False
+        
+
         
     def adjust_x(self, left, right):
         left=float(left)
@@ -1571,7 +1596,7 @@ class Plot():
         #If y limits for plot not specified, make the plot wide enough to display min and max values for all samples.
         if ylim==None and xlim==None:
             for i, sample in enumerate(self.samples):
-                for j, label in enumerate(sample.spectrum_labels):
+                for j, label in enumerate(sample.geoms):
                     if self.y_axis not in sample.data[label] or self.x_axis not in sample.data[label]: continue
                     if i==0 and j==0:
                         self.ylim=[np.min(sample.data[label][self.y_axis]),np.max(sample.data[label][self.y_axis])]
@@ -1591,7 +1616,7 @@ class Plot():
 
         elif ylim==None:
             for i, sample in enumerate(self.samples):
-                for j, label in enumerate(sample.spectrum_labels):
+                for j, label in enumerate(sample.geoms):
                     if self.y_axis not in sample.data[label] or self.x_axis not in sample.data[label]: continue
                     
                     index_left = (np.abs(np.array(sample.data[label][self.x_axis]) - xlim[0])).argmin() #find index of min x 
@@ -1616,7 +1641,7 @@ class Plot():
         #If x limits for plot not specified, make the plot wide enough to display min and max values for all samples.
         if xlim==None:
             for i, sample in enumerate(self.samples):
-                for j, label in enumerate(sample.spectrum_labels):
+                for j, label in enumerate(sample.geoms):
                     if self.y_axis not in sample.data[label] or self.x_axis not in sample.data[label]: continue
                     
                     if i==0 and j==0:
@@ -1655,7 +1680,7 @@ class Plot():
             if sample.file not in self.files:
                 self.files.append(sample.file)
             sample.set_colors(self.hues[i%len(self.hues)])
-            self.num_spectra+=len(sample.spectrum_labels)
+            self.num_spectra+=len(sample.geoms)
 
         self.title=title
         
@@ -1705,7 +1730,7 @@ class Plot():
         self.white_leg_ax.tick_params(axis='both', which='both', colors='1')
             
         pos1 = self.ax.get_position() # get the original position 
-        self.original_ax_position=[pos1.x0+0.2, pos1.y0*1.5, pos1.width, pos1.height*0.9]
+#         self.original_ax_position=[pos1.x0+0.12, pos1.y0*1.5, pos1.width, pos1.height*0.9]
         y0=pos1.y0*1.5 #This is all just magic to tweak the exact position.
         height=pos1.height*0.9
         if self.oversize_legend:
@@ -1714,12 +1739,9 @@ class Plot():
             y0=1-self.plot_scale/self.legend_len+pos1.y0*self.plot_scale/(self.legend_len)*0.5
 
         if self.x_axis!='theta' or True:
-            pos2 = [pos1.x0+.02, y0,  pos1.width, height] 
-            print(pos2)
+            pos2 = [pos1.x0-.02, y0,  pos1.width, height] 
         else:
-            print('theta')
             pos2=[pos1.x0-.1, y0*.6, pos1.width*1.4, pos1.height*(1.4+.006*self.legend_len)]
-            print(pos2)
 
         self.ax.set_position(pos2)
         self.white_ax.set_position(pos2) # set a new position, slightly adjusted so it doesn't go off the edges of the screen.
@@ -1727,9 +1749,9 @@ class Plot():
         pos1 = self.ax.get_position()
         pos2=self.leg_ax.get_position()
         if self.x_axis!='theta':
-            new_pos=[pos2.x0, pos1.y0,  pos2.width, pos1.height] 
+            new_pos=[pos2.x0-.05, pos1.y0,  pos2.width, pos1.height] 
         else:
-            new_pos=[pos2.x0, pos1.y0,  pos2.width, pos1.height]
+            new_pos=[pos2.x0-.05, pos1.y0,  pos2.width, pos1.height]
         self.leg_ax.set_position(new_pos)
         self.white_leg_ax.set_position(new_pos)
 
@@ -1738,6 +1760,13 @@ class Plot():
         
         def on_closing():
             top.destroy()
+            
+    def geom_to_label(self, geom):
+        i=geom[0]
+        e=geom[1]
+        az=geom[2]
+        label=f'(i={i} e={e} az={az})'
+        return label
     
     def assign_legend_labels(self):
         self.repeats=False #Find if there are samples with the exact same name. If so, put the title in the legend as well as the name.
@@ -1745,7 +1774,7 @@ class Plot():
         self.legend_labels={}
         for sample in self.samples:
             self.legend_labels[sample]=[]
-            for label in sample.spectrum_labels:
+            for label in sample.geoms:
                 if self.y_axis not in sample.data[label] or self.x_axis not in sample.data[label]: continue
             if sample.name in self.names:
                 self.repeats=True
@@ -1753,11 +1782,11 @@ class Plot():
                 self.names.append(sample.name)
         
         for j, sample in enumerate(self.samples):
-            for i, label in enumerate(sample.spectrum_labels):
-                if self.y_axis not in sample.data[label] or self.x_axis not in sample.data[label]: continue
-                legend_label=label
+            for i, geom in enumerate(sample.geoms):
+                if self.y_axis not in sample.data[geom] or self.x_axis not in sample.data[geom]: continue
+                legend_label=sample.name+' '+self.geom_to_label(geom)
                 if self.repeats:
-                    legend_label=sample.title+': '+legend_label
+                    legend_label=sample.title+': '+sample.name+' '+self.geom_to_label(geom)
                 if len(self.samples)==1:
                     legend_label=legend_label.replace(sample.name,'').replace('(i=','i=').replace(')','')
                 if len(legend_label)>self.max_legend_label_len:
@@ -1996,7 +2025,7 @@ class Plot():
             max=None     
                        
             for j, sample in enumerate(self.samples):
-                for i, label in enumerate(sample.spectrum_labels):
+                for i, label in enumerate(sample.geoms):
                     legend_label=self.legend_labels[sample][i]
     
                     color=sample.next_color()
@@ -2070,7 +2099,6 @@ class Plot():
                             self.lines.append(self.white_ax.plot(sample.data[label][self.x_axis], sample.data[label][self.y_axis], sample.markerstyle,label=legend_label,color=white_color, markersize=6))
                             #self.lines.append(self.white_ax.plot(sample.data[label][self.x_axis], sample.data[label][self.y_axis], label=legend_label,color=white_color, markersize=6))
                     elif self.x_axis=='theta':
-                        print(self.ax)
                         self.markers_drawn=True
                         self.lines_drawn=False
                         theta=sample.data[label]['e']
@@ -2104,7 +2132,7 @@ class Plot():
                                 min=np.min([min, np.min(r)])
                                 max=np.max([max,np.max(r)])
                                 
-                        if i==len(sample.spectrum_labels)-1 and j==len(self.samples)-1: #On the last sample, set the range of the value being plotted on the radial axis.
+                        if i==len(sample.geoms)-1 and j==len(self.samples)-1: #On the last sample, set the range of the value being plotted on the radial axis.
                             
                             delta=max-min
                             self.ax.set_ylim(min-delta/10,max+delta/10)
@@ -2234,7 +2262,7 @@ class Plot():
             sample_height=0.99/num_samples_plotted-total_buffer/num_samples_plotted #full height of plot =1, divide by number of samples plotted, subtract a buffer for each after the first one.
             sample_height=sample_height*0.999
             for sample in self.samples:
-                if num_samples_plotted==1: fontsize=16
+                if num_samples_plotted==1: fontsize=14
                 elif num_samples_plotted==2: 
                     fontsize=14
                     left=0.05
