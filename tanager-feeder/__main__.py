@@ -12,7 +12,6 @@ dev=True
 
 import os
 import sys
-# print(sys.executable) #prints path to python
 import platform
 import socket
 
