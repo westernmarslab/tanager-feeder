@@ -16,7 +16,7 @@ import io
 
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from verticalscrolledframe import VerticalScrolledFrame #slightly different than vsf defined in main
+from tanager_feeder.verticalscrolledframe import VerticalScrolledFrame #slightly different than vsf defined in main
 
 
 #These are related to the region of spectra that are sensitive to polarization artifacts. This is at high phase angles between 1000 and 1400 nm.
@@ -38,6 +38,8 @@ class Plotter():
         self.dpi=dpi
         self.titles=[]
         self.style=style
+        print("USING STYLE")
+        print(style)
         plt.style.use(style)
         
         self.tabs=[]
