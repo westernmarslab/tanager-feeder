@@ -151,11 +151,10 @@ def main_part_3():
     print("pi Off? "+str(connection_tracker.pi_offline))
 
     #Create a listener, which listens for commands, and a controller, which manages the model (which writes commands) and the view.
-    spec_listener=SpecListener(connection_tracker)
-    pi_listener=PiListener(connection_tracker)
 
 
-    control=Controller(spec_listener, pi_listener, connection_tracker, config_info)
+
+    control=Controller(connection_tracker, config_info)
 
 class ScrollableListbox(Listbox):
     def __init__(self, frame, bg, entry_background, listboxhighlightcolor,selectmode=SINGLE):

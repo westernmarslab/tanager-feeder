@@ -1,42 +1,43 @@
 from tanager_feeder.listeners.listener import Listener
+from tanager_feeder import utils
 
 class SpecListener(Listener):
-    def __init__(self, spec_server_ip):
-        super().__init__(spec_server_ip, SPEC_OFFLINE)
+    def __init__(self, connection_tracker):
+        super().__init__(connection_tracker)
         self.connection_checker = SpecConnectionChecker(None, controller=self.controller, func=self.listen)
         self.unexpected_files = []
         self.wait_for_unexpected_count = 0
         self.alert_lostconnection = True
         self.new_dialogs = True
-        self.local_server = TanagerServer(port=SPEC_PORT)
-        if not SPEC_OFFLINE:
+        self.local_server = TanagerServer(port=self.connection_tracker.SPEC_PORT)
+        if not self.connection_tracker.spec_offline
             client = TanagerClient((spec_server_ip, 12345),
                                    'setcontrolserveraddress&' + self.local_server.server_address[0] + '&' + str(
-                                       SPEC_PORT), SPEC_PORT)
+                                       self.connection_tracker.SPEC_PORT), self.connection_tracker.SPEC_PORT)
         thread = Thread(target=self.local_server.listen)
         thread.start()
 
     def set_control_address(self):
         client = TanagerClient((spec_server_ip, 12345),
-                               'setcontrolserveraddress&' + self.local_server.server_address[0] + '&' + str(SPEC_PORT),
-                               SPEC_PORT)
+                               'setcontrolserveraddress&' + self.local_server.server_address[0] + '&' + str(self.connection_tracker.SPEC_PORT),
+                               self.connection_tracker.SPEC_PORT)
 
     def run(self):
         i = 0
-        global SPEC_OFFLINE  # Not sure why needed (not modifying value) but getting unbound local variable error.
         while True:
-            if not SPEC_OFFLINE and i % 20 == 0:
-                connection = self.connection_checker.check_connection(SPEC_PORT, timeout=8)
-                if not connection: SPEC_OFFLINE = True
+            if not self.connection_tracker.spec_offline and i % 20 == 0:
+                connection = self.connection_checker.check_connection(self.connection_tracker.SPEC_PORT, timeout=8)
+                if not connection:
+                    self.connection_tracker.spec_offline = True
             else:
                 self.listen()
             i += 1
-            time.sleep(INTERVAL)
+            time.sleep(utils.INTERVAL)
 
     def listen(self):
         while len(self.local_server.queue) > 0:
             message = self.local_server.queue.pop(0)
-            cmd, params = decrypt(message)
+            cmd, params = utils.decrypt(message)
 
             if 'lostconnection' not in cmd:
                 print('Spec read command: ' + cmd)

@@ -14,26 +14,26 @@ from tanager_feeder.commanders.pi_commander import PiCommander
 
 
 class Controller():
-    def __init__(self, spec_listener, pi_listener, local_config_loc, global_config_loc, opsys, icon):
-        self.spec_listener = spec_listener
+    def __init__(self, connection_tracker, config_info):
+        self.connection_tracker = connection_tracker
+        self.config_info = config_info
+
+        self.spec_listener = SpecListener(connection_tracker)
         self.spec_listener.set_controller(self)
         self.spec_listener.start()
 
-        self.pi_listener = pi_listener
+        self.pi_listener = PiListener(connection_tracker)
         self.pi_listener.set_controller(self)
         self.pi_listener.start()
 
-        self.spec_server_ip = SPEC_IP
-        self.pi_server_ip = PI_IP
-
-        self.spec_commander = SpecCommander(self.spec_server_ip, self.spec_listener)
-        self.pi_commander = PiCommander(self.pi_server_ip, self.pi_listener)
+        self.spec_commander = SpecCommander(self.connection_tracker.spec_ip, self.spec_listener)
+        self.pi_commander = PiCommander(self.connection_tracker.pi_ip, self.pi_listener)
 
         self.remote_directory_worker = RemoteDirectoryWorker(self.spec_commander, self.spec_listener)
 
-        self.local_config_loc = local_config_loc
-        self.global_config_loc = global_config_loc
-        self.opsys = opsys
+        self.local_config_loc = config_info.local_config_loc
+        self.global_config_loc = config_info.global_config_loc
+        self.opsys = config_info.opsys
 
         # The queue is a list of dictionaries commands:parameters
         # The commands are supposed to be executed in order, assuming each one succeeds.
