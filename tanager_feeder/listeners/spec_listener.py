@@ -1,17 +1,23 @@
+from threading import Thread
+import time
+
 from tanager_feeder.listeners.listener import Listener
 from tanager_feeder import utils
+from tanager_feeder.connection_checkers.spec_connection_checker import SpecConnectionChecker
+from tanager_tcp import TanagerClient
+from tanager_tcp import TanagerServer
 
 class SpecListener(Listener):
-    def __init__(self, connection_tracker):
-        super().__init__(connection_tracker)
-        self.connection_checker = SpecConnectionChecker(None, controller=self.controller, func=self.listen)
+    def __init__(self, connection_tracker, config_info):
+        super().__init__(connection_tracker, config_info)
+        self.connection_checker = SpecConnectionChecker(connection_tracker, config_info, func=self.listen)
         self.unexpected_files = []
         self.wait_for_unexpected_count = 0
         self.alert_lostconnection = True
         self.new_dialogs = True
         self.local_server = TanagerServer(port=self.connection_tracker.SPEC_PORT)
-        if not self.connection_tracker.spec_offline
-            client = TanagerClient((spec_server_ip, 12345),
+        if not self.connection_tracker.spec_offline:
+            client = TanagerClient((self.connection_tracker.spec_ip, 12345),
                                    'setcontrolserveraddress&' + self.local_server.server_address[0] + '&' + str(
                                        self.connection_tracker.SPEC_PORT), self.connection_tracker.SPEC_PORT)
         thread = Thread(target=self.local_server.listen)

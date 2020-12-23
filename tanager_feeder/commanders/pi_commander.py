@@ -1,3 +1,5 @@
+from tanager_feeder.commanders.commander import Commander
+
 class PiCommander(Commander):
     def __init__(self, pi_server_ip, listener):
         super().__init__(pi_server_ip, listener)

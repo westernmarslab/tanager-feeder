@@ -1,21 +1,25 @@
+from threading import Thread
+import time
+
 from tanager_feeder.listeners.listener import Listener
 from tanager_feeder import utils
+from tanager_feeder.connection_checkers.pi_connection_checker import PiConnectionChecker
+from tanager_tcp import TanagerClient
+from tanager_tcp import TanagerServer
 
 class PiListener(Listener):
-    def __init__(self, connection_tracker, test=False):
-        super().__init__(connection_tracker)
-        self.connection_checker = PiConnectionChecker(None, controller=self.controller, func=self.listen)
+    def __init__(self, connection_tracker, config_info, test=False):
+        super().__init__(connection_tracker, config_info)
+        self.connection_checker = PiConnectionChecker(connection_tracker, config_info, func=self.listen)
         self.local_server = TanagerServer(port=self.connection_tracker.PI_PORT)
 
         if not self.connection_tracker.pi_offline:
-            client = TanagerClient((pi_server_ip, 12345),
-                                   'setcontrolserveraddress&' + self.local_server.server_address[0] + '&' + str(
-                                       self.connection_tracker.PI_PORT), self.connection_tracker.PI_PORT)
+            client = TanagerClient((self.connection_tracker.pi_ip, 12345), 'setcontrolserveraddress&' + self.local_server.server_address[0] + '&' + str(self.connection_tracker.PI_PORT), self.connection_tracker.PI_PORT)
         thread = Thread(target=self.local_server.listen)
         thread.start()
 
     def send_control_address(self):
-        client = TanagerClient((pi_server_ip, 12345),
+        client = TanagerClient((self.connection_tracker.pi_ip, 12345),
                                'setcontrolserveraddress&' + self.local_server.server_address[0] + '&' + str(self.connection_tracker.PI_PORT),
                                self.connection_tracker.PI_PORT)
 

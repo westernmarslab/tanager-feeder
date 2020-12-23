@@ -1,3 +1,5 @@
+from tanager_feeder.commanders.commander import Commander
+
 class SpecCommander(Commander):
     def __init__(self, server_ip, listener):
         super().__init__(server_ip, listener)

@@ -1,3 +1,6 @@
+from tanager_feeder.dialogs.dialog import Dialog
+from tkinter import ttk
+
 class WaitDialog(Dialog):
     def __init__(self, controller, title='Working...', label='Working...', buttons={}):
         super().__init__(controller, title, label, buttons, width=400, height=150, allow_exit=False)

@@ -1,16 +1,27 @@
 import datetime
+import os
+import time
+from threading import Thread
 
 import numpy as np
 import tkinter as tk
 
+from tkinter import Button, Frame, Entry, END, RIGHT, LEFT, BOTTOM, TOP, Tk, Label, BOTH, Menu, NORMAL, DISABLED, EXTENDED, ttk, Toplevel, StringVar, IntVar, Radiobutton, OptionMenu, Scrollbar, Text, Y, INSERT
+
+from tanager_feeder.goniometer_view import GoniometerView
 from tanager_feeder.goniometer_view import GoniometerView
 from tanager_feeder.plotter import Plotter
 from tanager_feeder.commanders.spec_commander import SpecCommander
 from tanager_feeder.commanders.pi_commander import PiCommander
+from tanager_feeder.listeners.spec_listener import SpecListener
+from tanager_feeder.listeners.pi_listener import PiListener
+from tanager_feeder.remote_directory_worker import RemoteDirectoryWorker
+from tanager_feeder.dialogs.remote_file_explorer import RemoteFileExplorer
+from tanager_feeder.utils import VerticalScrolledFrame
+from tanager_feeder import utils
 
-
-
-
+from tanager_feeder.connection_checkers.pi_connection_checker import PiConnectionChecker
+from tanager_feeder.connection_checkers.spec_connection_checker import SpecConnectionChecker
 
 
 class Controller():
@@ -18,11 +29,11 @@ class Controller():
         self.connection_tracker = connection_tracker
         self.config_info = config_info
 
-        self.spec_listener = SpecListener(connection_tracker)
+        self.spec_listener = SpecListener(connection_tracker, config_info)
         self.spec_listener.set_controller(self)
         self.spec_listener.start()
 
-        self.pi_listener = PiListener(connection_tracker)
+        self.pi_listener = PiListener(connection_tracker, config_info)
         self.pi_listener.set_controller(self)
         self.pi_listener.start()
 
@@ -262,7 +273,7 @@ class Controller():
                 self.spec_save_path = spec_save_config.readline().strip('\n')
                 self.spec_basename = spec_save_config.readline().strip('\n')
                 self.spec_startnum = str(int(spec_save_config.readline().strip('\n')) + 1)
-                while len(self.spec_startnum) < NUMLEN:
+                while len(self.spec_startnum) < self.config_info.num_len:
                     self.spec_startnum = '0' + self.spec_startnum
         except:
             with open(self.local_config_loc + 'spec_save.txt', 'w+') as f:
@@ -273,7 +284,7 @@ class Controller():
                 self.spec_save_path = 'C:\\Users'
                 self.spec_basename = 'basename'
                 self.spec_startnum = '0'
-                while len(self.spec_startnum) < NUMLEN:
+                while len(self.spec_startnum) < self.config_info.num_len:
                     self.spec_startnum = '0' + self.spec_startnum
 
         try:
@@ -647,7 +658,7 @@ class Controller():
             self.proc_local.set(1)
             self.proc_remote.set(0)
 
-        if not PI_OFFLINE:
+        if not self.connection_tracker.pi_offline:
             self.set_manual_automatic(force=1)
 
         self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -657,7 +668,7 @@ class Controller():
         thread = Thread(
             target=self.scrollbar_check)  # Waits for everything to get packed, then checks if you need a scrollbar on the control frame.
         thread.start()
-        if opsys == 'Windows':
+        if self.opsys == 'Windows':
             self.master.wm_state('zoomed')
         self.master.mainloop()
 
@@ -1075,15 +1086,15 @@ class Controller():
             self):  # This is probably important but I don't remember exactly how it works. Somethign to do with setting up the GUI.
         self.master.bind("<Configure>", self.resize)
         time.sleep(0.2)
-        window = PretendEvent(self.master, self.master.winfo_width(), self.master.winfo_height())
+        window = utils.PretendEvent(self.master, self.master.winfo_width(), self.master.winfo_height())
         self.resize(window)
         time.sleep(0.2)
 
-        if not SPEC_OFFLINE:
+        if not self.connection_tracker.spec_offline:
             self.log('Spec compy connected.')
         else:
             self.log('Spec compy not connected. Working offline. Restart to collect spectral data.')
-        if not PI_OFFLINE:
+        if not self.connection_tracker.pi_offline:
             self.log('Raspberry pi connected.')
         else:
             self.log('Raspberry pi not connected. Working offline. Restart to use automation features.')
@@ -1223,7 +1234,7 @@ class Controller():
     def check_viewing_geom_for_manual_operation(self):
         warnings = ''
 
-        valid_i = validate_int_input(self.incidence_entries[0].get(), -90, 90)
+        valid_i = utils.validate_int_input(self.incidence_entries[0].get(), -90, 90)
         if valid_i:
             if str(self.science_i) != self.incidence_entries[0].get():
                 self.angles_change_time = time.time()
@@ -1232,7 +1243,7 @@ class Controller():
         else:
             warnings += 'The incidence angle is invalid (Min:' + str(-90) + ', Max:' + str(90) + ').\n\n'
 
-        valid_e = validate_int_input(self.emission_entries[0].get(), -90, 90)
+        valid_e = utils.validate_int_input(self.emission_entries[0].get(), -90, 90)
         if valid_e:
             if str(self.science_e) != self.emission_entries[0].get():
                 self.angles_change_time = time.time()
@@ -1240,7 +1251,7 @@ class Controller():
         else:
             warnings += 'The emission angle is invalid (Min:' + str(-90) + ', Max:' + str(90) + ').\n\n'
 
-        valid_az = validate_int_input(self.azimuth_entries[0].get(), 0, 179)
+        valid_az = utils.validate_int_input(self.azimuth_entries[0].get(), 0, 179)
         if valid_az:
             if str(self.science_az) != self.azimuth_entries[0].get():
                 self.angles_change_time = time.time()
@@ -1294,9 +1305,9 @@ class Controller():
                 i = self.active_incidence_entries[index].get()
                 e = self.active_emission_entries[index].get()
                 az = self.active_azimuth_entries[index].get()
-                valid_i = validate_int_input(i, self.min_science_i, self.max_science_i)
-                valid_e = validate_int_input(e, self.min_science_e, self.max_science_e)
-                valid_az = validate_int_input(az, self.min_science_az, self.max_science_az)
+                valid_i = utils.validate_int_input(i, self.min_science_i, self.max_science_i)
+                valid_e = utils.validate_int_input(e, self.min_science_e, self.max_science_e)
+                valid_az = utils.validate_int_input(az, self.min_science_az, self.max_science_az)
                 if not valid_i or not valid_e or not valid_az:
                     dialog = ErrorDialog(self, label='Error: Invalid viewing geometry:\n\nincidence = ' + str(
                         i) + '\nemission = ' + str(e) + '\nazimuth = ' + str(az), width=300, height=130)
@@ -1341,9 +1352,9 @@ class Controller():
                     if self.angles_change_time == None:
                         pass
                     elif self.opt_time < self.angles_change_time:
-                        valid_i = validate_int_input(incidence, self.min_science_i, self.max_science_i)
-                        valid_e = validate_int_input(emission, self.min_science_e, self.max_science_e)
-                        valid_az = validate_int_input(azimuth, self.min_science_az, self.max_science_az)
+                        valid_i = utils.validate_int_input(incidence, self.min_science_i, self.max_science_i)
+                        valid_e = utils.validate_int_input(emission, self.min_science_e, self.max_science_e)
+                        valid_az = utils.validate_int_input(azimuth, self.min_science_az, self.max_science_az)
                         if valid_i and valid_e and valid_az:
                             label += 'The instrument has not been optimized at this geometry.\n\n'
 
@@ -1372,9 +1383,9 @@ class Controller():
 
                 if self.angles_change_time != None and self.wr_time != None and func != self.opt:
                     if self.angles_change_time > self.wr_time + 1:
-                        valid_i = validate_int_input(incidence, self.min_science_i, self.max_science_i)
-                        valid_e = validate_int_input(emission, self.min_science_e, self.max_science_e)
-                        valid_az = validate_int_input(azimuth, self.min_science_az, self.max_science_az)
+                        valid_i = utils.validate_int_input(incidence, self.min_science_i, self.max_science_i)
+                        valid_e = utils.validate_int_input(emission, self.min_science_e, self.max_science_e)
+                        valid_az = utils.validate_int_input(azimuth, self.min_science_az, self.max_science_az)
                         if valid_i and valid_e:
                             label += ' No white reference has been taken at this viewing geometry.\n\n'
                     # elif str(emission)!=str(self.e) or str(incidence)!=str(self.i):
@@ -1456,7 +1467,7 @@ class Controller():
         if not setup_complete:
             # Make sure basenum entry has the right number of digits. It is already guaranteed to have no more digits than allowed and to only have numbers.
             start_num = self.spec_startnum_entry.get()
-            num_zeros = NUMLEN - len(start_num)
+            num_zeros = self.config_info.num_len - len(start_num)
             for _ in range(num_zeros):
                 start_num = '0' + start_num
             self.set_text(self.spec_startnum_entry, start_num)
@@ -1513,7 +1524,7 @@ class Controller():
 
         if action == self.take_spectrum:
             startnum_str = str(self.spec_startnum_entry.get())
-            while len(startnum_str) < NUMLEN:
+            while len(startnum_str) < self.config_info.num_len:
                 startnum_str = '0' + startnum_str
             if not garbage:
                 label = ''
@@ -1605,9 +1616,9 @@ class Controller():
         self.science_e = next_science_e
         self.science_az = next_science_az
 
-        valid_i = validate_int_input(next_science_i, self.min_science_i, self.max_science_i)
-        valid_e = validate_int_input(next_science_e, self.min_science_e, self.max_science_e)
-        valid_az = validate_int_input(next_science_az, self.min_science_az, self.max_science_az)
+        valid_i = utils.validate_int_input(next_science_i, self.min_science_i, self.max_science_i)
+        valid_e = utils.validate_int_input(next_science_e, self.min_science_e, self.max_science_e)
+        valid_az = utils.validate_int_input(next_science_az, self.min_science_az, self.max_science_az)
 
         temp_queue = []
         if not (valid_i and valid_e and valid_az):
@@ -1986,55 +1997,7 @@ class Controller():
                                     print('15')
                                     movement_order = ['az 90', 'i 40', 'e', '-i', 'az+180']
 
-        #         if movement_order==None:
-        #             #Try movning to temp i at 40, az 90, move e, move i, move az
-        #             if current_motor_az>=0 and current_motor_az<180:
-        #                 safe_temp_i=self.safe_i_sweep(current_science_e, current_science_az, current_science_i, 40)
-        #                 temp_i_str='i 40'
-        #             elif current_motor_az<0:
-        #                 safe_temp_i=self.safe_i_sweep(current_science_e, current_science_az, current_science_i, -40)
-        #                 temp_i_str='i -40'
-        #             elif current_motor_az>=180:
-        #                 safe_temp_i=self.safe_i_sweep(current_science_e, current_science_az, current_science_i, -40)
-        #                 temp_i_str='i -40'
-        #
-        #             if safe_temp_i:
-        #                 if current_motor_az>=0 and current_motor_az<180:
-        #                     safe_temp_az=self.safe_az_sweep(40, current_science_e, current_science_az, 90)
-        #                 elif current_motor_az<0:
-        #                     safe_temp_az_1=self.safe_az_sweep(-40, current_science_e, current_science_az, 179)
-        #                     safe_temp_az_2=self.safe_az_sweep(40, current_science_e,0,90)
-        #                     safe_temp_az=safe_temp_az_1 and safe_temp_az_2
-        #                 elif current_motor_az>=180:
-        #                     safe_temp_az_1=self.safe_az_sweep(-40, current_science_e, current_science_az, 0)
-        #                     safe_temp_az_2=self.safe_az_sweep(40, current_science_e, 179, 90)
-        #                     safe_temp_az=safe_temp_az_1 and safe_temp_az_2
-        #
-        #                 if safe_temp_az:
-        #                     safe_e=self.safe_e_sweep(40,90,current_science_e, next_science_e)
-        #                     if safe_e:
-        #                         safe_i=self.safe_i_sweep(next_science_e, 90, 40, next_science_i)
-        #                         if safe_i:
-        #                             safe_az=self.safe_az_sweep(next_science_i, next_science_e, 90, next_science_az)
-        #                             if safe_az:
-        #                                 print('24')
-        #                                 movement_order=[temp_i_str,'az 90','e','i','az']
-        #                         if movement_order==None and next_science_az>=90:
-        #                             safe_i=self.safe_i_sweep(next_science_e, 90,40, -1*next_science_i)
-        #                             if safe_i:
-        #                                 safe_az_1=self.safe_az_sweep(-1*next_science_i, next_science_e, 90,0)
-        #                                 safe_az_2=self.safe_az_sweep(next_science_i, next_science_e, 179,next_science_az)
-        #                                 if safe_az_1 and safe_az_2:
-        #                                     print('25')
-        #                                     movement_order=[temp_i_str,'az 90','e','-i','az-180']
-        #                         if movement_order==None and next_science_az<=90:
-        #                             safe_i=self.safe_i_sweep(next_science_e, 90,40, -1*next_science_i)
-        #                             if safe_i:
-        #                                 safe_az_1=self.safe_az_sweep(-1*next_science_i, next_science_e, 90,179)
-        #                                 safe_az_2=self.safe_az_sweep(next_science_i, next_science_e, 0,next_science_az)
-        #                                 if safe_az_1 and safe_az_2:
-        #                                     print('26')
-        #                                     movement_order=[temp_i_str,'az 90','e','-i','az+180']
+
 
         if movement_order == None and current_motor_az >= 90:
             # Try movning motor az to 270, temp i at 40, move e, move i
@@ -2332,9 +2295,9 @@ class Controller():
                 if len(self.queue) > 0:
                     self.next_in_queue()
                 return  # If we're staying in the same spot, just return!
-            timeout = np.abs(next_motor_i - self.motor_i) * 8 + PI_BUFFER
+            timeout = np.abs(next_motor_i - self.motor_i) * 8 +  utils.PI_BUFFER
         else:
-            timeout = np.abs(next_motor_i) / 15 + PI_BUFFER
+            timeout = np.abs(next_motor_i) / 15 +  utils.PI_BUFFER
 
         self.pi_commander.set_incidence(next_motor_i, type)
         handler = MotionHandler(self, label='Setting incidence...', timeout=timeout, steps=steps,
@@ -2363,9 +2326,9 @@ class Controller():
                 if len(self.queue) > 0:
                     self.next_in_queue()
                 return  # If we're staying in the same spot, just return!
-            timeout = np.abs(int(next_motor_e) - int(self.motor_e)) * 8 + PI_BUFFER
+            timeout = np.abs(int(next_motor_e) - int(self.motor_e)) * 8 +  utils.PI_BUFFER
         else:
-            timeout = np.abs(int(next_motor_e)) / 15 + PI_BUFFER
+            timeout = np.abs(int(next_motor_e)) / 15 +  utils.PI_BUFFER
 
         self.pi_commander.set_emission(next_motor_e, type)
         handler = MotionHandler(self, label='Setting emission...', timeout=timeout, steps=steps,
@@ -2394,9 +2357,9 @@ class Controller():
                 if len(self.queue) > 0:
                     self.next_in_queue()
                 return  # If we're staying in the same spot, just return!
-            timeout = np.abs(next_motor_az - self.motor_az) * 8 + PI_BUFFER
+            timeout = np.abs(next_motor_az - self.motor_az) * 8 +  utils.PI_BUFFER
         else:
-            timeout = np.abs(next_motor_az) / 15 + PI_BUFFER
+            timeout = np.abs(next_motor_az) / 15 +  utils.PI_BUFFER
 
         self.pi_commander.set_azimuth(next_motor_az, type)
         handler = MotionHandler(self, label='Setting azimuth...', timeout=timeout, steps=steps,
@@ -2411,7 +2374,7 @@ class Controller():
         if type == 'position':
             self.goniometer_view.set_current_sample(pos)
         self.pi_commander.move_tray(pos, type)
-        handler = MotionHandler(self, label='Moving sample tray...', timeout=30 + BUFFER, new_sample_loc=pos,
+        handler = MotionHandler(self, label='Moving sample tray...', timeout=30 +  utils.BUFFER, new_sample_loc=pos,
                                 steps=steps)
 
     def range_setup(self, override=False):
@@ -2423,7 +2386,7 @@ class Controller():
         incidence_warn_str = ''
 
         first_i = self.light_start_entry.get()
-        valid = validate_int_input(first_i, self.min_science_i, self.max_science_i)
+        valid = utils.validate_int_input(first_i, self.min_science_i, self.max_science_i)
         if not valid:
             incidence_err_str = 'Incidence must be a number from ' + str(self.min_science_i) + ' to ' + str(
                 self.max_science_i) + '.\n'
@@ -2431,7 +2394,7 @@ class Controller():
             first_i = int(first_i)
 
         final_i = self.light_end_entry.get()
-        valid = validate_int_input(final_i, self.min_science_i, self.max_science_i)
+        valid = utils.validate_int_input(final_i, self.min_science_i, self.max_science_i)
 
         if not valid:
             incidence_err_str = 'Incidence must be a number from ' + str(self.min_science_i) + ' to ' + str(
@@ -2440,7 +2403,7 @@ class Controller():
             final_i = int(final_i)
 
         i_interval = self.light_increment_entry.get()
-        valid = validate_int_input(i_interval, 0, 2 * self.max_science_i)
+        valid = utils.validate_int_input(i_interval, 0, 2 * self.max_science_i)
         if not valid:
             incidence_err_str += 'Incidence interval must be a number from 0 to ' + str(2 * self.max_science_i) + '.\n'
         else:
@@ -2466,14 +2429,14 @@ class Controller():
         emission_warn_str = ''
 
         first_e = self.detector_start_entry.get()
-        valid = validate_int_input(first_e, self.min_science_e, self.max_science_e)
+        valid = utils.validate_int_input(first_e, self.min_science_e, self.max_science_e)
         if not valid:
             emission_err_str = 'Emission must be a number from ' + str(self.min_science_e) + ' to ' + str(
                 self.max_science_e) + '.\n'
         else:
             first_e = int(first_e)
         final_e = self.detector_end_entry.get()
-        valid = validate_int_input(final_e, self.min_science_e, self.max_science_e)
+        valid = utils.validate_int_input(final_e, self.min_science_e, self.max_science_e)
 
         if not valid:
             emission_err_str = 'Emission must be a number from ' + str(self.min_science_e) + ' to ' + str(
@@ -2482,7 +2445,7 @@ class Controller():
             final_e = int(final_e)
 
         e_interval = self.detector_increment_entry.get()
-        valid = validate_int_input(e_interval, 0, 2 * self.max_science_e)
+        valid = utils.validate_int_input(e_interval, 0, 2 * self.max_science_e)
         if not valid:
             emission_err_str += 'Emission interval must be a number from 0 to ' + str(2 * self.max_science_e) + '.\n'
         else:
@@ -2514,14 +2477,14 @@ class Controller():
         azimuth_warn_str = ''
 
         first_az = self.azimuth_start_entry.get()
-        valid = validate_int_input(first_az, self.min_science_az, self.max_science_az)
+        valid = utils.validate_int_input(first_az, self.min_science_az, self.max_science_az)
         if not valid:
             azimuth_err_str = 'Azimuth must be a number from ' + str(self.min_science_az) + ' to ' + str(
                 self.max_science_az) + '.\n'
         else:
             first_az = int(first_az)
         final_az = self.azimuth_end_entry.get()
-        valid = validate_int_input(final_az, self.min_science_az, self.max_science_az)
+        valid = utils.validate_int_input(final_az, self.min_science_az, self.max_science_az)
 
         if not valid:
             azimuth_err_str = 'Azimuth must be a number from ' + str(self.min_science_az) + ' to ' + str(
@@ -2530,7 +2493,7 @@ class Controller():
             final_az = int(final_az)
 
         az_interval = self.azimuth_increment_entry.get()
-        valid = validate_int_input(az_interval, 0, 2 * self.max_science_az)
+        valid = utils.validate_int_input(az_interval, 0, 2 * self.max_science_az)
         if not valid:
             azimuth_err_str += 'Azimuth interval must be a number from 0 to ' + str(2 * self.max_science_az) + '.\n'
         else:
@@ -2669,7 +2632,7 @@ class Controller():
                 self.log('Error: Operation timed out while trying to set save configuration')
             return
         self.spec_commander.check_writeable(self.spec_save_dir_entry.get())
-        t = 3 * BUFFER
+        t = 3 *  utils.BUFFER
         while t > 0:
             if 'yeswriteable' in self.spec_listener.queue:
                 self.spec_listener.queue.remove('yeswriteable')
@@ -2678,14 +2641,14 @@ class Controller():
                 self.spec_listener.queue.remove('notwriteable')
                 dialog = ErrorDialog(self, label='Error: Permission denied.\nCannot write to specified directory.')
                 return
-            time.sleep(INTERVAL)
-            t = t - INTERVAL
+            time.sleep( utils.INTERVAL)
+            t = t -  utils.INTERVAL
         if t <= 0:
             dialog = ErrorDialog(self, label='Error: Operation timed out.')
             return
 
         spec_num = self.spec_startnum_entry.get()
-        while len(spec_num) < NUMLEN:
+        while len(spec_num) < self.config_info.num_len:
             spec_num = '0' + spec_num
 
         self.spec_commander.set_save_path(self.spec_save_dir_entry.get(), self.spec_basename_entry.get(),
@@ -2771,11 +2734,11 @@ class Controller():
                     self.queue = []
                     self.script_running = False
 
-                valid_i = validate_int_input(params[0], self.min_motor_i, self.max_motor_i)
-                valid_e = validate_int_input(params[1], self.min_motor_e, self.max_motor_e)
+                valid_i = utils.validate_int_input(params[0], self.min_motor_i, self.max_motor_i)
+                valid_e = utils.validate_int_input(params[1], self.min_motor_e, self.max_motor_e)
                 valid_az = valideate_int_input(params[2], self.min_motor_az, self.max_motor_az)
 
-                valid_sample = validate_int_input(params[2], 1, int(self.num_samples))
+                valid_sample = utils.validate_int_input(params[2], 1, int(self.num_samples))
                 if params[2] == 'wr':
                     valid_sample = True
                 if valid_i and valid_e and valid_az and valid_sample:
@@ -2828,9 +2791,9 @@ class Controller():
             if len(params) != 2 and len(params) != 3:
                 self.fail_script_command('Error: could not parse command ' + cmd)
             elif self.manual_automatic.get() == 0:  # manual mode
-                valid_i = validate_int_input(params[0], self.min_motor_i, self.max_motor_i)
-                valid_e = validate_int_input(params[1], self.min_motor_i, self.max_motor_i)
-                valid_az = validate_int_input(params[2], self.min_motor_az, self.max_motor_az)
+                valid_i = utils.validate_int_input(params[0], self.min_motor_i, self.max_motor_i)
+                valid_e = utils.validate_int_input(params[1], self.min_motor_i, self.max_motor_i)
+                valid_az = utils.validate_int_input(params[2], self.min_motor_az, self.max_motor_az)
                 if not valid_i or not valid_e or not valid_az:
                     self.log('Error: i=' + params[0] + ', e=' + params[1] + ', az=' + params[
                         2] + ' is not a valid viewing geometry.')
@@ -2842,9 +2805,9 @@ class Controller():
                     self.azimuth_entries[0].delete(0, 'end')
                     self.azimuth_entries[0].insert(0, params[2])
             else:  # automatic mode
-                valid_i = validate_int_input(params[0], self.min_motor_i, self.max_motor_i)
-                valid_e = validate_int_input(params[1], self.min_motor_e, self.max_motor_e)
-                valid_az = validate_int_input(params[2], self.min_motor_az, self.max_motor_az)
+                valid_i = utils.validate_int_input(params[0], self.min_motor_i, self.max_motor_i)
+                valid_e = utils.validate_int_input(params[1], self.min_motor_e, self.max_motor_e)
+                valid_az = utils.validate_int_input(params[2], self.min_motor_az, self.max_motor_az)
 
                 if not valid_i or not valid_e or not valid_az:
                     self.log('Error: i=' + params[0] + ', e=' + params[1] + ', az=' + params[
@@ -2853,7 +2816,7 @@ class Controller():
                     index = 0
                     if len(params) == 3:
                         index = int(get_val(params[2]))
-                    valid_index = validate_int_input(index, 0, len(self.emission_entries) - 1)
+                    valid_index = utils.validate_int_input(index, 0, len(self.emission_entries) - 1)
                     if not valid_index:
                         self.log('Error: ' + str(index) + ' is not a valid index. Enter a value from 0-' + str(
                             len(self.emission_entries) - 1))
@@ -2869,9 +2832,9 @@ class Controller():
             if len(params) != 2:
                 self.fail_script_command('Error: could not parse command ' + cmd)
             elif self.manual_automatic.get() == 0:  # manual mode
-                valid_i = validate_int_input(params[0], self.min_science_i, self.max_science_i)
-                valid_e = validate_int_input(params[1], self.min_science_e, self.max_science_e)
-                valid_az = validate_int_input(params[2], self.min_science_az, self.max_science_az)
+                valid_i = utils.validate_int_input(params[0], self.min_science_i, self.max_science_i)
+                valid_e = utils.validate_int_input(params[1], self.min_science_e, self.max_science_e)
+                valid_az = utils.validate_int_input(params[2], self.min_science_az, self.max_science_az)
 
                 if not valid_i or not valid_e or not valid_az:
                     self.log('Error: i=' + params[0] + ', e=' + params[1] + ', az=' + params[
@@ -2887,9 +2850,9 @@ class Controller():
                 if self.individual_range.get() == 1:
                     self.log('Error: Cannot add geometry in range mode. Use setup_geom_range() instead')
                 else:
-                    valid_i = validate_int_input(params[0], self.min_science_i, self.max_science_i)
-                    valid_e = validate_int_input(params[1], self.min_science_e, self.max_science_e)
-                    valid_az = validate_int_input(params[2], self.min_science_az, self.max_science_az)
+                    valid_i = utils.validate_int_input(params[0], self.min_science_i, self.max_science_i)
+                    valid_e = utils.validate_int_input(params[1], self.min_science_e, self.max_science_e)
+                    valid_az = utils.validate_int_input(params[2], self.min_science_az, self.max_science_az)
 
                     if not valid_i or not valid_e or not valid_az:
                         self.log('Error: i=' + params[0] + ', e=' + params[1] + ', az=' + params[
@@ -3006,7 +2969,7 @@ class Controller():
                 try:
                     pos = param.split('=')[0].strip(' ')
                     name = get_val(param)
-                    valid_pos = validate_int_input(pos, 1, 5)
+                    valid_pos = utils.validate_int_input(pos, 1, 5)
                     if self.available_sample_positions[int(
                             pos) - 1] in self.taken_sample_positions:  # If the requested position is already taken, we're not going to allow it.
                         if len(
@@ -3137,7 +3100,7 @@ class Controller():
             if 'steps' in param:
                 try:
                     steps = int(param.split('=')[-1])
-                    valid_steps = validate_int_input(steps, -800, 800)
+                    valid_steps = utils.validate_int_input(steps, -800, 800)
 
                 except:
                     self.fail_script_command('Error: could not parse command ' + cmd)
@@ -3174,7 +3137,7 @@ class Controller():
                     return False
 
         elif 'set_emission(' in cmd:
-            if self.manual_automatic.get() == 0 or PI_OFFLINE:
+            if self.manual_automatic.get() == 0 or self.connection_tracker.pi_offline:
                 print(self.manual_automatic.get())
                 self.log('Error: Not in automatic mode')
                 self.queue = []
@@ -3190,7 +3153,7 @@ class Controller():
             if 'steps' in param:
                 try:
                     steps = int(param.split('=')[-1])
-                    valid_steps = validate_int_input(steps, -1000, 1000)
+                    valid_steps = utils.validate_int_input(steps, -1000, 1000)
 
                 except:
                     self.fail_script_command('Error: could not parse command ' + cmd)
@@ -3208,7 +3171,7 @@ class Controller():
                     return False
             else:
                 e = param
-                valid_e = validate_int_input(e, self.min_science_e, self.max_science_e)
+                valid_e = utils.validate_int_input(e, self.min_science_e, self.max_science_e)
                 if valid_e:
                     e = int(param)
                     valid_geom = self.validate_distance(self.science_i, e, self.science_az)
@@ -3229,7 +3192,7 @@ class Controller():
                     return False
 
         elif 'set_azimuth(' in cmd:
-            if self.manual_automatic.get() == 0 or PI_OFFLINE:
+            if self.manual_automatic.get() == 0 or self.connection_tracker.pi_offline:
                 self.log('Error: Not in automatic mode')
                 self.queue = []
                 self.script_running = False
@@ -3244,7 +3207,7 @@ class Controller():
             if 'steps' in param:
                 try:
                     steps = int(param.split('=')[-1])
-                    valid_steps = validate_int_input(steps, -1000, 1000)
+                    valid_steps = utils.validate_int_input(steps, -1000, 1000)
 
                 except:
                     self.fail_script_command('Error: could not parse command ' + cmd)
@@ -3262,7 +3225,7 @@ class Controller():
                     return False
             else:
                 az = param
-                valid_az = validate_int_input(az, self.min_science_az, self.max_science_az)
+                valid_az = utils.validate_int_input(az, self.min_science_az, self.max_science_az)
                 if valid_az:
                     valid_geom = self.validate_distance(self.science_i, self.science_e, int(az))
                     #                     if not valid_geom:
@@ -3284,7 +3247,7 @@ class Controller():
 
         # Accepts incidence angle in degrees, converts to motor position. OR accepts motor steps to move.
         elif 'set_incidence(' in cmd:
-            if self.manual_automatic.get() == 0 or PI_OFFLINE:
+            if self.manual_automatic.get() == 0 or self.connection_tracker.pi_offline:
                 self.log('Error: Not in automatic mode')
                 self.queue = []
                 self.script_running = False
@@ -3299,7 +3262,7 @@ class Controller():
             if 'steps' in param:
                 try:
                     steps = int(param.split('=')[-1])
-                    valid_steps = validate_int_input(steps, -1000, 1000)
+                    valid_steps = utils.validate_int_input(steps, -1000, 1000)
 
                 except:
                     self.fail_script_command('Error: could not parse command ' + cmd)
@@ -3317,7 +3280,7 @@ class Controller():
                     return False
             else:
                 next_science_i = param
-                valid_i = validate_int_input(next_science_i, self.min_science_i, self.max_science_i)
+                valid_i = utils.validate_int_input(next_science_i, self.min_science_i, self.max_science_i)
                 if valid_i:
                     next_science_i = int(next_science_i)
                     valid_geom = self.validate_distance(next_science_i, self.science_e, self.science_az)
@@ -3339,13 +3302,13 @@ class Controller():
                     return False
 
         elif 'set_motor_azimuth' in cmd:
-            if self.manual_automatic.get() == 0 or PI_OFFLINE:
+            if self.manual_automatic.get() == 0 or self.connection_tracker.pi_offline:
                 self.log('Error: Not in automatic mode')
                 self.queue = []
                 self.script_running = False
                 return False
             az = int(cmd.split('set_motor_azimuth(')[1].strip(')'))
-            valid_az = validate_int_input(az, self.min_motor_az, self.max_motor_az)
+            valid_az = utils.validate_int_input(az, self.min_motor_az, self.max_motor_az)
 
             if valid_az:
                 next_science_i, next_science_e, next_science_az = self.motor_pos_to_science_pos(self.motor_i,
@@ -3369,9 +3332,9 @@ class Controller():
                 self.log('Error: invalid display setting. Enter set_display(i, e, az')
                 return
 
-            valid_i = validate_int_input(params[0], self.min_science_i, self.max_science_i)
-            valid_e = validate_int_input(params[1], self.min_science_e, self.max_science_e)
-            valid_az = validate_int_input(params[2], self.min_science_az, self.max_science_az)
+            valid_i = utils.validate_int_input(params[0], self.min_science_i, self.max_science_i)
+            valid_e = utils.validate_int_input(params[1], self.min_science_e, self.max_science_e)
+            valid_az = utils.validate_int_input(params[2], self.min_science_az, self.max_science_az)
 
             if not valid_i or not valid_e or not valid_az:
                 self.log('Error: invalid geometry')
@@ -3436,9 +3399,9 @@ class Controller():
                 self.log('Error: invalid display setting. Enter set_display(i, e, az')
                 return
 
-            valid_i = validate_int_input(params[0], self.min_science_i, self.max_science_i)
-            valid_e = validate_int_input(params[1], self.min_science_e, self.max_science_e)
-            valid_az = validate_int_input(params[2], self.min_science_az, self.max_science_az)
+            valid_i = utils.validate_int_input(params[0], self.min_science_i, self.max_science_i)
+            valid_e = utils.validate_int_input(params[1], self.min_science_e, self.max_science_e)
+            valid_az = utils.validate_int_input(params[2], self.min_science_az, self.max_science_az)
 
             if not valid_i or not valid_e or not valid_az:
                 self.log('Error: invalid geometry')
@@ -3507,59 +3470,10 @@ class Controller():
                 self.script_running = False
                 self.queue = []
 
-        #             valid_geom=self.validate_distance(i,e, az)
-        #             if not valid_geom:
-        #                 self.log('Error: Geometric constraints on the instrument make this position impossible to reach.')
-        #                 if len(self.queue)>0:
-        #                     self.next_in_queue()
-        #                 else:
-        #                     self.script_running=False
-        #                     self.queue=[]
-        #                 return
-        #
-        #
-        #             current_motor=(self.goniometer_view.motor_i,self.goniometer_view.motor_e, self.goniometer_view.motor_az)
-        #             movements=self.get_movements(i,e,az, current_motor=current_motor)
-        #
-        #             current_science_i=self.goniometer_view.science_i
-        #             current_science_e=self.goniometer_view.science_e
-        #             current_science_az=self.goniometer_view.science_az
-        #
-        #             if movements==None:
-        #                 print('NO PATH FOUND')
-        #                 self.log('Error: Cannot find a path from current geometry to i= '+str(i)+', e='+str(e)+', az='+str(az))
-        #
-        #             else:
-        #                 temp_queue=[]
-        #
-        #                 for movement in movements:
-        #                     if 'az' in movement:
-        #                         next_motor_az=movement['az']
-        #                         temp_queue.append({self.goniometer_view.set_azimuth:[next_motor_az]})
-        #                     elif 'e' in movement:
-        #                         next_motor_e=movement['e']
-        #                         temp_queue.append({self.goniometer_view.set_emission:[next_motor_e]})
-        #                     elif 'i' in movement:
-        #                         next_motor_i=movement['i']
-        #                         temp_queue.append({self.goniometer_view.set_incidence:[next_motor_i]})
-        #                     else:
-        #                         print('UNEXPECTED: '+str(movement))
-        #
-        #                 for item in temp_queue:
-        #                     for func in item:
-        #                         args=item[func]
-        #                         func(*args)
-        #
-        #
-        #             if len(self.queue)>0:
-        #                 self.next_in_queue()
-        #             else:
-        #                 self.script_running=False
-        #                 self.queue=[]
-        #
+
         elif 'rotate_display' in cmd:
             angle = cmd.split('rotate_display(')[1].strip(')')
-            valid = validate_int_input(angle, -360, 360)
+            valid = utils.validate_int_input(angle, -360, 360)
             if not valid:
                 self.log('Error: invalid geometry')
                 return
@@ -3585,7 +3499,7 @@ class Controller():
 
         elif 'rotate_tray_display' in cmd:
             angle = cmd.split('rotate_tray_display(')[1].strip(')')
-            valid = validate_int_input(angle, -360, 360)
+            valid = utils.validate_int_input(angle, -360, 360)
             if not valid:
                 self.log('Error: invalid geometry')
                 return
@@ -3735,7 +3649,7 @@ class Controller():
             return False
 
         self.spec_commander.check_writeable(dir)
-        t = 3 * BUFFER
+        t = 3 *  utils.BUFFER
         while t > 0:
             if 'yeswriteable' in self.spec_listener.queue:
                 self.spec_listener.queue.remove('yeswriteable')
@@ -3744,8 +3658,8 @@ class Controller():
                 self.spec_listener.queue.remove('notwriteable')
                 dialog = ErrorDialog(self, label='Error: Permission denied.\nCannot write to specified directory.')
                 return False
-            time.sleep(INTERVAL)
-            t = t - INTERVAL
+            time.sleep( utils.INTERVAL)
+            t = t -  utils.INTERVAL
         if t <= 0:
             dialog = ErrorDialog(self, label='Error: Operation timed out.')
             return False
@@ -3868,503 +3782,6 @@ class Controller():
                 print('Writing log file to ' + final_log_destination)
                 with open(final_log_destination, 'w+') as f:
                     f.write(log_data)
-
-    #     #Not used, replaced by open_plot_settings.
-    #     def open_options(self, tab,current_title):
-    #         #If the user already has dialogs open for editing the plot, close the extras to avoid confusion.
-    #         self.close_plot_option_windows()
-    #         def select_tab():
-    #             self.view_notebook.select(tab.top)
-    #         buttons={
-    #             'ok':{
-    #                 select_tab:[],
-    #                 lambda: tab.set_title(self.new_plot_title_entry.get()):[]
-    #             }
-    #         }
-    #         def set_markerstyle():
-    #             tab.set_markerstyle(self.markerstyle_sample_var.get(), self.markerstyle_markerstyle_var.get())
-    #
-    #         def apply_x():
-    #             self.view_notebook.select(tab.top)
-    #
-    #             try:
-    #                 x1=float(self.left_zoom_entry.get())
-    #                 x2=float(self.right_zoom_entry.get())
-    #                 tab.adjust_x(x1,x2)
-    #             except:
-    #                 ErrorDialog(self, title='Invalid Zoom Range',label='Error: Invalid x limits: '+self.left_zoom_entry.get()+', '+self.right_zoom_entry.get())
-    #
-    #         def apply_y():
-    #             self.view_notebook.select(tab.top)
-    #             try:
-    #                 y1=float(self.left_zoom_entry2.get())
-    #                 y2=float(self.right_zoom_entry2.get())
-    #                 tab.adjust_y(y1,y2)
-    #             except Exception as e:
-    #                 print(e)
-    #                 ErrorDialog(self, title='Invalid Zoom Range',label='Error! Invalid y limits: '+self.left_zoom_entry2.get()+', '+self.right_zoom_entry2.get())
-    #
-    #         def apply_z():
-    #             self.view_notebook.select(tab.top)
-    #
-    #             try:
-    #                 z1=float(self.left_zoom_entry_z.get())
-    #                 z2=float(self.right_zoom_entry_z.get())
-    #                 tab.adjust_z(z1,z2)
-    #             except Exception as e:
-    #                 print(e)
-    #                 ErrorDialog(self, title='Invalid Zoom Range',label='Error: Invalid z limits: '+self.left_zoom_entry.get()+', '+self.right_zoom_entry.get())
-    #
-    #         self.plot_options_dialog=Dialog(self,'Plot Options','\nPlot title:',buttons=buttons)
-    #         self.new_plot_title_entry=Entry(self.plot_options_dialog.top, width=20, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-    #         self.new_plot_title_entry.insert(0,current_title)
-    #         self.new_plot_title_entry.pack()
-    #
-    #         self.outer_outer_zoom_frame=Frame(self.plot_options_dialog.top,bg=self.bg,padx=self.padx,pady=15)
-    #         self.outer_outer_zoom_frame.pack(expand=True,fill=BOTH)
-    #
-    #         self.zoom_title_frame=Frame(self.outer_outer_zoom_frame,bg=self.bg)
-    #         self.zoom_title_frame.pack(pady=(5,10))
-    #         self.zoom_title_label=Label(self.zoom_title_frame,text='Adjust plot x and y limits:',bg=self.bg,fg=self.textcolor)
-    #         self.zoom_title_label.pack(side=LEFT,pady=(0,4))
-    #
-    #         self.outer_zoom_frame=Frame(self.outer_outer_zoom_frame,bg=self.bg,padx=self.padx)
-    #         self.outer_zoom_frame.pack(expand=True,fill=BOTH,pady=(0,10))
-    #         self.zoom_frame=Frame(self.outer_zoom_frame,bg=self.bg,padx=self.padx)
-    #         self.zoom_frame.pack()
-    #
-    #         self.zoom_label=Label(self.zoom_frame,text='x1:',bg=self.bg,fg=self.textcolor)
-    #         self.left_zoom_entry=Entry(self.zoom_frame, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-    #         self.zoom_label2=Label(self.zoom_frame,text='x2:',bg=self.bg,fg=self.textcolor)
-    #         self.right_zoom_entry=Entry(self.zoom_frame, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-    #         self.zoom_button=Button(self.zoom_frame,text='Apply',  command=apply_x,width=7, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-    #         self.zoom_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-    #         self.zoom_button.pack(side=RIGHT,padx=(10,10))
-    #         self.right_zoom_entry.pack(side=RIGHT,padx=self.padx)
-    #         self.zoom_label2.pack(side=RIGHT,padx=self.padx)
-    #         self.left_zoom_entry.pack(side=RIGHT,padx=self.padx)
-    #         self.zoom_label.pack(side=RIGHT,padx=self.padx)
-    #
-    #
-    #         self.outer_zoom_frame2=Frame(self.outer_outer_zoom_frame,bg=self.bg,padx=self.padx)
-    #         self.outer_zoom_frame2.pack(expand=True,fill=BOTH,pady=(0,10))
-    #         self.zoom_frame2=Frame(self.outer_zoom_frame2,bg=self.bg,padx=self.padx)
-    #         self.zoom_frame2.pack()
-    #         self.zoom_label3=Label(self.zoom_frame2,text='y1:',bg=self.bg,fg=self.textcolor)
-    #         self.left_zoom_entry2=Entry(self.zoom_frame2, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-    #         self.zoom_label4=Label(self.zoom_frame2,text='y2:',bg=self.bg,fg=self.textcolor)
-    #         self.right_zoom_entry2=Entry(self.zoom_frame2, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-    #         self.zoom_button2=Button(self.zoom_frame2,text='Apply',  command=apply_y,width=7, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-    #         self.zoom_button2.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-    #
-    #         self.zoom_button2.pack(side=RIGHT,padx=(10,10))
-    #         self.right_zoom_entry2.pack(side=RIGHT,padx=self.padx)
-    #         self.zoom_label4.pack(side=RIGHT,padx=self.padx)
-    #         self.left_zoom_entry2.pack(side=RIGHT,padx=self.padx)
-    #         self.zoom_label3.pack(side=RIGHT,padx=self.padx)
-    #
-    #         if tab.plot.x_axis=='contour':
-    #             self.outer_zoom_frame_z=Frame(self.outer_outer_zoom_frame,bg=self.bg,padx=self.padx)
-    #             self.outer_zoom_frame_z.pack(expand=True,fill=BOTH,pady=(0,10))
-    #             self.zoom_frame_z=Frame(self.outer_zoom_frame_z,bg=self.bg,padx=self.padx)
-    #             self.zoom_frame_z.pack()
-    #             self.zoom_label_z1=Label(self.zoom_frame_z,text='z1:',bg=self.bg,fg=self.textcolor)
-    #             self.left_zoom_entry_z=Entry(self.zoom_frame_z, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-    #             self.zoom_label_z2=Label(self.zoom_frame_z,text='z2:',bg=self.bg,fg=self.textcolor)
-    #             self.right_zoom_entry_z=Entry(self.zoom_frame_z, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-    #             self.zoom_button_z=Button(self.zoom_frame_z,text='Apply',  command=apply_z,width=7, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-    #             self.zoom_button_z.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-    #
-    #
-    #
-    #             self.zoom_button_z.pack(side=RIGHT,padx=(10,10))
-    #             self.right_zoom_entry_z.pack(side=RIGHT,padx=self.padx)
-    #             self.zoom_label_z2.pack(side=RIGHT,padx=self.padx)
-    #             self.left_zoom_entry_z.pack(side=RIGHT,padx=self.padx)
-    #             self.zoom_label_z1.pack(side=RIGHT,padx=self.padx)
-    #         if tab.plot.markers:
-    #             self.outer_markerstyle_frame=Frame(self.plot_options_dialog.top,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
-    #             self.outer_markerstyle_frame.pack(expand=True,fill=BOTH)
-    #             self.markerstyle_label=Label(self.outer_markerstyle_frame,text='Markerstyle settings',bg=self.bg,fg=self.textcolor)
-    #             self.markerstyle_label.pack()
-    #
-    #             self.markerstyle_frame=Frame(self.outer_markerstyle_frame,bg=self.bg,padx=self.padx,pady=15)
-    #             self.markerstyle_frame.pack(fill=BOTH, expand=True)
-    #             self.markerstyle_sample_frame=Frame(self.markerstyle_frame,bg=self.bg,padx=30,pady=0)
-    #             self.markerstyle_sample_frame.pack(fill=BOTH, expand=True)
-    #
-    #             self.markerstyle_sample_label=Label(self.markerstyle_sample_frame,text='Sample: ',bg=self.bg,fg=self.textcolor)
-    #             self.markerstyle_sample_label.pack(side=LEFT)
-    #             self.markerstyle_sample_var=StringVar()
-    #             sample_names=[]
-    #             repeats=False
-    #             max_len=0
-    #             for sample in tab.samples:
-    #                 if sample.name in sample_names:
-    #                     repeats=True
-    #                 else:
-    #                     sample_names.append(sample.name)
-    #                     max_len=np.max([max_len, len(sample.name)])
-    #             if repeats:
-    #                 sample_names=[]
-    #                 for sample in tab.samples:
-    #                     sample_names.append(sample.title+': '+sample.name)
-    #                     max_len=np.max([max_len, len(sample_names[-1])])
-    #             self.markerstyle_sample_var.set(sample_names[0])
-    #             self.markerstyle_menu=OptionMenu(self.markerstyle_sample_frame, self.markerstyle_sample_var,*sample_names)
-    #             self.markerstyle_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
-    #             self.markerstyle_menu.pack(side=LEFT)
-    #
-    #             self.markerstyle_markerstyle_frame=Frame(self.markerstyle_frame,bg=self.bg,padx=44,pady=0)
-    #             self.markerstyle_markerstyle_frame.pack(fill=BOTH, expand=True)
-    #             self.markerstyle_sample_label=Label(self.markerstyle_markerstyle_frame,text='Style: ',bg=self.bg,fg=self.textcolor)
-    #             self.markerstyle_sample_label.pack(side=LEFT)
-    #             self.markerstyle_markerstyle_var=StringVar()
-    #             markerstyle_names=['Circle','X','Diamond','Triangle']
-    #
-    #             self.markerstyle_markerstyle_var.set(markerstyle_names[0])
-    #             self.markerstyle_menu=OptionMenu(self.markerstyle_markerstyle_frame, self.markerstyle_markerstyle_var,*markerstyle_names)
-    #             self.markerstyle_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
-    #             self.markerstyle_menu.pack(side=LEFT)
-    #             self.markerstyle_button=Button(self.markerstyle_frame,text='Apply',  command=set_markerstyle,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-    #             self.markerstyle_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-    #             self.markerstyle_button.pack()
-    #
-    #
-    #     def open_plot_settings(self, tab):
-    #         #If the user already has dialogs open for editing the plot, close the extras to avoid confusion.
-    #         self.close_plot_option_windows()
-    #
-    #         def select_tab():
-    #             self.view_notebook.select(tab.top)
-    #             self.lift_widget(self.plot_settings_dialog.top)
-    #
-    #         def set_markerstyle():
-    #             tab.set_markerstyle(self.markerstyle_sample_var.get(), self.markerstyle_markerstyle_var.get())
-    #             self.lift_widget(self.plot_settings_dialog.top)
-    #
-    #         def apply_x():
-    #             self.view_notebook.select(tab.top)
-    #
-    #             try:
-    #                 x1=float(self.left_zoom_entry.get())
-    #                 x2=float(self.right_zoom_entry.get())
-    #                 tab.adjust_x(x1,x2)
-    #                 self.lift_widget(self.plot_settings_dialog.top)
-    #             except:
-    #                 self.lift_widget(self.plot_settings_dialog.top)
-    #                 ErrorDialog(self, title='Invalid Zoom Range',label='Error: Invalid x limits: '+self.left_zoom_entry.get()+', '+self.right_zoom_entry.get())
-    #
-    #         def apply_y():
-    #             self.view_notebook.select(tab.top)
-    #             try:
-    #                 y1=float(self.left_zoom_entry2.get())
-    #                 y2=float(self.right_zoom_entry2.get())
-    #                 tab.adjust_y(y1,y2)
-    #                 self.lift_widget(self.plot_settings_dialog.top)
-    #             except Exception as e:
-    #                 print(e)
-    #                 self.lift_widget(self.plot_settings_dialog.top)
-    #                 ErrorDialog(self, title='Invalid Zoom Range',label='Error! Invalid y limits: '+self.left_zoom_entry2.get()+', '+self.right_zoom_entry2.get())
-    #
-    #         def apply_z():
-    #             self.view_notebook.select(tab.top)
-    #
-    #             try:
-    #                 z1=float(self.left_zoom_entry_z.get())
-    #                 z2=float(self.right_zoom_entry_z.get())
-    #                 tab.adjust_z(z1,z2)
-    #                 self.lift_widget(self.plot_settings_dialog.top)
-    #             except Exception as e:
-    #                 print(e)
-    #                 self.lift_widget(self.plot_settings_dialog.top)
-    #                 ErrorDialog(self, title='Invalid Zoom Range',label='Error: Invalid z limits: '+self.left_zoom_entry.get()+', '+self.right_zoom_entry.get())
-    #
-    #         def set_title():
-    #             tab.set_title(self.title_entry.get())
-    #             self.lift_widget(self.plot_settings_dialog.top)
-    #
-    #         def set_custom_color(custom_color):
-    #             print('foo')
-    #             print(self.custom_color)
-    #             tab.set_color(self.color_sample_var.get(), custom_color)
-    #             self.lift_widget(self.plot_settings_dialog.top)
-    #
-    #         def set_color():
-    #             if self.color_color_var.get()=='Custom':
-    #                 self.custom_color=None
-    #                 try:
-    #                     self.custom_color_dialog.top.destroy()
-    #                 except:
-    #                     pass
-    #                 self.custom_color_dialog=CustomColorDialog(self,set_custom_color, self.custom_color)
-    #                 self.lift_widget(self.custom_color_dialog.top)
-    #             else:
-    #                 tab.set_color(self.color_sample_var.get(), self.color_color_var.get())
-    #
-    #             self.lift_widget(self.plot_settings_dialog.top)
-    #
-    #         def set_linestyle():
-    #             tab.set_linestyle(self.linestyle_sample_var.get(), self.linestyle_linestyle_var.get())
-    #             self.lift_widget(self.plot_settings_dialog.top)
-    #
-    #         def set_markerstyle():
-    #             tab.set_markerstyle(self.markerstyle_sample_var.get(), self.markerstyle_markerstyle_var.get())
-    #             self.lift_widget(self.plot_settings_dialog.top)
-    #
-    #         tab.freeze() #You have to finish dealing with this before, say, opening another analysis box.
-    #         buttons={
-    #             'close':{}
-    #         }
-    #
-    #         def set_legend():
-    #             tab.set_legend_style(self.legend_legend_var.get())
-    #             self.lift_widget(self.plot_settings_dialog.top)
-    #
-    #         self.plot_settings_dialog=VerticalScrolledDialog(self,'Plot Settings','',buttons=buttons,button_width=13, min_height=715, width=360)
-    #         self.plot_settings_dialog.top.wm_geometry('380x756')
-    # #         self.plot_settings_dialog.top.attributes('-topmost', True)
-    #
-    #         self.outer_title_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
-    #         self.outer_title_frame.pack(expand=True,fill=BOTH)
-    #
-    #         self.title_frame=Frame(self.outer_title_frame,bg=self.bg,padx=self.padx,pady=15)
-    #         self.title_frame.pack(fill=BOTH, expand=True)
-    #
-    #         self.title_label=Label(self.title_frame,text='Plot title:',bg=self.bg,fg=self.textcolor)
-    #         self.title_entry=Entry(self.title_frame, width=20, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-    #         self.title_button=Button(self.title_frame,text='Apply',  command=set_title,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-    #         self.title_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-    #         self.title_button.pack(side=RIGHT,padx=(10,20))
-    #         self.title_entry.pack(side=RIGHT,padx=self.padx)
-    #         self.title_label.pack(side=RIGHT,padx=self.padx)
-    #
-    #         self.outer_outer_zoom_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15, highlightthickness=1)
-    #         self.outer_outer_zoom_frame.pack(expand=True,fill=BOTH)
-    #
-    #         self.zoom_title_frame=Frame(self.outer_outer_zoom_frame,bg=self.bg)
-    #         self.zoom_title_frame.pack(pady=(5,10))
-    #         self.zoom_title_label=Label(self.zoom_title_frame,text='Adjust plot x and y limits:',bg=self.bg,fg=self.textcolor)
-    #         self.zoom_title_label.pack(side=LEFT,pady=(0,4))
-    #
-    #         self.outer_zoom_frame=Frame(self.outer_outer_zoom_frame,bg=self.bg,padx=self.padx)
-    #         self.outer_zoom_frame.pack(expand=True,fill=BOTH,pady=(0,10))
-    #         self.zoom_frame=Frame(self.outer_zoom_frame,bg=self.bg,padx=self.padx)
-    #         self.zoom_frame.pack()
-    #
-    #         self.zoom_label=Label(self.zoom_frame,text='x1:',bg=self.bg,fg=self.textcolor)
-    #         self.left_zoom_entry=Entry(self.zoom_frame, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-    #         self.zoom_label2=Label(self.zoom_frame,text='x2:',bg=self.bg,fg=self.textcolor)
-    #         self.right_zoom_entry=Entry(self.zoom_frame, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-    #         self.zoom_button=Button(self.zoom_frame,text='Apply',  command=apply_x,width=7, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-    #         self.zoom_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-    #         self.zoom_button.pack(side=RIGHT,padx=(10,10))
-    #         self.right_zoom_entry.pack(side=RIGHT,padx=self.padx)
-    #         self.zoom_label2.pack(side=RIGHT,padx=self.padx)
-    #         self.left_zoom_entry.pack(side=RIGHT,padx=self.padx)
-    #         self.zoom_label.pack(side=RIGHT,padx=self.padx)
-    #
-    #
-    #         self.outer_zoom_frame2=Frame(self.outer_outer_zoom_frame,bg=self.bg,padx=self.padx)
-    #         self.outer_zoom_frame2.pack(expand=True,fill=BOTH,pady=(0,10))
-    #         self.zoom_frame2=Frame(self.outer_zoom_frame2,bg=self.bg,padx=self.padx)
-    #         self.zoom_frame2.pack()
-    #         self.zoom_label3=Label(self.zoom_frame2,text='y1:',bg=self.bg,fg=self.textcolor)
-    #         self.left_zoom_entry2=Entry(self.zoom_frame2, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-    #         self.zoom_label4=Label(self.zoom_frame2,text='y2:',bg=self.bg,fg=self.textcolor)
-    #         self.right_zoom_entry2=Entry(self.zoom_frame2, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-    #         self.zoom_button2=Button(self.zoom_frame2,text='Apply',  command=apply_y,width=7, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-    #         self.zoom_button2.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-    #
-    #         self.zoom_button2.pack(side=RIGHT,padx=(10,10))
-    #         self.right_zoom_entry2.pack(side=RIGHT,padx=self.padx)
-    #         self.zoom_label4.pack(side=RIGHT,padx=self.padx)
-    #         self.left_zoom_entry2.pack(side=RIGHT,padx=self.padx)
-    #         self.zoom_label3.pack(side=RIGHT,padx=self.padx)
-    #
-    #         if tab.plot.x_axis=='contour':
-    #             self.outer_zoom_frame_z=Frame(self.outer_outer_zoom_frame,bg=self.bg,padx=self.padx)
-    #             self.outer_zoom_frame_z.pack(expand=True,fill=BOTH,pady=(0,10))
-    #             self.zoom_frame_z=Frame(self.outer_zoom_frame_z,bg=self.bg,padx=self.padx)
-    #             self.zoom_frame_z.pack()
-    #             self.zoom_label_z1=Label(self.zoom_frame_z,text='z1:',bg=self.bg,fg=self.textcolor)
-    #             self.left_zoom_entry_z=Entry(self.zoom_frame_z, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-    #             self.zoom_label_z2=Label(self.zoom_frame_z,text='z2:',bg=self.bg,fg=self.textcolor)
-    #             self.right_zoom_entry_z=Entry(self.zoom_frame_z, width=7, bd=self.bd,bg=self.entry_background,selectbackground=self.selectbackground,selectforeground=self.selectforeground)
-    #             self.zoom_button_z=Button(self.zoom_frame_z,text='Apply',  command=apply_z,width=7, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-    #             self.zoom_button_z.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-    #
-    #
-    #
-    #             self.zoom_button_z.pack(side=RIGHT,padx=(10,10))
-    #             self.right_zoom_entry_z.pack(side=RIGHT,padx=self.padx)
-    #             self.zoom_label_z2.pack(side=RIGHT,padx=self.padx)
-    #             self.left_zoom_entry_z.pack(side=RIGHT,padx=self.padx)
-    #             self.zoom_label_z1.pack(side=RIGHT,padx=self.padx)
-    #
-    #         self.outer_color_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
-    #         self.outer_color_frame.pack(expand=True,fill=BOTH)
-    #         self.color_label=Label(self.outer_color_frame,text='Color settings',bg=self.bg,fg=self.textcolor)
-    #         self.color_label.pack()
-    #
-    #         self.color_frame=Frame(self.outer_color_frame,bg=self.bg,padx=self.padx,pady=15)
-    #         self.color_frame.pack(fill=BOTH, expand=True)
-    #         self.color_sample_frame=Frame(self.color_frame,bg=self.bg,padx=30,pady=0)
-    #         self.color_sample_frame.pack(fill=BOTH, expand=True)
-    #
-    #         self.color_sample_label=Label(self.color_sample_frame,text='Sample: ',bg=self.bg,fg=self.textcolor)
-    #         self.color_sample_label.pack(side=LEFT)
-    #         self.color_sample_var=StringVar()
-    #         sample_names=[]
-    #         repeats=False
-    #         max_len=0
-    #         for sample in tab.samples:
-    #             if sample.name in sample_names:
-    #                 repeats=True
-    #             else:
-    #                 sample_names.append(sample.name)
-    #                 max_len=np.max([max_len, len(sample.name)])
-    #         if repeats:
-    #             sample_names=[]
-    #             for sample in tab.samples:
-    #                 sample_names.append(sample.title+': '+sample.name)
-    #                 max_len=np.max([max_len, len(sample_names[-1])])
-    #         self.color_sample_var.set(sample_names[0])
-    #         self.color_menu=OptionMenu(self.color_sample_frame, self.color_sample_var,*sample_names)
-    #         self.color_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
-    #         self.color_menu.pack(side=LEFT)
-    #
-    #         self.color_color_frame=Frame(self.color_frame,bg=self.bg,padx=40,pady=0)
-    #         self.color_color_frame.pack(fill=BOTH, expand=True)
-    #         self.color_sample_label=Label(self.color_color_frame,text='Color: ',bg=self.bg,fg=self.textcolor)
-    #         self.color_sample_label.pack(side=LEFT)
-    #         self.color_color_var=StringVar()
-    #         color_names=tab.plot.color_names
-    #
-    #         self.color_color_var.set(color_names[0])
-    #         self.color_menu=OptionMenu(self.color_color_frame, self.color_color_var,*color_names)
-    #         self.color_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
-    #         self.color_menu.pack(side=LEFT)
-    #         self.color_button=Button(self.color_frame,text='Apply',  command=set_color,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-    #         self.color_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-    #         self.color_button.pack()
-    #
-    #         if tab.plot.lines_drawn:
-    #             self.outer_linestyle_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
-    #             self.outer_linestyle_frame.pack(expand=True,fill=BOTH)
-    #             self.linestyle_label=Label(self.outer_linestyle_frame,text='Linestyle settings',bg=self.bg,fg=self.textcolor)
-    #             self.linestyle_label.pack()
-    #
-    #             self.linestyle_frame=Frame(self.outer_linestyle_frame,bg=self.bg,padx=self.padx,pady=15)
-    #             self.linestyle_frame.pack(fill=BOTH, expand=True)
-    #             self.linestyle_sample_frame=Frame(self.linestyle_frame,bg=self.bg,padx=30,pady=0)
-    #             self.linestyle_sample_frame.pack(fill=BOTH, expand=True)
-    #
-    #             self.linestyle_sample_label=Label(self.linestyle_sample_frame,text='Sample: ',bg=self.bg,fg=self.textcolor)
-    #             self.linestyle_sample_label.pack(side=LEFT)
-    #             self.linestyle_sample_var=StringVar()
-    #             sample_names=[]
-    #             repeats=False
-    #             max_len=0
-    #             for sample in tab.samples:
-    #                 if sample.name in sample_names:
-    #                     repeats=True
-    #                 else:
-    #                     sample_names.append(sample.name)
-    #                     max_len=np.max([max_len, len(sample.name)])
-    #             if repeats:
-    #                 sample_names=[]
-    #                 for sample in tab.samples:
-    #                     sample_names.append(sample.title+': '+sample.name)
-    #                     max_len=np.max([max_len, len(sample_names[-1])])
-    #             self.linestyle_sample_var.set(sample_names[0])
-    #             self.linestyle_menu=OptionMenu(self.linestyle_sample_frame, self.linestyle_sample_var,*sample_names)
-    #             self.linestyle_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
-    #             self.linestyle_menu.pack(side=LEFT)
-    #
-    #             self.linestyle_linestyle_frame=Frame(self.linestyle_frame,bg=self.bg,padx=44,pady=0)
-    #             self.linestyle_linestyle_frame.pack(fill=BOTH, expand=True)
-    #             self.linestyle_sample_label=Label(self.linestyle_linestyle_frame,text='Style: ',bg=self.bg,fg=self.textcolor)
-    #             self.linestyle_sample_label.pack(side=LEFT)
-    #             self.linestyle_linestyle_var=StringVar()
-    #             linestyle_names=['Solid','Dash','Dot','Dot-dash']
-    #
-    #             self.linestyle_linestyle_var.set(linestyle_names[0])
-    #             self.linestyle_menu=OptionMenu(self.linestyle_linestyle_frame, self.linestyle_linestyle_var,*linestyle_names)
-    #             self.linestyle_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
-    #             self.linestyle_menu.pack(side=LEFT)
-    #             self.linestyle_button=Button(self.linestyle_frame,text='Apply',  command=set_linestyle,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-    #             self.linestyle_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-    #             self.linestyle_button.pack()
-    #
-    #         if tab.plot.markers_drawn:
-    #             self.outer_markerstyle_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
-    #             self.outer_markerstyle_frame.pack(expand=True,fill=BOTH)
-    #             self.markerstyle_label=Label(self.outer_markerstyle_frame,text='Markerstyle settings',bg=self.bg,fg=self.textcolor)
-    #             self.markerstyle_label.pack()
-    #
-    #             self.markerstyle_frame=Frame(self.outer_markerstyle_frame,bg=self.bg,padx=self.padx,pady=15)
-    #             self.markerstyle_frame.pack(fill=BOTH, expand=True)
-    #             self.markerstyle_sample_frame=Frame(self.markerstyle_frame,bg=self.bg,padx=30,pady=0)
-    #             self.markerstyle_sample_frame.pack(fill=BOTH, expand=True)
-    #
-    #             self.markerstyle_sample_label=Label(self.markerstyle_sample_frame,text='Sample: ',bg=self.bg,fg=self.textcolor)
-    #             self.markerstyle_sample_label.pack(side=LEFT)
-    #             self.markerstyle_sample_var=StringVar()
-    #             sample_names=[]
-    #             repeats=False
-    #             max_len=0
-    #             for sample in tab.samples:
-    #                 if sample.name in sample_names:
-    #                     repeats=True
-    #                 else:
-    #                     sample_names.append(sample.name)
-    #                     max_len=np.max([max_len, len(sample.name)])
-    #             if repeats:
-    #                 sample_names=[]
-    #                 for sample in tab.samples:
-    #                     sample_names.append(sample.title+': '+sample.name)
-    #                     max_len=np.max([max_len, len(sample_names[-1])])
-    #             self.markerstyle_sample_var.set(sample_names[0])
-    #             self.markerstyle_menu=OptionMenu(self.markerstyle_sample_frame, self.markerstyle_sample_var,*sample_names)
-    #             self.markerstyle_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
-    #             self.markerstyle_menu.pack(side=LEFT)
-    #
-    #             self.markerstyle_markerstyle_frame=Frame(self.markerstyle_frame,bg=self.bg,padx=44,pady=0)
-    #             self.markerstyle_markerstyle_frame.pack(fill=BOTH, expand=True)
-    #             self.markerstyle_sample_label=Label(self.markerstyle_markerstyle_frame,text='Style: ',bg=self.bg,fg=self.textcolor)
-    #             self.markerstyle_sample_label.pack(side=LEFT)
-    #             self.markerstyle_markerstyle_var=StringVar()
-    #             markerstyle_names=['Circle','X','Diamond','Triangle']
-    #
-    #             self.markerstyle_markerstyle_var.set(markerstyle_names[0])
-    #             self.markerstyle_menu=OptionMenu(self.markerstyle_markerstyle_frame, self.markerstyle_markerstyle_var,*markerstyle_names)
-    #             self.markerstyle_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
-    #             self.markerstyle_menu.pack(side=LEFT)
-    #             self.markerstyle_button=Button(self.markerstyle_frame,text='Apply',  command=set_markerstyle,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-    #             self.markerstyle_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-    #             self.markerstyle_button.pack()
-    #
-    #         self.outer_legend_frame=Frame(self.plot_settings_dialog.interior,bg=self.bg,padx=self.padx,pady=15,highlightthickness=1)
-    #         self.outer_legend_frame.pack(expand=True,fill=BOTH)
-    #
-    #         self.legend_frame=Frame(self.outer_legend_frame,bg=self.bg,padx=self.padx,pady=15)
-    #         self.legend_frame.pack(fill=BOTH, expand=True)
-    #
-    #         self.legend_legend_frame=Frame(self.legend_frame,bg=self.bg,padx=20,pady=0)
-    #         self.legend_legend_frame.pack(fill=BOTH, expand=True)
-    #         self.legend_sample_label=Label(self.legend_legend_frame,text='Legend style: ',bg=self.bg,fg=self.textcolor)
-    #         self.legend_sample_label.pack(side=LEFT)
-    #         self.legend_legend_var=StringVar()
-    #         legend_names=['Full list','Gradient']
-    #
-    #         self.legend_legend_var.set(legend_names[0])
-    #         self.legend_menu=OptionMenu(self.legend_legend_frame, self.legend_legend_var,*legend_names)
-    #         self.legend_menu.configure(width=max_len,highlightbackground=self.highlightbackgroundcolor)
-    #         self.legend_menu.pack(side=LEFT)
-    #         self.legend_button=Button(self.legend_legend_frame,text='Apply',  command=set_legend,width=6, fg=self.buttontextcolor, bg=self.buttonbackgroundcolor,bd=self.bd)
-    #         self.legend_button.config(fg=self.buttontextcolor,highlightbackground=self.highlightbackgroundcolor,bg=self.buttonbackgroundcolor)
-    #         self.legend_button.pack(side=LEFT, padx=(5,5),pady=(5,3))
 
     def lift_widget(self, widget):
         widget.focus_set()
@@ -4586,7 +4003,7 @@ class Controller():
                 self.photo_var_listbox.delete(0, 'end')
             except:
                 self.photo_var_listbox = ScrollableListbox(self.photo_var_results_frame, self.bg, self.entry_background,
-                                                           self.listboxhighlightcolor, selectmode=EXTENDED)
+                                                           self.listboxhighlightcolor, selectmode=tkinter.EXTENDED)
             for var in photo_var:
                 self.photo_var_listbox.insert('end', var)
             self.photo_var_listbox.pack(fill=BOTH, expand=True)
@@ -4921,7 +4338,7 @@ class Controller():
                              text='\nSamples:')
         sample_label.pack(pady=(0, 10))
         self.plot_samples_listbox = ScrollableListbox(self.edit_plot_dialog.top, self.bg, self.entry_background,
-                                                      self.listboxhighlightcolor, selectmode=EXTENDED)
+                                                      self.listboxhighlightcolor, selectmode=tkinter.EXTENDED)
 
         self.geom_label = Label(self.edit_plot_dialog.top, padx=self.padx, pady=self.pady, bg=self.bg,
                                 fg=self.textcolor,
@@ -5306,7 +4723,7 @@ class Controller():
 
         self.pi_commander.configure(str(i), str(e), pos)
 
-        timeout_s = PI_BUFFER
+        timeout_s =  utils.PI_BUFFER
         while timeout_s > 0:
             if 'piconfigsuccess' in self.pi_listener.queue:
                 self.pi_listener.queue.remove('piconfigsuccess')
@@ -5327,8 +4744,8 @@ class Controller():
                     self.motor_e) + '\n\taz = ' + str(self.motor_az) + '\n\ttray position: ' + tray_position_string)
                 break
 
-            time.sleep(INTERVAL)
-            timeout_s -= INTERVAL
+            time.sleep( utils.INTERVAL)
+            timeout_s -=  utils.INTERVAL
 
         if timeout_s <= 0:
             self.queue = []
@@ -5453,7 +4870,7 @@ class Controller():
 
     def validate_input_dir(self, *args):
         pos = self.input_dir_entry.index(INSERT)
-        input_dir = rm_reserved_chars(self.input_dir_entry.get())
+        input_dir = utils.rm_reserved_chars(self.input_dir_entry.get())
         if len(input_dir) < len(self.input_dir_entry.get()):
             pos = pos - 1
         self.input_dir_entry.delete(0, 'end')
@@ -5462,7 +4879,7 @@ class Controller():
 
     def validate_output_dir(self):
         pos = self.output_dir_entry.index(INSERT)
-        output_dir = rm_reserved_chars(self.output_dir_entry.get())
+        output_dir = utils.rm_reserved_chars(self.output_dir_entry.get())
         if len(output_dir) < len(self.output_dir_entry.get()):
             pos = pos - 1
         self.output_dir_entry.delete(0, 'end')
@@ -5471,7 +4888,7 @@ class Controller():
 
     def validate_output_filename(self, *args):
         pos = self.output_filename_entry.index(INSERT)
-        filename = rm_reserved_chars(self.spec_output_filename_entry.get())
+        filename = utils.rm_reserved_chars(self.spec_output_filename_entry.get())
         filename = filename.strip('/').strip('\\')
         self.output_filename_entry.delete(0, 'end')
         self.output_filename_entry.insert(0, filename)
@@ -5479,7 +4896,7 @@ class Controller():
 
     def validate_spec_save_dir(self, *args):
         pos = self.spec_save_dir_entry.index(INSERT)
-        spec_save_dir = rm_reserved_chars(self.spec_save_dir_entry.get())
+        spec_save_dir = utils.rm_reserved_chars(self.spec_save_dir_entry.get())
         if len(spec_save_dir) < len(self.spec_save_dir_entry.get()):
             pos = pos - 1
         self.spec_save_dir_entry.delete(0, 'end')
@@ -5488,7 +4905,7 @@ class Controller():
 
     def validate_basename(self, *args):
         pos = self.spec_basename_entry.index(INSERT)
-        basename = rm_reserved_chars(self.spec_basename_entry.get())
+        basename = utils.rm_reserved_chars(self.spec_basename_entry.get())
         basename = basename.strip('/').strip('\\')
         self.spec_basename_entry.delete(0, 'end')
         self.spec_basename_entry.insert(0, basename)
@@ -5496,9 +4913,9 @@ class Controller():
 
     def validate_startnum(self, *args):
         pos = self.spec_startnum_entry.index(INSERT)
-        num = numbers_only(self.spec_startnum_entry.get())
-        if len(num) > NUMLEN:
-            num = num[0:NUMLEN]
+        num = utils.numbers_only(self.spec_startnum_entry.get())
+        if len(num) > self.config_info.num_len:
+            num = num[0:self.config_info.num_len]
         if len(num) < len(self.spec_startnum_entry.get()):
             pos = pos - 1
         self.spec_startnum_entry.delete(0, 'end')
@@ -5753,7 +5170,7 @@ class Controller():
     def resize(self,
                window=None):  # Resize the console and goniometer view frames to be proportional sizes, and redraw the goniometer.
         if window == None:
-            window = PretendEvent(self.master, self.master.winfo_width(), self.master.winfo_height())
+            window = utils.PretendEvent(self.master, self.master.winfo_width(), self.master.winfo_height())
         if window.widget == self.master:
             reserve_width = 500
             try:
@@ -5792,7 +5209,7 @@ class Controller():
         self.spec_commander.delete_spec(self.spec_save_dir_entry.get(), self.spec_basename_entry.get(),
                                         self.spec_startnum_entry.get())
 
-        t = BUFFER
+        t =  utils.BUFFER
         while t > 0:
             if 'rmsuccess' in self.spec_listener.queue:
                 self.spec_listener.queue.remove('rmsuccess')
@@ -5801,8 +5218,8 @@ class Controller():
             elif 'rmfailure' in self.spec_listener.queue:
                 self.spec_listener.queue.remove('rmfailure')
                 return False
-            t = t - INTERVAL
-            time.sleep(INTERVAL)
+            t = t -  utils.INTERVAL
+            time.sleep(utils.INTERVAL)
         return False
 
     def choose_process_output_dir(self):

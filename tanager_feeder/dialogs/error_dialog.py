@@ -1,8 +1,8 @@
+from tanager_feeder.dialogs.dialog import Dialog
+
 class ErrorDialog(Dialog):
     def __init__(self, controller, title='Error', label='Error!', buttons={'ok': {}}, listener=None, allow_exit=False,
                  info_string=None, topmost=True, button_width=30, width=None, height=None):
-
-        # buttons['ok']={controller.unfreeze:[]}
 
         self.listener = None
         if info_string == None:

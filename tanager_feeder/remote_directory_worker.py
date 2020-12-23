@@ -1,11 +1,13 @@
+from tanager_feeder import utils
+
 class RemoteDirectoryWorker():
     def __init__(self, spec_commander, listener):
         self.spec_commander = spec_commander
         self.listener = listener
-        self.timeout_s = BUFFER
+        self.timeout_s = utils.BUFFER
 
     def reset_timeout(self):
-        self.timeout_s = BUFFER
+        self.timeout_s = utils.BUFFER
 
     def wait_for_contents(self, cmdfilename):
         #         if self.wait_dialog==None
@@ -36,8 +38,8 @@ class RemoteDirectoryWorker():
                     self.listener.queue.remove('listfilesfailed')
                     return 'listfilesfailed'
 
-            time.sleep(INTERVAL)
-            self.timeout_s -= INTERVAL
+            time.sleep(utils.INTERVAL)
+            self.timeout_s -= utils.INTERVAL
         return 'timeout'
 
     # Assume parent has already been validated, but don't assume it exists
@@ -66,4 +68,4 @@ class RemoteDirectoryWorker():
                 self.listener.queue.remove('mkdirfailed')
                 return 'mkdirfailed'
 
-        time.sleep(INTERVAL)
+        time.sleep(utils.INTERVAL)

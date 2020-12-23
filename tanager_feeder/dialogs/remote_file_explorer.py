@@ -1,10 +1,16 @@
+from tkinter import Frame
+from tkinter import Button
+
+from tanager_feeder.dialogs.dialog import Dialog
+from tanager_feeder import utils
+
 class RemoteFileExplorer(Dialog):
     def __init__(self, controller, target=None, title='Select a directory', label='Select a directory',
                  buttons={'ok': {}, 'cancel': {}}, directories_only=True):
 
         super().__init__(controller, title=title, buttons=buttons, label=label, button_width=20)
 
-        self.timeout_s = BUFFER
+        self.timeout_s = utils.BUFFER
         self.controller = controller
         self.remote_directory_worker = self.controller.remote_directory_worker
         self.listener = self.controller.spec_listener

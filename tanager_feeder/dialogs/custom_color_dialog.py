@@ -1,3 +1,6 @@
+from tanager_feeder.dialogs.dialog import Dialog
+
+
 class CustomColorDialog(Dialog):
     def __init__(self, controller, func, color_variable, title='Custom Color'):
         super().__init__(controller,label='Enter custom hue: ',title=title, buttons={'ok':{self.ok:[]}},button_width=15)

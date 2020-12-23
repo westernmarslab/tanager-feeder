@@ -1,3 +1,5 @@
+from tanager_feeder.dialogs.dialog import Dialog
+
 class IntInputDialog(Dialog):
     def __init__(self, controller, title, label, values={}, buttons={'ok': {}, 'cancel': {}}):
         super().__init__(controller, title, label, buttons, allow_exit=False)
