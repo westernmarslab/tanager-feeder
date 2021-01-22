@@ -1,6 +1,7 @@
 from tanager_feeder import utils
 
-class RemoteDirectoryWorker():
+
+class RemoteDirectoryWorker:
     def __init__(self, spec_commander, listener):
         self.spec_commander = spec_commander
         self.listener = listener
@@ -21,26 +22,32 @@ class RemoteDirectoryWorker():
             for item in self.listener.queue:
                 print(cmdfilename)
                 if cmdfilename in item:
-                    contents = item.replace('+', '\\', ).replace('=', ':').split('&')[
-                               2:]  # 0 is the command listcontents, 1 is the top level folder
+                    contents = (
+                        item.replace(
+                            "+",
+                            "\\",
+                        )
+                        .replace("=", ":")
+                        .split("&")[2:]
+                    )  # 0 is the command listcontents, 1 is the top level folder
                     self.listener.queue.remove(item)
                     return contents
 
-                elif 'listdirfailed' in self.listener.queue:
-                    self.listener.queue.remove('listdirfailed')
-                    return 'listdirfailed'
+                elif "listdirfailed" in self.listener.queue:
+                    self.listener.queue.remove("listdirfailed")
+                    return "listdirfailed"
 
-                elif 'listdirfailedpermission' in self.listener.queue:
-                    self.listener.queue.remove('listdirfailedpermission')
-                    return 'listdirfailedpermission'
+                elif "listdirfailedpermission" in self.listener.queue:
+                    self.listener.queue.remove("listdirfailedpermission")
+                    return "listdirfailedpermission"
 
-                elif 'listfilesfailed' in self.listener.queue:
-                    self.listener.queue.remove('listfilesfailed')
-                    return 'listfilesfailed'
+                elif "listfilesfailed" in self.listener.queue:
+                    self.listener.queue.remove("listfilesfailed")
+                    return "listfilesfailed"
 
             time.sleep(utils.INTERVAL)
             self.timeout_s -= utils.INTERVAL
-        return 'timeout'
+        return "timeout"
 
     # Assume parent has already been validated, but don't assume it exists
     def get_dirs(self, parent):
@@ -58,14 +65,14 @@ class RemoteDirectoryWorker():
         self.spec_commander.mkdir(newdir)
 
         while True:
-            if 'mkdirsuccess' in self.listener.queue:
-                self.listener.queue.remove('mkdirsuccess')
-                return 'mkdirsuccess'
-            elif 'mkdirfailedfileexists' in self.listener.queue:
-                self.listener.queue.remove('mkdirfailedfileexists')
-                return 'mkdirfailedfileexists'
-            elif 'mkdirfailed' in self.listener.queue:
-                self.listener.queue.remove('mkdirfailed')
-                return 'mkdirfailed'
+            if "mkdirsuccess" in self.listener.queue:
+                self.listener.queue.remove("mkdirsuccess")
+                return "mkdirsuccess"
+            elif "mkdirfailedfileexists" in self.listener.queue:
+                self.listener.queue.remove("mkdirfailedfileexists")
+                return "mkdirfailedfileexists"
+            elif "mkdirfailed" in self.listener.queue:
+                self.listener.queue.remove("mkdirfailed")
+                return "mkdirfailed"
 
         time.sleep(utils.INTERVAL)

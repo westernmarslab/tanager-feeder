@@ -1,5 +1,4 @@
 class VerticalScrolledDialog(Dialog):
-
     def __init__(self, controller, title, label, buttons={}, button_width=None, min_height=810, width=370, height=820):
         screen_height = controller.master.winfo_screenheight()
         if height > screen_height - 150:

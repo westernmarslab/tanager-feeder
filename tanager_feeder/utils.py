@@ -1,9 +1,10 @@
+from tkinter import Frame, Scrollbar, StringVar, Canvas, VERTICAL, TRUE, FALSE, RIGHT, Y, NW, LEFT, BOTH
+from typing import Any
+
 AZIMUTH_HOME = 0
 INTERVAL = 0.25
 BUFFER = 15
 PI_BUFFER = 20
-
-from tkinter import Frame, Scrollbar, StringVar, Canvas, VERTICAL, TRUE, FALSE, RIGHT, Y, NW, LEFT, BOTH
 
 
 class ConnectionTracker:
@@ -11,7 +12,7 @@ class ConnectionTracker:
     SPEC_PORT = 54321
     CONTROL_PORT = 12345
 
-    def __init__(self, spec_ip = '192.168.86.50', pi_ip = 'raspberrypi'):
+    def __init__(self, spec_ip="192.168.86.50", pi_ip="raspberrypi"):
         self.spec_offline = False
         self.pi_offline = False
         self.spec_ip = spec_ip
@@ -19,7 +20,6 @@ class ConnectionTracker:
 
 
 class ConfigInfo:
-
     def __init__(self, local_config_loc, global_config_loc, icon_loc, num_len, opsys):
         self.local_config_loc = local_config_loc
         self.global_config_loc = global_config_loc
@@ -27,9 +27,11 @@ class ConfigInfo:
         self.opsys = opsys
         self.num_len = num_len
 
-#Which spectrometer computer are you using? This should probably be desktop, but could be 'new' for the new lappy or 'old' for the ancient laptop.
-computer='desktop'
-computer='new'
+
+# Which spectrometer computer are you using? This should probably be desktop, but could be 'new' for the new lappy or 'old' for the ancient laptop.
+computer = "desktop"
+computer = "new"
+
 
 def limit_len(input, max):
     return input[:max]
@@ -40,48 +42,93 @@ def validate_int_input(input, min, max):
         input = int(input)
     except:
         return False
-    if input > max: return False
-    if input < min: return False
+    if input > max:
+        return False
+    if input < min:
+        return False
+    return True
+
+
+def validate_float_input(input: Any, min: float, max: float):
+    try:
+        input = float(input)
+    except:
+        return False
+    if input > max:
+        return False
+    if input < min:
+        return False
     return True
 
 
 def decrypt(encrypted):
-    cmd = encrypted.split('&')[0]
-    params = encrypted.split('&')[1:]
+    cmd = encrypted.split("&")[0]
+    params = encrypted.split("&")[1:]
     i = 0
     for param in params:
-        params[i] = param.replace('+', '\\').replace('=', ':')
-        params[i] = params[i].replace('++', '+')
+        params[i] = param.replace("+", "\\").replace("=", ":")
+        params[i] = params[i].replace("++", "+")
         i = i + 1
     return cmd, params
 
+
 def rm_reserved_chars(input):
-    output = input.replace('&', '').replace('+', '').replace('=', '').replace('$', '').replace('^', '').replace('*',
-                                                                                                                '').replace(
-        '(', '').replace(',', '').replace(')', '').replace('@', '').replace('!', '').replace('#', '').replace('{',
-                                                                                                              '').replace(
-        '}', '').replace('[', '').replace(']', '').replace('|', '').replace(',', '').replace('?', '').replace('~',
-                                                                                                              '').replace(
-        '"', '').replace("'", '').replace(';', '').replace('`', '')
+    output = (
+        input.replace("&", "")
+        .replace("+", "")
+        .replace("=", "")
+        .replace("$", "")
+        .replace("^", "")
+        .replace("*", "")
+        .replace("(", "")
+        .replace(",", "")
+        .replace(")", "")
+        .replace("@", "")
+        .replace("!", "")
+        .replace("#", "")
+        .replace("{", "")
+        .replace("}", "")
+        .replace("[", "")
+        .replace("]", "")
+        .replace("|", "")
+        .replace(",", "")
+        .replace("?", "")
+        .replace("~", "")
+        .replace('"', "")
+        .replace("'", "")
+        .replace(";", "")
+        .replace("`", "")
+    )
     return output
 
 
 def numbers_only(input):
-    output = ''
+    output = ""
     for digit in input:
-        if digit == '1' or digit == '2' or digit == '3' or digit == '4' or digit == '5' or digit == '6' or digit == '7' or digit == '8' or digit == '9' or digit == '0':
+        if (
+            digit == "1"
+            or digit == "2"
+            or digit == "3"
+            or digit == "4"
+            or digit == "5"
+            or digit == "6"
+            or digit == "7"
+            or digit == "8"
+            or digit == "9"
+            or digit == "0"
+        ):
             output += digit
     return output
 
 
-class PretendEvent():
+class PretendEvent:
     def __init__(self, widget, width, height):
         self.widget = widget
         self.width = width
         self.height = height
 
 
-class PrivateEntry():
+class PrivateEntry:
     def __init__(self, text):
         self.text = text
 
@@ -89,12 +136,13 @@ class PrivateEntry():
         return self.text
 
 
-class SampleFrame():
+class SampleFrame:
     def __init__(self, controller):
-        self.position = 'Sample 1'
+        self.position = "Sample 1"
 
 
 # http://tkinter.unpythonic.net/wiki/VerticalScrolledFrame
+
 
 class VerticalScrolledFrame(Frame):
 
@@ -111,8 +159,7 @@ class VerticalScrolledFrame(Frame):
         # create a canvas object and a vertical scrollbar for scrolling it
         self.scrollbar = Scrollbar(self, orient=VERTICAL)
 
-        self.canvas = canvas = Canvas(self, bd=0, highlightthickness=0,
-                                      yscrollcommand=self.scrollbar.set)
+        self.canvas = canvas = Canvas(self, bd=0, highlightthickness=0, yscrollcommand=self.scrollbar.set)
         canvas.pack(side=LEFT, fill=BOTH, expand=TRUE)
         canvas.config(width=width)
         # canvas.config(height=height)
@@ -127,10 +174,10 @@ class VerticalScrolledFrame(Frame):
 
         self.interior = interior = Frame(canvas)
         interior.pack_propagate(
-            0)  # This makes it so we can easily manually set the interior frame's size as needed. See _configure_canvas() for how it's done.
-        self.interior_id = canvas.create_window(0, 0, window=interior,
-                                                anchor=NW)
-        self.canvas.bind('<Configure>', self._configure_canvas)
+            0
+        )  # This makes it so we can easily manually set the interior frame's size as needed. See _configure_canvas() for how it's done.
+        self.interior_id = canvas.create_window(0, 0, window=interior, anchor=NW)
+        self.canvas.bind("<Configure>", self._configure_canvas)
         self.width = width
 
     def _configure_canvas(self, event):

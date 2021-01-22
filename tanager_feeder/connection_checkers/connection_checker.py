@@ -1,6 +1,9 @@
+import traceback
+
 from tanager_tcp import TanagerClient
 
-class ConnectionChecker():
+
+class ConnectionChecker:
     def __init__(self, which_compy, connection_tracker, config_info, controller, func, args):
         self.which_compy = which_compy
         self.config_loc = config_info.local_config_loc
@@ -12,16 +15,9 @@ class ConnectionChecker():
 
     def alert_lost_connection(self):
         buttons = {
-            'retry': {
-                self.release: [],
-                self.check_connection: [6]
-            },
-            'work offline': {
-                self.set_work_offline: []
-            },
-            'exit': {
-                exit_func: []
-            }
+            "retry": {self.release: [], self.check_connection: [6]},
+            "work offline": {self.set_work_offline: []},
+            "exit": {exit_func: []},
         }
         self.lost_dialog(buttons)
 
@@ -30,22 +26,17 @@ class ConnectionChecker():
 
     def alert_not_connected(self):
         buttons = {
-            'retry': {
+            "retry": {
                 self.release: [],
                 self.check_connection: [6],
             },
-            'work offline': {
-                self.set_work_offline: [],
-                self.func: self.args
-            },
-            'Change IP': {
-                self.ask_ip: []
-            }
+            "work offline": {self.set_work_offline: [], self.func: self.args},
+            "Change IP": {self.ask_ip: []},
         }
         self.no_dialog(buttons)
 
     def check_connection(self, timeout=3):
-        if self.which_compy == 'spec compy':
+        if self.which_compy == "spec compy":
             server_ip = self.connection_tracker.spec_ip
             listening_port = self.connection_tracker.SPEC_PORT
         else:
@@ -54,15 +45,15 @@ class ConnectionChecker():
         connected = False
 
         try:
-            client = TanagerClient((server_ip, 12345), 'test', listening_port, timeout=timeout)
-            if self.which_compy == 'spec compy':
+            client = TanagerClient((server_ip, 12345), "test", listening_port, timeout=timeout)
+            if self.which_compy == "spec compy":
                 self.connection_tracker.spec_offline = False
             else:
                 self.connection_tracker.pi_offline = False
             self.func(*self.args)
             connected = True
         except Exception as e:
-            print(e)
+            traceback.print_exc()
             self.alert_not_connected()
 
         if connected:
