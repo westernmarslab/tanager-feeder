@@ -27,6 +27,7 @@ class MotionHandler(CommandHandler):
         while self.timeout_s > 0:
             for item in self.listener.queue:
                 if "donemoving" in item:
+                    print("DONE MOVING!")
                     self.listener.queue.remove(item)
                     self.success()
                     return
@@ -59,7 +60,9 @@ class MotionHandler(CommandHandler):
             super().interrupt(label)
 
     def success(self):
+        print("SUCCESS!")
         if "emission" in self.label:
+            print("emission!")
             self.controller.angles_change_time = time.time()
             self.controller.motor_e = self.destination
             try:
@@ -132,4 +135,4 @@ class MotionHandler(CommandHandler):
         else:
             self.controller.log("Something moved! Who knows what?")
 
-        super(MotionHandler, self).success()
+        super().success()

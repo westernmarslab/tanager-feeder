@@ -1,5 +1,7 @@
 import time
 
+import numpy as np
+
 from tanager_feeder.command_handlers.command_handler import CommandHandler
 from tanager_feeder import utils
 
@@ -14,26 +16,24 @@ class ConfigHandler(CommandHandler):
         self.config_tray_pos = None
 
     def wait(self):
-        timeout_s = utils.PI_BUFFER
+        timeout_s = self.timeout_s
         while timeout_s > 0:
             for message in self.listener.queue:
                 if "piconfigsuccess" in message:
                     message = message.replace("piconfigsuccess", "")
                     params = message.split("&")[1:]
                     print(params)
-                    self.config_i = int(float(params[0]))
-                    self.config_e = int(float(params[1]))
-                    self.config_az = int(float(params[2]))
+                    self.config_i = int(np.round(float(params[0])))
+                    self.config_e = int(np.round(float(params[1])))
+                    self.config_az = int(np.round(float(params[2])))
                     self.config_tray_pos = int(float(params[3]))
-                break
+                    self.success()
+                    return
 
             time.sleep(utils.INTERVAL)
             timeout_s -= utils.INTERVAL
 
-        if timeout_s <= 0:
-            self.timeout()
-        else:
-            self.success()
+        self.timeout()
 
     def success(self):
         self.controller.motor_i = self.config_i
@@ -50,13 +50,13 @@ class ConfigHandler(CommandHandler):
         else:
             tray_position_string = "WR"
 
-        self.controller.goniometer_view.set_azimuth(self.motor_az, config=True)
-        self.controller.goniometer_view.set_incidence(self.motor_i, config=True)
-        self.controller.goniometer_view.set_emission(self.motor_e, config=True)
+        self.controller.goniometer_view.set_azimuth(self.controller.motor_az, config=True)
+        self.controller.goniometer_view.set_incidence(self.controller.motor_i, config=True)
+        self.controller.goniometer_view.set_emission(self.controller.motor_e, config=True)
         self.controller.goniometer_view.set_current_sample(tray_position_string)
 
-        self.log(
-            f"Raspberry pi configured.\n\ti = {i} \n\te = {e}\n\taz = {az} \n\ttray position: " + tray_position_string
+        self.controller.log(
+            f"Raspberry pi configured.\n\ti = {self.i} \n\te = {self.e}\n\taz = {self.az} \n\ttray position: " + tray_position_string
         )
 
         self.controller.complete_queue_item()
