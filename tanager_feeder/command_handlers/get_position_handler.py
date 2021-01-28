@@ -7,21 +7,23 @@ from tanager_feeder import utils
 
 
 class GetPositionHandler(CommandHandler):
-    def __init__(self, controller, title="Getting position...", label="Getting current goniometer position..."):
+    def __init__(self, controller, title="Getting position...", label="Getting current goniometer position...", timeout=utils.PI_BUFFER):
         self.listener = controller.pi_listener
         self.i = None
         self.e = None
         self.az = None
         self.tray_pos = None
-        super().__init__(controller, title, label, timeout=utils.BUFFER)
+        self.success_message = "currentposition"
+        super().__init__(controller, title, label, timeout)
+
 
     def wait(self):
-        timeout_s = 2 * utils.PI_BUFFER
+        timeout_s = self.timeout_s
         while timeout_s > 0:
             for message in self.listener.queue:
-                if "currentposition" in message:
+                if self.success_message in message:
                     self.listener.queue.remove(message)
-                    message = message.replace("currentposition", "")
+                    message = message.replace(self.success_message, "")
                     params = message.split("&")[1:]
                     self.i = int(np.round(float(params[0])))
                     self.e = int(np.round(float(params[1])))
@@ -39,7 +41,6 @@ class GetPositionHandler(CommandHandler):
         self.timeout()
 
     def success(self):
-        print("GOT POSITION!")
         self.controller.motor_i = self.i
         self.controller.motor_e = self.e
         self.controller.motor_az = self.az
@@ -47,8 +48,7 @@ class GetPositionHandler(CommandHandler):
             self.controller.sample_tray_index = 0
         else:
             self.controller.sample_tray_index = int(self.tray_pos)
-
-        self.interrupt("Goniometer position acquired. Ready to use automatic mode.")
+        self.interrupt("Ready to use automatic mode.")
         if self.tray_pos != -1 and self.tray_pos != 0:
             tray_position_string = self.controller.available_sample_positions[int(self.tray_pos) - 1]
         else:
@@ -60,7 +60,6 @@ class GetPositionHandler(CommandHandler):
         self.controller.goniometer_view.set_current_sample(tray_position_string)
 
         self.controller.log(f"Current position:\ti = {self.i} \te = {self.e}\taz = {self.az}\ttray position: " + tray_position_string)
-
         self.controller.complete_queue_item()
         if len(self.controller.queue) > 0:
             self.controller.next_in_queue()

@@ -2,6 +2,7 @@ import datetime
 import os
 import time
 from threading import Thread
+from tkinter.filedialog import askopenfilename
 from typing import Optional
 
 import numpy as np
@@ -2787,6 +2788,8 @@ class Controller:
                     self.emission_entries[0].delete(0, "end")
                     self.emission_entries[0].insert(0, params[1])
                     self.azimuth_entries[0].insert(0, params[2])
+
+                    print("CONFIGURING PI??")
                     self.configure_pi(params[0], params[1], params[2], params[3], params[4])
 
                 else:
@@ -3404,6 +3407,11 @@ class Controller:
                 return False
 
         elif "set_goniometer" in cmd:
+            if self.manual_automatic.get() == 0:
+                self.log("Error: Not in automatic mode")
+                self.queue = []
+                self.script_running = False
+                return False
             params = cmd.split("set_goniometer(")[1].strip(")").split(",")
             if len(params) != 3:
                 self.log(str(len(params)))
@@ -3442,13 +3450,18 @@ class Controller:
                 for movement in movements:
                     if "az" in movement:
                         next_motor_az = movement["az"]
-                        temp_queue.append({self.set_azimuth: [next_motor_az]})
+                        if next_motor_az != self.science_az:
+                            temp_queue.append({self.set_azimuth: [next_motor_az]})
                     elif "e" in movement:
                         next_motor_e = movement["e"]
-                        temp_queue.append({self.set_emission: [next_motor_e]})
+                        print(type(next_motor_e))
+                        print(type(self.science_e))
+                        if next_motor_e != self.science_e:
+                            temp_queue.append({self.set_emission: [next_motor_e]})
                     elif "i" in movement:
                         next_motor_i = movement["i"]
-                        temp_queue.append({self.set_incidence: [next_motor_i]})
+                        if next_motor_i != self.science_i:
+                            temp_queue.append({self.set_incidence: [next_motor_i]})
                     else:
                         print("UNEXPECTED: " + str(movement))
 
@@ -5125,7 +5138,8 @@ class Controller:
             e = self.motor_e
         if pos == None:
             pos = self.sample_tray_index
-        self.queue.insert(0, {self.pi_commander.configure:[str(i), str(e), pos]})
+        # self.complete_queue_item() #self.configure_pi was in queue
+        # self.queue.insert(0, {self.pi_commander.configure:[str(i), str(e), pos]})
         self.pi_commander.configure(str(i), str(e), pos)
         ConfigHandler(self)
 

@@ -11,8 +11,12 @@ class Commander:
         if offline:
             return False
         else:
-            client = TanagerClient((self.remote_server_ip, 12345), filename, listening_port)
-            return True
+            try:
+                client = TanagerClient((self.remote_server_ip, 12345), filename, listening_port)
+                return True
+            except:
+                print("ERROR: Could not send message.")
+                return False
 
     def remove_from_listener_queue(self, commands):
         for command in commands:

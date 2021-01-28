@@ -155,6 +155,8 @@ class CommandHandler:
             self.interrupt("Paused.")
             self.wait_dialog.set_buttons(buttons)
         elif len(self.controller.queue) > 0:
+            print("QUEUE HERE!")
+            print(self.controller.queue)
             self.controller.next_in_queue()
         elif self.controller.script_running:
             self.controller.log("Success!")
