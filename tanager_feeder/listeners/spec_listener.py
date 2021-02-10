@@ -60,7 +60,9 @@ class SpecListener(Listener):
                 print("Spec read command: " + cmd)
 
             if cmd == "listdir":
-                # RemoteDirectoryWorker in wait_for_contents is waiting for a file that contains a list of the contents of a given folder on the spec compy. This file will have an encrypted version of the parent directory's path in its title e.g. listdir&R=+RiceData+Kathleen+spectral_data
+                # RemoteDirectoryWorker in wait_for_contents is waiting for a file that contains a list of the contents
+                # of a given folder on the spec compy. This file will have an encrypted version of the parent
+                # directory's path in its title e.g. listdir&R=+RiceData+Kathleen+spectral_data
                 self.queue.append(message)
             elif "spec_data" in cmd:
                 found = False
@@ -105,7 +107,9 @@ class SpecListener(Listener):
                         dialog = ErrorDialog(
                             controller=self.controller,
                             title="Lost Connection",
-                            label="Error: RS3 has no connection with the spectrometer.\nCheck that the spectrometer is on.\n\nNote that RS3 can take some time to connect to the spectrometer.\nBe patient and wait for the dot at the lower right of RS3 to turn green.",
+                            label="Error: RS3 has no connection with the spectrometer.\nCheck that the spectrometer is"
+                                  " on.\n\nNote that RS3 can take some time to connect to the spectrometer.\nBe patient"
+                                  " and wait for the dot at the lower right of RS3 to turn green.",
                             buttons=buttons,
                             button_width=15,
                             width=600,

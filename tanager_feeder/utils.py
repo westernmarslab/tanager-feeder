@@ -1,4 +1,7 @@
-from tkinter import Frame, Scrollbar, StringVar, Canvas, VERTICAL, TRUE, FALSE, RIGHT, Y, NW, LEFT, BOTH
+from enum import Enum
+import os
+import psutil
+from tkinter import Frame, Scrollbar, StringVar, Canvas, VERTICAL, TRUE, FALSE, RIGHT, Y, NW, LEFT, BOTH, Listbox
 from typing import Any
 
 AZIMUTH_HOME = 0
@@ -28,7 +31,8 @@ class ConfigInfo:
         self.num_len = num_len
 
 
-# Which spectrometer computer are you using? This should probably be desktop, but could be 'new' for the new lappy or 'old' for the ancient laptop.
+# Which spectrometer computer are you using? This should probably be desktop, but could be 'new' for the new lappy or
+# 'old' for the ancient laptop.
 computer = "desktop"
 computer = "new"
 
@@ -209,3 +213,41 @@ class StringVarWithEntry(StringVar):
     def __init__(self):
         super().__init__()
         self.entry = None
+
+
+class ScrollableListbox(Listbox):
+    def __init__(self, frame, bg, entry_background, listboxhighlightcolor, selectmode=tkinter.SINGLE):
+
+        self.scroll_frame = Frame(frame, bg=bg)
+        self.scroll_frame.pack(fill=BOTH, expand=True)
+        self.scrollbar = Scrollbar(self.scroll_frame, orient=VERTICAL)
+        self.scrollbar.pack(side=RIGHT, fill=Y, padx=(0, 10))
+        self.scrollbar.config(command=self.yview)
+
+        super().__init__(
+            self.scroll_frame,
+            yscrollcommand=self.scrollbar.set,
+            selectmode=selectmode,
+            bg=entry_background,
+            selectbackground=listboxhighlightcolor,
+            height=15,
+            exportselection=0,
+        )
+        self.pack(side=LEFT, expand=True, fill=BOTH, padx=(10, 0))
+
+    def destroy(self):
+        self.scrollbar.destroy()
+        super().destroy()
+
+
+def exit_func():
+    print("Exiting TANAGER Feeder.")
+    current_system_pid = os.getpid()
+    tanager_feeder_process = psutil.Process(current_system_pid)
+    tanager_feeder_process.terminate()
+
+
+class MovementUnits(Enum):
+    ANGLE = "angle"
+    STEPS = "steps"
+    POSITION = "position"

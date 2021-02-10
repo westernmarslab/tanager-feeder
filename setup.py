@@ -18,7 +18,7 @@ setup(
             "tanager-feeder = tanager_feeder.__main__:main",
         ],
     },
-    install_requires=["colorutils", "cython", "matplotlib", "numpy", "playsound", "pygame", "tanager-tcp"],
+    install_requires=["colorutils", "cython", "matplotlib", "numpy", "playsound", "psutil", "pygame", "tanager-tcp"],
     python_requires='>=3',
     include_package_data=True
 )

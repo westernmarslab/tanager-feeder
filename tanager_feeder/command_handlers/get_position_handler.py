@@ -7,7 +7,13 @@ from tanager_feeder import utils
 
 
 class GetPositionHandler(CommandHandler):
-    def __init__(self, controller, title="Getting position...", label="Getting current goniometer position...", timeout=utils.PI_BUFFER):
+    def __init__(
+        self,
+        controller,
+        title="Getting position...",
+        label="Getting current goniometer position...",
+        timeout=utils.PI_BUFFER,
+    ):
         self.listener = controller.pi_listener
         self.i = None
         self.e = None
@@ -15,7 +21,6 @@ class GetPositionHandler(CommandHandler):
         self.tray_pos = None
         self.success_message = "currentposition"
         super().__init__(controller, title, label, timeout)
-
 
     def wait(self):
         timeout_s = self.timeout_s
@@ -59,7 +64,9 @@ class GetPositionHandler(CommandHandler):
         self.controller.goniometer_view.set_emission(self.controller.motor_e, config=True)
         self.controller.goniometer_view.set_current_sample(tray_position_string)
 
-        self.controller.log(f"Current position:\ti = {self.i} \te = {self.e}\taz = {self.az}\ttray position: " + tray_position_string)
+        self.controller.log(
+            f"Current position:\ti = {self.i} \te = {self.e}\taz = {self.az}\ttray position: " + tray_position_string
+        )
         self.controller.complete_queue_item()
         if len(self.controller.queue) > 0:
             self.controller.next_in_queue()

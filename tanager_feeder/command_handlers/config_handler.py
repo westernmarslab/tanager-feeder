@@ -8,7 +8,12 @@ from tanager_feeder.command_handlers.get_position_handler import GetPositionHand
 
 
 class ConfigHandler(GetPositionHandler):
-    def __init__(self, controller, title="Configuring pi...", label="Configuring pi based on input\ngoniometer position...", timeout=utils.PI_BUFFER + 60):
+    def __init__(
+        self,
+        controller,
+        title="Configuring pi...",
+        label="Configuring pi based on input\ngoniometer position...",
+        timeout=utils.PI_BUFFER + 60,
+    ):
         super().__init__(controller, title, label, timeout)
         self.success_message = "piconfigsuccess"
-

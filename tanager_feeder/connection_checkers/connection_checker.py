@@ -1,3 +1,4 @@
+import socket
 import traceback
 
 from tanager_tcp import TanagerClient
@@ -42,18 +43,17 @@ class ConnectionChecker:
         else:
             server_ip = self.connection_tracker.pi_ip
             listening_port = self.connection_tracker.PI_PORT
-        connected = False
 
+        connected = False
         try:
             client = TanagerClient((server_ip, 12345), "test", listening_port, timeout=timeout)
             if self.which_compy == "spec compy":
                 self.connection_tracker.spec_offline = False
             else:
                 self.connection_tracker.pi_offline = False
-            self.func(*self.args)
+            # self.func(*self.args)
             connected = True
-        except Exception as e:
-            traceback.print_exc()
+        except socket.timeout as e:
             self.alert_not_connected()
 
         if connected:
