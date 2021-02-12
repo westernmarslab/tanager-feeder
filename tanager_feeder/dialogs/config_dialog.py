@@ -1,4 +1,5 @@
 from tkinter import Frame, Label, Entry, LEFT, OptionMenu, StringVar
+from typing import Dict, Optional
 
 from tanager_feeder.dialogs.dialog import Dialog
 from tanager_feeder import utils
@@ -6,7 +7,13 @@ from tanager_feeder.dialogs.error_dialog import ErrorDialog
 
 
 class ConfigDialog(Dialog):
-    def __init__(self, controller, title, label, values={}, buttons={"ok": {}, "cancel": {}}):
+    def __init__(
+        self, controller, title: str, label: str, values: Optional[Dict] = None, buttons: Optional[Dict] = None
+    ):
+        if values is None:
+            values = {}
+        if buttons is None:
+            buttons = {"ok": {}, "cancel": {}}
         super().__init__(controller, title, label, buttons, allow_exit=False)
         self.values = values
         self.entry_frame = Frame(self.top, bg=self.bg)
@@ -60,22 +67,19 @@ class ConfigDialog(Dialog):
             if not valid:
                 bad_vals.append(val)
 
-        valid_sep = True  # Used to have to be > 10 degrees, fine if not.
-
-        if len(bad_vals) == 0 and valid_sep:
+        if len(bad_vals) == 0:
             pos = self.entries["Tray position"].get()
             if pos == "White reference":
-                pos = -1
+                pos = "WR"
 
             incidence = float(self.entries["Incidence"].get())
             emission = float(self.entries["Emission"].get())
-            azimuth = utils.AZIMUTH_HOME
             self.controller.queue[0][self.controller.configure_pi] = [incidence, emission, pos]
 
             self.top.destroy()
-            dict = self.buttons["ok"]
-            for func in dict:
-                args = dict[func]
+            ok_dict = self.buttons["ok"]
+            for func in ok_dict:
+                args = ok_dict[func]
                 func(*args)
         else:
             err_str = "Error: Invalid "
@@ -89,14 +93,9 @@ class ConfigDialog(Dialog):
                         + str(self.maxes[val])
                         + "."
                     )
-            elif valid_sep:
+            else:
                 err_str += "input. Please enter the following:\n\n"
                 for val in bad_vals:
                     err_str += val + " from " + str(self.mins[val]) + " to " + str(self.maxes[val]) + "\n"
-            else:
-                err_str += (
-                    "angular separation.\nThe detector and its arm must be at least "
-                    + str(self.controller.required_angular_separation)
-                    + " degrees away from the light source."
-                )
-            dialog = ErrorDialog(self.controller, title="Error: Invalid Input", label=err_str)
+
+            ErrorDialog(self.controller, title="Error: Invalid Input", label=err_str)

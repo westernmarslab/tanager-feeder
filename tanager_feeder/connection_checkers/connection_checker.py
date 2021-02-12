@@ -43,7 +43,7 @@ class ConnectionChecker:
         self.no_dialog(buttons)
 
     def check_connection(self, timeout: int = 3):
-        if self.which_compy == "spec compy":
+        if self.which_compy == CompyTypes.SPEC_COMPY.value:
             server_ip = self.connection_tracker.spec_ip
             listening_port = self.connection_tracker.SPEC_PORT
         else:

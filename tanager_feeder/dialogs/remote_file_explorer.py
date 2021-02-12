@@ -1,7 +1,10 @@
-from tkinter import Frame
-from tkinter import Button
+from tkinter import Button, END, Entry, Frame, StringVar, RIGHT
+from typing import Dict, List, Optional, Union
 
 from tanager_feeder.dialogs.dialog import Dialog
+from tanager_feeder.dialogs.error_dialog import ErrorDialog
+from tanager_feeder.dialogs.new_dir_dialog import NewDirDialog
+from tanager_feeder.utils import ScrollableListbox
 from tanager_feeder import utils
 
 
@@ -12,9 +15,11 @@ class RemoteFileExplorer(Dialog):
         target=None,
         title="Select a directory",
         label="Select a directory",
-        buttons={"ok": {}, "cancel": {}},
+        buttons=None,
         directories_only=True,
     ):
+        if buttons is None:
+            buttons = {"ok": {}, "cancel": {}}
 
         super().__init__(controller, title=title, buttons=buttons, label=label, button_width=20)
 
@@ -78,15 +83,15 @@ class RemoteFileExplorer(Dialog):
                 else:
                     self.expand(newparent=path)
 
-    def validate_path_entry_input(self, *args):
+    def validate_path_entry_input(self):
         text = self.path_entry.get()
-        text = rm_reserved_chars(text)
+        text = utils.rm_reserved_chars(text)
 
         self.path_entry.delete(0, "end")
         self.path_entry.insert(0, text)
 
     def askfornewdir(self):
-        input_dialog = NewDirDialog(self.controller, self)
+        NewDirDialog(self.controller, self)
 
     def mkdir(self, newdir):
         status = self.remote_directory_worker.mkdir(newdir)
@@ -95,12 +100,12 @@ class RemoteFileExplorer(Dialog):
             self.expand(None, "\\".join(newdir.split("\\")[0:-1]))
             self.select(newdir.split("\\")[-1])
         elif status == "mkdirfailedfileexists":
-            dialog = ErrorDialog(
+            ErrorDialog(
                 self.controller, title="Error", label="Could not create directory:\n\n" + newdir + "\n\nFile exists."
             )
             self.expand(newparent=self.current_parent)
         elif status == "mkdirfailed":
-            dialog = ErrorDialog(self.controller, title="Error", label="Could not create directory:\n\n" + newdir)
+            ErrorDialog(self.controller, title="Error", label="Could not create directory:\n\n" + newdir)
             self.expand(newparent=self.current_parent)
 
     def back(self):
@@ -109,67 +114,67 @@ class RemoteFileExplorer(Dialog):
         parent = "\\".join(self.current_parent.split("\\")[0:-1])
         self.expand(newparent=parent)
 
-    def go_to_path(self, source):
+    def go_to_path(self):
         parent = self.path_entry.get().replace("/", "\\")
         self.path_entry.delete(0, "end")
         self.expand(newparent=parent)
 
-    def expand(self, source=None, newparent=None, buttons=None, select=None, timeout=5, destroy=False):
+    def expand(
+        self,
+        newparent: Optional[str] = None,
+        buttons: Optional[Dict] = None,
+        select: Optional[str] = None,
+        destroy: bool = False,
+    ):
 
-        if newparent == None:
+        if newparent is None:
             index = self.listbox.curselection()[0]
             if self.listbox.itemcget(index, "foreground") == "darkblue":
                 return
             newparent = self.current_parent + "\\" + self.listbox.get(index)
         if newparent[1:2] != ":" or len(newparent) > 2 and newparent[1:3] != ":\\":
-            dialog = ErrorDialog(
+            ErrorDialog(
                 self.controller,
                 title="Error: Invalid input",
                 label="Error: Invalid input.\n\n" + newparent + "\n\nis not a valid filename.",
             )
-            if self.current_parent == None:
+            if self.current_parent is None:
                 self.expand(newparent="C:\\Users")
             return
         if newparent[-1] == "\\":
             newparent = newparent[:-1]
         # Send a command to the spec compy asking it for directory contents
-        if self.directories_only == True:
-            status = self.remote_directory_worker.get_contents(newparent)
+        if self.directories_only:
+            status: Union[List, str] = self.remote_directory_worker.get_contents(newparent)
         else:
-            status = self.remote_directory_worker.get_contents(newparent)
+            status: Union[List, str] = self.remote_directory_worker.get_contents(newparent)
 
         # if we succeeded, the status will be a list of the contents of the directory
-        if type(status) == list:
+        if isinstance(status, list):
 
             self.listbox.delete(0, "end")
-            for dir in status:
-                if dir[0:2] == "~:":
-                    self.listbox.insert(END, dir[2:])
+            for directory in status:
+                if directory[0:2] == "~:":
+                    self.listbox.insert(END, directory[2:])
                     self.listbox.itemconfig(END, fg="darkblue")
                 else:
-                    self.listbox.insert(END, dir)
+                    self.listbox.insert(END, directory)
             self.current_parent = newparent
 
             self.path_entry.delete(0, "end")
             self.path_entry.insert("end", newparent)
-            if select != None:
+            if select is not None:
                 self.select(select)
 
             if destroy:
                 self.close()
 
         elif status == "listdirfailed":
-            if self.current_parent == None:
-                #                 print('setting to RiceData')
-                #                 self.current_parent='R:\\RiceData'
-                #                 self.expand(newparent='C:\\Users')
+            if self.current_parent is None:
                 self.current_parent = "C:\\Users"
-                # self.current_parent='\\'.join(newparent.split('\\')[:-1])
-                # if self.current_parent=='':
-                #     self.current_parent='C:\\Users'
-            if buttons == None:
+            if buttons is None:
                 buttons = {"yes": {self.mkdir: [newparent]}, "no": {self.expand: [None, self.current_parent]}}
-            dialog = ErrorDialog(
+            ErrorDialog(
                 self.controller,
                 title="Error",
                 label=newparent + "\ndoes not exist. Do you want to create this directory?",
@@ -177,25 +182,25 @@ class RemoteFileExplorer(Dialog):
             )
             return
         elif status == "listdirfailedpermission":
-            dialog = ErrorDialog(self.controller, label="Error: Permission denied for\n" + newparent)
+            ErrorDialog(self.controller, label="Error: Permission denied for\n" + newparent)
             return
         elif status == "timeout":
-            dialog = ErrorDialog(
+            ErrorDialog(
                 self.controller,
-                label="Error: Operation timed out.\nCheck that the automation script is running on the spectrometer computer.",
+                label="Error: Operation timed out.\n"
+                "Check that the automation script is running on the spectrometer computer.",
             )
             self.cancel()
 
-    def select(self, text):
+    def select(self, text: str):
         if "\\" in text:
             text = text.split("\\")[0]
-
         try:
             index = self.listbox.get(0, "end").index(text)
-        except:
-            # time.sleep(0.5)
-            print("except")
-            # self.select(text)
+        # pylint: disable = broad-except
+        except Exception as e:
+            print(e)
+            # TODO: figure out type of exception to catch
             index = 0
 
         self.listbox.selection_set(index)

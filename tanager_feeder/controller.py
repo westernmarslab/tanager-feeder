@@ -2351,7 +2351,7 @@ class Controller:
         if unit == "position":
             self.goniometer_view.set_current_sample(pos)
         self.pi_commander.move_tray(pos, unit)
-        handler = MotionHandler(
+        MotionHandler(
             self,
             label="Moving sample tray...",
             timeout=30 + utils.BUFFER,

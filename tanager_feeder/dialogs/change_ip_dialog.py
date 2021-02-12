@@ -1,9 +1,13 @@
-from tanager_feeder.dialogs.dialog import Dialog
 from tkinter import Frame, Label, Entry, LEFT
+
+from tanager_feeder.dialogs.dialog import Dialog
+from tanager_feeder.utils import CompyTypes, ConnectionTracker
 
 
 class ChangeIPDialog(Dialog):
-    def __init__(self, connection_tracker, title, label, which_compy, config_loc):
+    def __init__(
+        self, connection_tracker: ConnectionTracker, title: str, label: str, which_compy: str, config_loc: str
+    ):
         buttons = {
             "ok": {
                 self.ok: [],
@@ -28,11 +32,9 @@ class ChangeIPDialog(Dialog):
             selectbackground=self.selectbackground,
             selectforeground=self.selectforeground,
         )
-        if which_compy == "spec compy":
+        if which_compy == CompyTypes.SPEC_COMPY:
             self.ip_entry.insert(0, self.connection_tracker.spec_ip)
         else:
-            print("CON TRACK PI IP")
-            print(self.connection_tracker.pi_ip)
             self.ip_entry.insert(0, self.connection_tracker.pi_ip)
         self.ip_entry.pack(side=LEFT)
         self.which_compy = which_compy
@@ -41,16 +43,13 @@ class ChangeIPDialog(Dialog):
         self.top.mainloop()
 
     def ok(self):
-        print("CHANGING IP!")
-        if self.which_compy == "spec compy":
+        if self.which_compy == CompyTypes.SPEC_COMPY.value:
             self.connection_tracker.spec_ip = self.ip_entry.get()
 
-        elif self.which_compy == "pi":
-            print("CHANGING CONNECTION_TRACKER_PI_IP")
+        elif self.which_compy == CompyTypes.PI.value:
             self.connection_tracker.pi_ip = self.ip_entry.get()
 
         with open(self.config_loc + "ip_addresses.txt", "w+") as f:
-            print(self.config_loc)
             if self.connection_tracker.spec_ip != "":
                 f.write(self.connection_tracker.spec_ip + "\n")
             else:

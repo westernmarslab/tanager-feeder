@@ -1,33 +1,28 @@
 import tkinter as tk
-from tkinter import Frame
-from tkinter import Button
-from tkinter import Tk
+from tkinter import Frame, Button, Tk
+from typing import Dict, Optional
+
+from tanager_feeder import utils
 
 
 class Dialog:
     def __init__(
         self,
         controller,
-        title,
-        label,
-        buttons,
-        width=None,
-        height=None,
-        allow_exit=True,
-        button_width=20,
-        info_string=None,
-        grab=True,
-        start_mainloop=True,
+        title: str,
+        label: str,
+        buttons: Dict,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+        allow_exit: bool = True,
+        button_width: int = 20,
+        info_string: Optional[str] = None,
+        start_mainloop: bool = True,
     ):
 
         self.controller = controller
-        self.grab = grab
-        if True:  # self.grab:
-            try:
-                self.controller.freeze()
-            except:
-                pass
-        try:
+        if self.controller is not None:
+            self.controller.freeze()
             self.textcolor = self.controller.textcolor
             self.bg = self.controller.bg
             self.buttonbackgroundcolor = self.controller.buttonbackgroundcolor
@@ -38,7 +33,15 @@ class Dialog:
             self.listboxhighlightcolor = self.controller.listboxhighlightcolor
             self.selectbackground = self.controller.selectbackground
             self.selectforeground = self.controller.selectforeground
-        except:
+
+            if width is None or height is None:
+                self.top = tk.Toplevel(controller.master, bg=self.bg)
+            else:
+                self.top = tk.Toplevel(controller.master, width=width, height=height, bg=self.bg)
+
+            if info_string is not None:
+                self.controller.log(info_string)
+        else:
             self.textcolor = "black"
             self.bg = "white"
             self.buttonbackgroundcolor = "light gray"
@@ -50,14 +53,8 @@ class Dialog:
             self.selectbackground = "light gray"
             self.selectforeground = "black"
 
-        if controller == None:
             self.top = Tk()
             self.top.configure(background=self.bg)
-        else:
-            if width == None or height == None:
-                self.top = tk.Toplevel(controller.master, bg=self.bg)
-            else:
-                self.top = tk.Toplevel(controller.master, width=width, height=height, bg=self.bg)
 
         self.top.attributes("-topmost", 1)
         self.top.attributes("-topmost", 0)
@@ -77,12 +74,10 @@ class Dialog:
         self.allow_exit = allow_exit
         self.top.protocol("WM_DELETE_WINDOW", self.on_closing)
 
-        if controller != None and info_string != None:
-            self.log(info_string)
-
         if (
-            self.controller == None and start_mainloop == True
-        ):  # If there's no controller and this is the Tk object, might want to start the mainloop here, or might want to make additional modifications first in a subclass.
+            self.controller is None and start_mainloop
+        ):  # If there's no controller and this is the Tk object, might want to start the mainloop here, or might want
+            # to make additional modifications first in a subclass.
             self.top.mainloop()
 
     @property
@@ -90,28 +85,32 @@ class Dialog:
         return self.__label.cget("text")
 
     @label.setter
-    def label(self, val):
+    def label(self, val: str):
         self.__label.configure(text=val)
 
-    def set_title(self, newtitle):
+    def set_title(self, newtitle: str):
         self.top.wm_title(newtitle)
 
-    def set_label_text(self, newlabel, log_string=None):
+    def set_label_text(self, newlabel: str, log_string: Optional[str] = None):
         self.__label.config(fg=self.textcolor, text=newlabel)
-        if log_string != None and self.controller != None:
-            self.log(log_string)
+        if log_string is not None and self.controller is not None:
+            self.controller.log(log_string)
 
-    def set_buttons(self, buttons, button_width=None):
+    def set_buttons(self, buttons: Dict, button_width: Optional[int] = None):
         self.buttons = buttons
-        if button_width == None:
+        if button_width is None:
             button_width = self.button_width
         else:
             self.button_width = button_width
         # Sloppy way to check if button_frame already exists and reset it if it does.
         try:
+            # pylint: disable = access-member-before-definition
             self.button_frame.destroy()
-        except:
-            pass
+        # pylint: disable = broad-except
+        except Exception as e:
+            # TODO: only catch appropriate exception
+            print(e)
+
         self.button_frame = Frame(self.top, bg=self.bg)
         self.button_frame.pack(side=tk.BOTTOM)
         self.tk_buttons = []
@@ -223,8 +222,8 @@ class Dialog:
                 )
                 self.ip_button.pack(side=tk.LEFT, padx=(10, 10), pady=(10, 10))
                 self.tk_buttons.append(self.ip_button)
-            for button in self.tk_buttons:
-                button.config(
+            for tk_button in self.tk_buttons:
+                tk_button.config(
                     fg=self.buttontextcolor,
                     highlightbackground=self.highlightbackgroundcolor,
                     bg=self.buttonbackgroundcolor,
@@ -232,76 +231,75 @@ class Dialog:
 
     def on_closing(self):
         if self.allow_exit:
-            if self.controller != None:
+            if self.controller is not None:
                 self.controller.unfreeze()
             self.top.destroy()
 
     def reset(self):
-        dict = self.buttons["reset"]
-        self.execute(dict, close=False)
+        functions = self.buttons["reset"]
+        self.execute(functions, close=False)
 
     def change_ip(self):
-        dict = self.buttons["Change IP"]
-        self.execute(dict)
+        functions = self.buttons["Change IP"]
+        self.execute(functions)
 
     def close(self):
-        if self.controller != None:
+        if self.controller is not None:
             self.controller.unfreeze()
-        try:
             self.top.destroy()
-        except:
-            pass
+            # TODO: confirm try/catch around self.top.destroy wasn't needed.
 
     def retry(self):
         self.close()
-        dict = self.buttons["retry"]
-        self.execute(dict, False)
+        functions = self.buttons["retry"]
+        self.execute(functions, False)
 
     def exit(self):
         self.top.destroy()
-        exit()
+        utils.exit_func()
 
     def cont(self):
-        dict = self.buttons["continue"]
-        self.execute(dict, close=False)
+        functions = self.buttons["continue"]
+        self.execute(functions, close=False)
 
     def pause(self):
-        dict = self.buttons["pause"]
-        self.execute(dict, close=False)
+        functions = self.buttons["pause"]
+        self.execute(functions, close=False)
 
     def ok(self, event=None):
-        dict = self.buttons["ok"]
-        self.execute(dict)
+        # pylint: disable = unused-argument
+        functions = self.buttons["ok"]
+        self.execute(functions)
 
     def yes(self):
-        dict = self.buttons["yes"]
-        self.execute(dict)
+        functions = self.buttons["yes"]
+        self.execute(functions)
 
     def yes_to_all(self):
-        dict = self.buttons["yes to all"]
-        self.execute(dict)
+        functions = self.buttons["yes to all"]
+        self.execute(functions)
 
     def no(self):
-        dict = self.buttons["no"]
-        self.execute(dict)
+        functions = self.buttons["no"]
+        self.execute(functions)
 
     def cancel(self):
-        dict = self.buttons["cancel"]
-        self.execute(dict)
+        functions = self.buttons["cancel"]
+        self.execute(functions)
 
     def cancel_queue(self):
-        dict = self.buttons["cancel_queue"]
-        self.execute(dict, close=False)
+        functions = self.buttons["cancel_queue"]
+        self.execute(functions, close=False)
 
-    def execute(self, dict, close=True):
-        for func in dict:
-            args = dict[func]
-            func(*args)
+    def execute(self, function_info, close=True):
+        for function in function_info:
+            args = function_info[function]
+            function(*args)
 
         if close:
             self.close()
 
     def work_offline(self):
         self.close()
-        dict = self.buttons["work offline"]
-        self.execute(dict, close=False)
+        functions = self.buttons["work offline"]
+        self.execute(functions, close=False)

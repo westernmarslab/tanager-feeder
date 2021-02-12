@@ -473,7 +473,6 @@ class CliManager:
                     self.controller.console_log.insert(END, "\t" + str(elapsed))
                 remaining = num - elapsed
                 time.sleep(remaining)
-                # self.controller.cmd_complete==True
                 self.controller.console_log.insert(END, "\tDone sleeping.\n")
                 if len(self.controller.queue) > 0:
                     self.controller.next_in_queue()
@@ -522,8 +521,8 @@ class CliManager:
                 if pos in alternatives:
                     pos = self.controller.available_sample_positions[alternatives.index(pos)]
                 elif pos.lower() == "wr":
-                    pos = pos.lower()
-                if pos in self.controller.available_sample_positions or pos == "wr":
+                    pos = "WR"
+                if pos in self.controller.available_sample_positions or pos == "WR":
 
                     if not self.controller.script_running:
                         self.controller.queue = []
