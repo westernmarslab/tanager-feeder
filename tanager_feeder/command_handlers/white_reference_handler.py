@@ -4,11 +4,10 @@ from tanager_feeder.command_handlers.command_handler import CommandHandler
 from tanager_feeder import utils
 
 
-
 class WhiteReferenceHandler(CommandHandler):
-    def __init__(self, controller, title="White referencing...", label="White referencing..."):
+    def __init__(self, controller, title: str = "White referencing...", label: str = "White referencing..."):
 
-        timeout_s = int(controller.spec_config_count) / 9 + 40 + utils.BUFFER
+        timeout_s: int = controller.spec_config_count / 9 + 40 + utils.BUFFER
         self.listener = controller.spec_listener
         self.first_try = True
         super().__init__(controller, title, label, timeout=timeout_s)

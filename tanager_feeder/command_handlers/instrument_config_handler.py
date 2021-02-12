@@ -3,8 +3,15 @@ import time
 from tanager_feeder.command_handlers.command_handler import CommandHandler
 from tanager_feeder import utils
 
+
 class InstrumentConfigHandler(CommandHandler):
-    def __init__(self, controller, title="Configuring instrument...", label="Configuring instrument...", timeout=30):
+    def __init__(
+        self,
+        controller,
+        title: str = "Configuring instrument...",
+        label: str = "Configuring instrument...",
+        timeout: int = 30,
+    ):
         self.listener = controller.spec_listener
         super().__init__(controller, title, label, timeout=timeout)
 
@@ -14,6 +21,7 @@ class InstrumentConfigHandler(CommandHandler):
                 self.listener.queue.remove("iconfigsuccess")
                 self.success()
                 return
+
             if "iconfigfailure" in self.listener.queue:
                 self.listener.queue.remove("iconfigfailure")
                 self.interrupt("Error: Failed to configure instrument.", retry=True)

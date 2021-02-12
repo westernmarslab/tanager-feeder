@@ -1,14 +1,24 @@
 from threading import Thread
 import time
+from tkinter import Widget
+from typing import Dict, Optional
 
 import playsound
 
 from tanager_feeder.dialogs.error_dialog import ErrorDialog
 from tanager_feeder.dialogs.wait_dialog import WaitDialog
+from tanager_feeder import utils
 
 
 class CommandHandler:
-    def __init__(self, controller, title="Working...", label="Working...", buttons=None, timeout=30):
+    def __init__(
+        self,
+        controller,
+        title: str = "Working...",
+        label: str = "Working...",
+        buttons: Optional[Dict] = None,
+        timeout: int = 30,
+    ):
         if buttons is None:
             buttons = {}
         self.controller = controller
@@ -54,7 +64,7 @@ class CommandHandler:
         return self.__timeout_s
 
     @timeout_s.setter
-    def timeout_s(self, val):
+    def timeout_s(self, val: int):
         self.__timeout_s = val
 
     def wait(self):
@@ -65,7 +75,13 @@ class CommandHandler:
                 self.timeout()
             time.sleep(1)
 
-    def timeout(self, log_string=None, retry=True, dialog=True, dialog_string="Error: Operation timed out"):
+    def timeout(
+        self,
+        log_string: Optional[str] = None,
+        retry: bool = True,
+        dialog: bool = True,
+        dialog_string: str = "Error: Operation timed out",
+    ):
         if self.text_only:
             self.controller.script_failed = True
         if log_string is None:
@@ -91,9 +107,9 @@ class CommandHandler:
         self.controller.reset()
         self.wait_dialog.label = "Canceling..."
 
-    def interrupt(self, label, info_string=None, retry=False):
+    def interrupt(self, label: str, info_string: Optional[str] = None, retry: bool = False):
         self.wait_dialog.interrupt(label)
-        if info_string != None:
+        if info_string is not None:
             self.controller.log(info_string)
         if retry:
             buttons = {"retry": {self.controller.next_in_queue: []}, "cancel": {self.finish: []}}
@@ -113,7 +129,7 @@ class CommandHandler:
             else:
                 playsound.playsound("broken.wav")
 
-    def remove_retry(self, need_new=True):
+    def remove_retry(self, need_new: bool = True):
         if need_new:
             self.controller.wait_dialog = None
         removed = self.controller.rm_current()
@@ -144,15 +160,14 @@ class CommandHandler:
             ErrorDialog(
                 self.controller,
                 label="Error: Failed to remove file. Choose a different base name,\nspectrum number, or save"
-                 " directory and try again.",
+                " directory and try again.",
             )
 
-    def success(self, close=True):
-        try:
+    def success(self):
+        if len(self.controller.queue) > 0:
             self.controller.complete_queue_item()
-        except Exception as e:
-            print(e)
-            print("canceled by user?")
+        else:
+            print("No queue item to complete.")
 
         if self.cancel:
             self.interrupt("Canceled.")
@@ -173,7 +188,8 @@ class CommandHandler:
             self.controller.reset()
             self.interrupt("Success!")
 
-    def set_text(self, widget, text):
+    @staticmethod
+    def set_text(widget: Widget, text: str):
         state = widget.cget("state")
         widget.configure(state="normal")
         widget.delete(0, "end")

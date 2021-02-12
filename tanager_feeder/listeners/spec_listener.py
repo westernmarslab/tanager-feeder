@@ -108,8 +108,8 @@ class SpecListener(Listener):
                             controller=self.controller,
                             title="Lost Connection",
                             label="Error: RS3 has no connection with the spectrometer.\nCheck that the spectrometer is"
-                                  " on.\n\nNote that RS3 can take some time to connect to the spectrometer.\nBe patient"
-                                  " and wait for the dot at the lower right of RS3 to turn green.",
+                            " on.\n\nNote that RS3 can take some time to connect to the spectrometer.\nBe patient"
+                            " and wait for the dot at the lower right of RS3 to turn green.",
                             buttons=buttons,
                             button_width=15,
                             width=600,

@@ -263,3 +263,8 @@ class MovementUnits(Enum):
     ANGLE = "angle"
     STEPS = "steps"
     POSITION = "position"
+
+
+class CompyTypes(Enum):
+    SPEC_COMPY = "spec compy"
+    PI = "pi"

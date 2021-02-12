@@ -46,7 +46,7 @@ from tanager_feeder.command_handlers.config_handler import ConfigHandler
 from tanager_feeder.command_handlers.data_handler import DataHandler
 from tanager_feeder.command_handlers.get_position_handler import GetPositionHandler
 from tanager_feeder.command_handlers.instrument_config_handler import InstrumentConfigHandler
-from tanager_feeder.command_handlers.motion_handler import MotionHandler
+from tanager_feeder.command_handlers.motion_handler import s
 from tanager_feeder.command_handlers.opt_handler import OptHandler
 from tanager_feeder.command_handlers.process_handler import ProcessHandler
 from tanager_feeder.command_handlers.save_config_handler import SaveConfigHandler
@@ -71,7 +71,6 @@ from tanager_feeder.plotter import Plotter
 from tanager_feeder.remote_directory_worker import RemoteDirectoryWorker
 from tanager_feeder.utils import VerticalScrolledFrame, MovementUnits
 from tanager_feeder import utils
-
 
 
 class Controller:
@@ -206,8 +205,8 @@ class Controller:
         )  # Frames holding all of these things. New one gets created each time a sample is added to the GUI.
 
         self.sample_tray_index = None  # The location of the physical sample tray. This will be an integer -1 to 4
-        # corresponding to wr (-1) or an index in the available_sample_positions (0-4). This is a little confusing
-        # since Sample 1 corresponds to index 0 (sorry).
+        # corresponding to wr (-1) or an index in the available_sample_positions (0-4). This is a confusing system
+        # (sorry).
         self.current_sample_gui_index = 0  # This might be different from the tray position. For example, if samples
         # are set in trays 2 and 4 only then the gui_index will range from 0 (wr) to 1 (tray 2).
         self.available_sample_positions = [
@@ -2280,15 +2279,17 @@ class Controller:
 
         self.pi_commander.set_incidence(next_i, unit)
         MotionHandler(
-            self, label="Setting incidence...", timeout=timeout, steps=(unit == MovementUnits.STEPS.value), destination=next_i
+            self,
+            label="Setting incidence...",
+            timeout=timeout,
+            steps=(unit == MovementUnits.STEPS.value),
+            destination=next_i,
         )
 
-        if (
-            unit == MovementUnits.ANGLE.value
-        ):  # Only change the visualization if an angle is specified.
+        if unit == MovementUnits.ANGLE.value:  # Only change the visualization if an angle is specified.
             self.goniometer_view.set_incidence(next_i)
 
-    def set_emission(self, next_e: Optional[int] = None, unit: str = MovementUnits.ANGLE.value):      
+    def set_emission(self, next_e: Optional[int] = None, unit: str = MovementUnits.ANGLE.value):
         timeout = None
         if unit == "angle":
             # First check whether we actually need to move at all.
@@ -2307,15 +2308,17 @@ class Controller:
 
         self.pi_commander.set_emission(next_e, unit)
         MotionHandler(
-            self, label="Setting emission...", timeout=timeout, steps=(unit == MovementUnits.STEPS.value), destination=next_e
+            self,
+            label="Setting emission...",
+            timeout=timeout,
+            steps=(unit == MovementUnits.STEPS.value),
+            destination=next_e,
         )
 
-        if (
-            unit == MovementUnits.ANGLE.value
-        ):  # Only change the visualization if an angle is specified.
+        if unit == MovementUnits.ANGLE.value:  # Only change the visualization if an angle is specified.
             self.goniometer_view.set_emission(next_e)
 
-    def set_azimuth(self, next_az: Optional[int] = None, unit: str = MovementUnits.ANGLE.value):      
+    def set_azimuth(self, next_az: Optional[int] = None, unit: str = MovementUnits.ANGLE.value):
         timeout = None
         if unit == "angle":
             # First check whether we actually need to move at all.
@@ -2334,12 +2337,14 @@ class Controller:
 
         self.pi_commander.set_azimuth(next_az, unit)
         MotionHandler(
-            self, label="Setting azimuth...", timeout=timeout, steps=(unit == MovementUnits.STEPS.value), destination=next_az
+            self,
+            label="Setting azimuth...",
+            timeout=timeout,
+            steps=(unit == MovementUnits.STEPS.value),
+            destination=next_az,
         )
 
-        if (
-            unit == MovementUnits.ANGLE.value
-        ):  # Only change the visualization if an angle is specified.
+        if unit == MovementUnits.ANGLE.value:  # Only change the visualization if an angle is specified.
             self.goniometer_view.set_azimuth(next_az)
 
     def move_tray(self, pos, unit=MovementUnits.POSITION.value):
@@ -2347,10 +2352,11 @@ class Controller:
             self.goniometer_view.set_current_sample(pos)
         self.pi_commander.move_tray(pos, unit)
         handler = MotionHandler(
-            self, label="Moving sample tray...",
+            self,
+            label="Moving sample tray...",
             timeout=30 + utils.BUFFER,
             new_sample_loc=pos,
-            steps=(unit == MovementUnits.STEPS.value)
+            steps=(unit == MovementUnits.STEPS.value),
         )
 
     def range_setup(self, override=False):
@@ -2518,11 +2524,11 @@ class Controller:
             return False  # Don't include because the measurement won't work because the light will be shining
             # on/through the emission arm.
         elif i < -60 and 70 < az < 110:
-            #TODO: check that this meshes with pi software approach for avoiding danger here
+            # TODO: check that this meshes with pi software approach for avoiding danger here
             return False  # Don't include because the clearance between the emission motor and the light source
             # is too tight for comfort
         else:
-            return True  #Otherwise it's good!
+            return True  # Otherwise it's good!
 
     def check_if_good_measurement(self, i: int, e: int, az: int) -> bool:
         if not self.validate_distance(i, e, az):
@@ -2634,7 +2640,7 @@ class Controller:
                     dialog = ErrorDialog(
                         self,
                         label="Error: Operation timed out.\n\nCheck that the automation script is running on the"
-                              " spectrometer\n computer and the spectrometer is connected.",
+                        " spectrometer\n computer and the spectrometer is connected.",
                         buttons=buttons,
                     )
                     dialog.top.geometry("376x145")
@@ -2672,7 +2678,9 @@ class Controller:
     # these are stored in user_cmds with the index of the most recent command at 0
     # Every time the user enters a command, the user_cmd_index is changed to -1
     def iterate_cmds(self, keypress_event):
-        if keypress_event.keycode == 111 or keypress_event.keycode == 38: # up arrows on linux and windows, respectively
+        if (
+            keypress_event.keycode == 111 or keypress_event.keycode == 38
+        ):  # up arrows on linux and windows, respectively
 
             if len(self.user_cmds) > self.user_cmd_index + 1 and len(self.user_cmds) > 0:
                 self.user_cmd_index = self.user_cmd_index + 1
@@ -2711,8 +2719,6 @@ class Controller:
         self.console_entry.delete(0, "end")
         thread = Thread(target=self.cli_manager.execute_cmd, kwargs={"cmd": command})
         thread.start()
-
-
 
     def fail_script_command(self, message):
         self.log(message)
@@ -2816,7 +2822,7 @@ class Controller:
                 dialog = ErrorDialog(
                     self,
                     label="Error: Operation timed out.\n\nCheck that the automation script is running on the"
-                          " spectrometer\n computer and the spectrometer is connected.",
+                    " spectrometer\n computer and the spectrometer is connected.",
                     buttons=buttons,
                 )
                 for button in dialog.tk_buttons:
@@ -3623,7 +3629,6 @@ class Controller:
     # This gets called when the user clicks 'Edit plot' from the right-click menu on a plot.
     # Pops up a scrollable listbox with sample options.
     def ask_plot_samples(self, tab, existing_sample_indices, sample_options, existing_geoms, current_title):
-
         def select_tab():
             self.view_notebook.select(tab.top)
 
@@ -3913,7 +3918,7 @@ class Controller:
         self.remote_file_explorer = RemoteFileExplorer(
             self,
             label="Select a directory to save raw spectral data.\nThis must be to a drive mounted on the spectrometer"
-                  " control computer.\n E.g. R:\\RiceData\\MarsGroup\\YourName\\spectral_data",
+            " control computer.\n E.g. R:\\RiceData\\MarsGroup\\YourName\\spectral_data",
             target=self.spec_save_dir_entry,
         )
 
@@ -3921,7 +3926,7 @@ class Controller:
         r = RemoteFileExplorer(
             self,
             label="Select the directory containing the data you want to process.\nThis must be on a drive mounted on"
-                  " the spectrometer control computer.\n E.g. R:\\RiceData\\MarsGroup\\YourName\\spectral_data",
+            " the spectrometer control computer.\n E.g. R:\\RiceData\\MarsGroup\\YourName\\spectral_data",
             target=self.input_dir_entry,
         )
 
@@ -3929,7 +3934,7 @@ class Controller:
         r = RemoteFileExplorer(
             self,
             label="Select the directory where you want to save your processed data.\nThis must be to a drive mounted"
-                  " on the spectrometer control computer.\n E.g. R:\\RiceData\\MarsGroup\\YourName\\spectral_data",
+            " on the spectrometer control computer.\n E.g. R:\\RiceData\\MarsGroup\\YourName\\spectral_data",
             target=self.output_dir_entry,
         )
 
@@ -4213,8 +4218,8 @@ class Controller:
             self,
             title="Setup Required",
             label="Setup required: Unknown goniometer state.\n\nPlease enter the current incidence, emission, and tray"
-                  " positions and click OK. \nNote that this will trigger the azimuth table homing routine.\n\n"
-                  "Alternatively, click 'Cancel' to use the goniometer in manual mode.",
+            " positions and click OK. \nNote that this will trigger the azimuth table homing routine.\n\n"
+            "Alternatively, click 'Cancel' to use the goniometer in manual mode.",
             values={
                 "Incidence": [self.science_i, self.min_motor_i, self.max_motor_i],
                 "Emission": [self.science_e, self.min_motor_e, self.max_motor_e],
@@ -4438,7 +4443,6 @@ class Controller:
         closest_pos = (i, e, az)
 
         return closest_pos, closest_dist
-
 
     def validate_distance(self, i, e, az, print_me=False):
         try:

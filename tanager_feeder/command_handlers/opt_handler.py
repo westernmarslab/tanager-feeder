@@ -5,7 +5,7 @@ from tanager_feeder import utils
 
 
 class OptHandler(CommandHandler):
-    def __init__(self, controller, title="Optimizing...", label="Optimizing..."):
+    def __init__(self, controller, title: str = "Optimizing...", label: str = "Optimizing..."):
 
         if controller.spec_config_count is not None:
             timeout_s = int(controller.spec_config_count) / 9 + 50 + utils.BUFFER
@@ -45,9 +45,7 @@ class OptHandler(CommandHandler):
             if "optfailure" in self.listener.queue:
                 self.listener.queue.remove("optfailure")
 
-                if (
-                    not self.cancel and not self.pause
-                ):
+                if not self.cancel and not self.pause:
                     self.controller.log("Error: Failed to optimize instrument. Retrying.")
                     self.controller.next_in_queue()
                 elif self.pause:
@@ -72,7 +70,5 @@ class OptHandler(CommandHandler):
 
     def success(self):
         self.controller.opt_time = int(time.time())
-        self.controller.log(
-            "Instrument optimized.", write_to_file=True
-        )
+        self.controller.log("Instrument optimized.", write_to_file=True)
         super().success()

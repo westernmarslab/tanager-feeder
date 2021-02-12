@@ -1,17 +1,26 @@
 import socket
-import traceback
+from typing import Dict, List, Optional
 
 from tanager_tcp import TanagerClient
+from tanager_feeder.utils import CompyTypes, ConfigInfo, ConnectionTracker, exit_func
 
 
 class ConnectionChecker:
-    def __init__(self, which_compy, connection_tracker, config_info, controller, func, args):
+    def __init__(
+        self,
+        which_compy: str,
+        connection_tracker: ConnectionTracker,
+        config_info: ConfigInfo,
+        controller,
+        func,
+        args: Optional[List],
+    ):
         self.which_compy = which_compy
-        self.config_loc = config_info.local_config_loc
+        self.config_loc: str = config_info.local_config_loc
         self.connection_tracker = connection_tracker
         self.controller = controller
         self.func = func
-        self.busy = False
+        self.busy: bool = False
         self.args = args
 
     def alert_lost_connection(self):
@@ -21,9 +30,6 @@ class ConnectionChecker:
             "exit": {exit_func: []},
         }
         self.lost_dialog(buttons)
-
-    def change_ip(self):
-        pass
 
     def alert_not_connected(self):
         buttons = {
@@ -36,7 +42,7 @@ class ConnectionChecker:
         }
         self.no_dialog(buttons)
 
-    def check_connection(self, timeout=3):
+    def check_connection(self, timeout: int = 3):
         if self.which_compy == "spec compy":
             server_ip = self.connection_tracker.spec_ip
             listening_port = self.connection_tracker.SPEC_PORT
@@ -46,14 +52,14 @@ class ConnectionChecker:
 
         connected = False
         try:
-            client = TanagerClient((server_ip, 12345), "test", listening_port, timeout=timeout)
-            if self.which_compy == "spec compy":
+            TanagerClient((server_ip, 12345), "test", listening_port, timeout=timeout)
+            # TODO: separate into single client instantiation, then send a message at each check.
+            if self.which_compy == CompyTypes.SPEC_COMPY.value:
                 self.connection_tracker.spec_offline = False
             else:
                 self.connection_tracker.pi_offline = False
-            # self.func(*self.args)
             connected = True
-        except socket.timeout as e:
+        except socket.timeout:
             self.alert_not_connected()
 
         if connected:
@@ -64,14 +70,17 @@ class ConnectionChecker:
     def release(self):
         self.busy = False
 
-    def lost_dialog(self):
+    def lost_dialog(self, buttons: Dict):
         pass
 
-    def no_dialog(self):
+    def no_dialog(self, buttons: Dict):
         pass
 
     def get_offline(self):
         pass
 
     def set_work_offline(self):
+        pass
+
+    def ask_ip(self):
         pass

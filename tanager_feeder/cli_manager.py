@@ -2,20 +2,21 @@ from tkinter import END
 
 from tanager_feeder import utils
 
-class CliManager():
+
+class CliManager:
     def __init__(self, controller):
         self.controller = controller
 
     def execute_cmd(
-            self, cmd
+        self, cmd
     ):  # In a separate method because that allows it to be spun off in a new thread, so tkinter mainloop continues,
         # which means that the console log gets updated immediately e.g. if you say sleep(10) it will say sleep up in
         # the log while it is sleeping.
         print("Command is: " + cmd)
-    
+
         def get_val(param):
             return param.split("=")[1].strip(" ").strip('"').strip("'")
-    
+
         if cmd == "wr()":
             if not self.controller.script_running:
                 self.controller.queue = []
@@ -29,7 +30,7 @@ class CliManager():
             self.controller.opt(True, False)  # override=True, setup complete=False
         elif cmd == "goniometer.configure(MANUAL)":
             self.controller.set_manual_automatic(force=0)
-    
+
         elif "goniometer.configure(" in cmd:
             try:
                 if "AUTOMATIC" in cmd:
@@ -48,11 +49,13 @@ class CliManager():
                     )
                     self.controller.queue = []
                     self.controller.script_running = False
-    
+
                 valid_i = utils.validate_int_input(params[0], self.controller.min_motor_i, self.controller.max_motor_i)
                 valid_e = utils.validate_int_input(params[1], self.controller.min_motor_e, self.controller.max_motor_e)
-                valid_az = utils.validate_int_input(params[2], self.controller.min_motor_az, self.controller.max_motor_az)
-    
+                valid_az = utils.validate_int_input(
+                    params[2], self.controller.min_motor_az, self.controller.max_motor_az
+                )
+
                 valid_sample = utils.validate_int_input(params[2], 1, int(self.controller.num_samples))
                 if params[2] == "wr":
                     valid_sample = True
@@ -60,15 +63,15 @@ class CliManager():
                     self.controller.motor_i = params[0]
                     self.controller.motor_e = params[1]
                     self.controller.motor_az = params[2]
-    
+
                     if params[3] == "wr":
                         self.controller.sample_tray_index = -1
                     else:
                         self.controller.sample_tray_index = (
-                                int(params[3]) - 1
+                            int(params[3]) - 1
                         )  # this is used as an index where available_sample_positions[4]=='Sample 5' so it should be
                         # one less than input.
-    
+
                     if "AUTOMATIC" in cmd:
                         self.controller.set_manual_automatic(force=1, known_goniometer_state=True)
                     else:
@@ -78,10 +81,10 @@ class CliManager():
                     self.controller.emission_entries[0].delete(0, "end")
                     self.controller.emission_entries[0].insert(0, params[1])
                     self.controller.azimuth_entries[0].insert(0, params[2])
-    
+
                     print("CONFIGURING PI??")
                     self.controller.configure_pi(params[0], params[1], params[2], params[3], params[4])
-    
+
                 else:
                     self.controller.log(
                         "Error: invalid arguments for mode, i, e, az, sample_num: "
@@ -90,7 +93,7 @@ class CliManager():
                     )
                     self.controller.queue = []
                     self.controller.script_running = False
-    
+
             except Exception as e:
                 self.controller.fail_script_command("Error: could not parse command " + cmd)
         elif cmd == "collect_garbage()":
@@ -115,7 +118,9 @@ class CliManager():
             elif self.controller.manual_automatic.get() == 0:  # manual mode
                 valid_i = utils.validate_int_input(params[0], self.controller.min_motor_i, self.controller.max_motor_i)
                 valid_e = utils.validate_int_input(params[1], self.controller.min_motor_i, self.controller.max_motor_i)
-                valid_az = utils.validate_int_input(params[2], self.controller.min_motor_az, self.controller.max_motor_az)
+                valid_az = utils.validate_int_input(
+                    params[2], self.controller.min_motor_az, self.controller.max_motor_az
+                )
                 if not valid_i or not valid_e or not valid_az:
                     self.controller.log(
                         "Error: i="
@@ -136,8 +141,10 @@ class CliManager():
             else:  # automatic mode
                 valid_i = utils.validate_int_input(params[0], self.controller.min_motor_i, self.controller.max_motor_i)
                 valid_e = utils.validate_int_input(params[1], self.controller.min_motor_e, self.controller.max_motor_e)
-                valid_az = utils.validate_int_input(params[2], self.controller.min_motor_az, self.controller.max_motor_az)
-    
+                valid_az = utils.validate_int_input(
+                    params[2], self.controller.min_motor_az, self.controller.max_motor_az
+                )
+
                 if not valid_i or not valid_e or not valid_az:
                     self.controller.log(
                         "Error: i="
@@ -172,10 +179,16 @@ class CliManager():
             if len(params) != 2:
                 self.controller.fail_script_command("Error: could not parse command " + cmd)
             elif self.controller.manual_automatic.get() == 0:  # manual mode
-                valid_i = utils.validate_int_input(params[0], self.controller.min_science_i, self.controller.max_science_i)
-                valid_e = utils.validate_int_input(params[1], self.controller.min_science_e, self.controller.max_science_e)
-                valid_az = utils.validate_int_input(params[2], self.controller.min_science_az, self.controller.max_science_az)
-    
+                valid_i = utils.validate_int_input(
+                    params[0], self.controller.min_science_i, self.controller.max_science_i
+                )
+                valid_e = utils.validate_int_input(
+                    params[1], self.controller.min_science_e, self.controller.max_science_e
+                )
+                valid_az = utils.validate_int_input(
+                    params[2], self.controller.min_science_az, self.controller.max_science_az
+                )
+
                 if not valid_i or not valid_e or not valid_az:
                     self.controller.log(
                         "Error: i="
@@ -187,9 +200,9 @@ class CliManager():
                         + " is not a valid viewing geometry."
                     )
                 elif (
-                        self.controller.emission_entries[0].get() == ""
-                        and self.controller.incidence_entries[0].get() == ""
-                        and self.controller.azimuth_entries[0].get() == ""
+                    self.controller.emission_entries[0].get() == ""
+                    and self.controller.incidence_entries[0].get() == ""
+                    and self.controller.azimuth_entries[0].get() == ""
                 ):
                     self.controller.incidence_entries[0].insert(0, params[0])
                     self.controller.emission_entries[0].insert(0, params[1])
@@ -200,10 +213,16 @@ class CliManager():
                 if self.controller.individual_range.get() == 1:
                     self.controller.log("Error: Cannot add geometry in range mode. Use setup_geom_range() instead")
                 else:
-                    valid_i = utils.validate_int_input(params[0], self.controller.min_science_i, self.controller.max_science_i)
-                    valid_e = utils.validate_int_input(params[1], self.controller.min_science_e, self.controller.max_science_e)
-                    valid_az = utils.validate_int_input(params[2], self.controller.min_science_az, self.controller.max_science_az)
-    
+                    valid_i = utils.validate_int_input(
+                        params[0], self.controller.min_science_i, self.controller.max_science_i
+                    )
+                    valid_e = utils.validate_int_input(
+                        params[1], self.controller.min_science_e, self.controller.max_science_e
+                    )
+                    valid_az = utils.validate_int_input(
+                        params[2], self.controller.min_science_az, self.controller.max_science_az
+                    )
+
                     if not valid_i or not valid_e or not valid_az:
                         self.controller.log(
                             "Error: i="
@@ -214,7 +233,10 @@ class CliManager():
                             + params[2]
                             + " is not a valid viewing geometry."
                         )
-                    elif self.controller.emission_entries[0].get() == "" and self.controller.incidence_entries[0].get() == "":
+                    elif (
+                        self.controller.emission_entries[0].get() == ""
+                        and self.controller.incidence_entries[0].get() == ""
+                    ):
                         self.controller.incidence_entries[0].insert(0, params[0])
                         self.controller.emission_entries[0].insert(0, params[1])
                         self.controller.azimuth_entries[0].insert(0, params[2])
@@ -223,7 +245,7 @@ class CliManager():
                         self.controller.incidence_entries[-1].insert(0, params[0])
                         self.controller.emission_entries[-1].insert(0, params[1])
                         self.controller.azimuth_entries[-1].insert(0, params[2])
-    
+
         elif "setup_geom_range(" in cmd:
             if self.controller.manual_automatic.get() == 0:
                 self.controller.log("Error: Not in automatic mode")
@@ -311,12 +333,12 @@ class CliManager():
             params = cmd[0:-1].split("set_samples(")[1].split(",")
             if params == [""]:
                 params = []
-    
+
             # First clear all existing sample names
             while len(self.controller.sample_frames) > 1:
                 self.controller.remove_sample(-1)
             self.controller.set_text(self.controller.sample_label_entries[0], "")
-    
+
             # Then add in samples in order specified in params. Each param should be a sample name and pos.
             skip_count = 0  # If a param is badly formatted, we'll skip it. Keep track of how many are skipped in order
             # to index labels, etc right.
@@ -327,16 +349,17 @@ class CliManager():
                     name = get_val(param)
                     valid_pos = utils.validate_int_input(pos, 1, 5)
                     if (
-                            self.controller.available_sample_positions[int(pos) - 1] in self.controller.taken_sample_positions
+                        self.controller.available_sample_positions[int(pos) - 1]
+                        in self.controller.taken_sample_positions
                     ):  # If the requested position is already taken, we're not going to allow it.
                         if (
-                                len(self.controller.sample_label_entries) > 1
+                            len(self.controller.sample_label_entries) > 1
                         ):  # If only one label is out there, it will be listed as taken even though the entry is empty,
                             # so we can ignore it. But if there is more than one label, we know the position is a repeat
                             # and not valid.
                             valid_pos = False
                         elif (
-                                self.controller.sample_label_entries[0].get() != ""
+                            self.controller.sample_label_entries[0].get() != ""
                         ):  # Even if there is only one label, if the entry has already been filled in then the position
                             # is a repeat and not valid.
                             valid_pos = False
@@ -349,27 +372,27 @@ class CliManager():
                         + ". Use the format set_samples({position}={name}) e.g. set_samples(1=Basalt)"
                     )
                     skip_count += 1
-    
+
                 if valid_pos:
                     self.controller.set_text(self.controller.sample_label_entries[i - skip_count], name)
-                    self.controller.sample_pos_vars[i - skip_count].set(self.controller.available_sample_positions[int(pos) - 1])
+                    self.controller.sample_pos_vars[i - skip_count].set(
+                        self.controller.available_sample_positions[int(pos) - 1]
+                    )
                     self.controller.set_taken_sample_positions()
                 else:
                     self.controller.log(
-                        "Error: "
-                        + pos
-                        + " is an invalid sample position. Use the format set_samples({position}={1}) "
-                          "e.g. set_samples(1=Basalt). Do not repeat sample positions."
+                        "Error: " + pos + " is an invalid sample position. Use the format set_samples({position}={1}) "
+                        "e.g. set_samples(1=Basalt). Do not repeat sample positions."
                     )
                     skip_count += 1
-    
+
             if len(self.controller.queue) > 0:
                 self.controller.next_in_queue()
-    
+
         elif "set_spec_save(" in cmd:
             self.controller.unfreeze()
             params = cmd[0:-1].split("set_spec_save(")[1].split(",")
-    
+
             for i, param in enumerate(params):
                 params[i] = param.strip(" ")  # Need to do this before looking for setup only
                 if "directory" in param:
@@ -384,21 +407,21 @@ class CliManager():
                     num = get_val(param)
                     self.controller.spec_startnum_entry.delete(0, "end")
                     self.controller.spec_startnum_entry.insert(0, num)
-    
+
             if not self.controller.script_running:
                 self.controller.queue = []
-    
+
             # If the user uses the setup_only option, no commands are sent to the spec computer, but instead the GUI is
             # just filled in for them how they want.
             setup_only = False
-    
+
             if "setup_only=True" in params:
                 setup_only = True
             elif "setup_only =True" in params:
                 setup_only = True
             elif "setup_only = True" in params:
                 setup_only = True
-    
+
             if not setup_only:
                 self.controller.queue.insert(0, {self.controller.set_save_config: []})
                 self.controller.set_save_config()
@@ -414,7 +437,7 @@ class CliManager():
                 self.controller.instrument_config_entry.insert(0, str(num))
                 if not self.controller.script_running:
                     self.controller.queue = []
-    
+
                 # If the user uses the setup_only option, no commands are sent to the spec computer, but instead the GUI
                 # is just filled in for them how they want.
                 setup_only = False
@@ -424,7 +447,7 @@ class CliManager():
                     setup_only = True
                 elif "setup_only = True" in params:
                     setup_only = True
-    
+
                 if not setup_only:
                     self.controller.queue.insert(0, {self.controller.configure_instrument: []})
                     self.controller.configure_instrument()
@@ -432,7 +455,7 @@ class CliManager():
                     self.controller.next_in_queue()
             except:
                 self.controller.fail_script_command("Error: could not parse command " + cmd)
-    
+
         elif "sleep" in cmd:
             param = cmd[0:-1].split("sleep(")[1]
             try:
@@ -456,7 +479,7 @@ class CliManager():
                     self.controller.next_in_queue()
             except:
                 self.controller.fail_script_command("Error: could not parse command " + cmd)
-    
+
         elif "move_tray(" in cmd:
             if self.controller.manual_automatic.get() == 0:
                 self.controller.log("Error: Not in automatic mode")
@@ -470,7 +493,7 @@ class CliManager():
                 try:
                     steps = int(param.split("=")[-1])
                     valid_steps = utils.validate_int_input(steps, -800, 800)
-    
+
                 except:
                     self.controller.fail_script_command("Error: could not parse command " + cmd)
                     return False
@@ -501,7 +524,7 @@ class CliManager():
                 elif pos.lower() == "wr":
                     pos = pos.lower()
                 if pos in self.controller.available_sample_positions or pos == "wr":
-    
+
                     if not self.controller.script_running:
                         self.controller.queue = []
                     self.controller.queue.insert(0, {self.controller.move_tray: [pos]})
@@ -511,7 +534,7 @@ class CliManager():
                     self.controller.queue = []
                     self.controller.script_running = False
                     return False
-    
+
         elif "set_emission(" in cmd:
             if self.controller.manual_automatic.get() == 0 or self.controller.connection_tracker.pi_offline:
                 print(self.controller.manual_automatic.get())
@@ -521,16 +544,16 @@ class CliManager():
                 return False
             try:
                 param = cmd.split("set_emission(")[1][:-1]
-    
+
             except:
                 self.controller.fail_script_command("Error: could not parse command " + cmd)
                 return False
-    
+
             if "steps" in param:
                 try:
                     steps = int(param.split("=")[-1])
                     valid_steps = utils.validate_int_input(steps, -1000, 1000)
-    
+
                 except:
                     self.controller.fail_script_command("Error: could not parse command " + cmd)
                     return False
@@ -560,7 +583,7 @@ class CliManager():
                     self.controller.queue = []
                     self.controller.script_running = False
                     return False
-    
+
         elif "set_azimuth(" in cmd:
             if self.controller.manual_automatic.get() == 0 or self.controller.connection_tracker.pi_offline:
                 self.controller.log("Error: Not in automatic mode")
@@ -569,16 +592,16 @@ class CliManager():
                 return False
             try:
                 param = cmd.split("set_azimuth(")[1][:-1]
-    
+
             except:
                 self.controller.fail_script_command("Error: could not parse command " + cmd)
                 return False
-    
+
             if "steps" in param:
                 try:
                     steps = int(param.split("=")[-1])
                     valid_steps = utils.validate_int_input(steps, -1000, 1000)
-    
+
                 except:
                     self.controller.fail_script_command("Error: could not parse command " + cmd)
                     return False
@@ -607,7 +630,7 @@ class CliManager():
                     self.controller.queue = []
                     self.controller.script_running = False
                     return False
-    
+
         # Accepts incidence angle in degrees, converts to motor position. OR accepts motor steps to move.
         elif "set_incidence(" in cmd:
             if self.controller.manual_automatic.get() == 0 or self.controller.connection_tracker.pi_offline:
@@ -617,16 +640,16 @@ class CliManager():
                 return False
             try:
                 param = cmd.split("set_incidence(")[1][:-1]
-    
+
             except:
                 self.controller.fail_script_command("Error: could not parse command " + cmd)
                 return False
-    
+
             if "steps" in param:
                 try:
                     steps = int(param.split("=")[-1])
                     valid_steps = utils.validate_int_input(steps, -1000, 1000)
-    
+
                 except:
                     self.controller.fail_script_command("Error: could not parse command " + cmd)
                     return False
@@ -644,19 +667,23 @@ class CliManager():
                     return False
             else:
                 next_science_i = param
-                valid_i = utils.validate_int_input(next_science_i, self.controller.min_science_i, self.controller.max_science_i)
+                valid_i = utils.validate_int_input(
+                    next_science_i, self.controller.min_science_i, self.controller.max_science_i
+                )
                 if valid_i:
                     next_science_i = int(next_science_i)
-                    valid_geom = self.controller.validate_distance(next_science_i, self.controller.science_e, self.controller.science_az)
-    
+                    valid_geom = self.controller.validate_distance(
+                        next_science_i, self.controller.science_e, self.controller.science_az
+                    )
+
                     if not self.controller.script_running:
                         self.controller.queue = []
-    
+
                     if self.controller.motor_az >= 180 or self.controller.motor_az < 0:
                         next_motor_i = -1 * next_science_i
                     else:
                         next_motor_i = next_science_i
-    
+
                     self.controller.queue.insert(0, {self.controller.set_incidence: [next_motor_i]})
                     self.controller.set_incidence(next_motor_i)
                 else:
@@ -664,7 +691,7 @@ class CliManager():
                     self.controller.queue = []
                     self.controller.script_running = False
                     return False
-    
+
         elif "set_motor_azimuth" in cmd:
             if self.controller.manual_automatic.get() == 0 or self.controller.connection_tracker.pi_offline:
                 self.controller.log("Error: Not in automatic mode")
@@ -673,13 +700,13 @@ class CliManager():
                 return False
             az = int(cmd.split("set_motor_azimuth(")[1].strip(")"))
             valid_az = utils.validate_int_input(az, self.controller.min_motor_az, self.controller.max_motor_az)
-    
+
             if valid_az:
                 next_science_i, next_science_e, next_science_az = self.controller.motor_pos_to_science_pos(
                     self.controller.motor_i, self.controller.motor_e, int(az)
                 )
                 valid_geom = self.controller.validate_distance(next_science_i, next_science_e, next_science_az)
-    
+
                 if not self.controller.script_running:
                     self.controller.queue = []
                 self.controller.queue.insert(0, {self.controller.set_azimuth: [az]})
@@ -689,7 +716,7 @@ class CliManager():
                 self.controller.queue = []
                 self.controller.script_running = False
                 return False
-    
+
         elif "set_goniometer" in cmd:
             if self.controller.manual_automatic.get() == 0:
                 self.controller.log("Error: Not in automatic mode")
@@ -701,22 +728,24 @@ class CliManager():
                 self.controller.log(str(len(params)))
                 self.controller.log("Error: invalid display setting. Enter set_display(i, e, az")
                 return
-    
+
             valid_i = utils.validate_int_input(params[0], self.controller.min_science_i, self.controller.max_science_i)
             valid_e = utils.validate_int_input(params[1], self.controller.min_science_e, self.controller.max_science_e)
-            valid_az = utils.validate_int_input(params[2], self.controller.min_science_az, self.controller.max_science_az)
-    
+            valid_az = utils.validate_int_input(
+                params[2], self.controller.min_science_az, self.controller.max_science_az
+            )
+
             if not valid_i or not valid_e or not valid_az:
                 self.controller.log("Error: invalid geometry")
                 return
-    
+
             i = int(params[0])
             e = int(params[1])
             az = int(params[2])
-    
+
             current_motor = (self.controller.motor_i, self.controller.motor_e, self.controller.motor_az)
             movements = self.controller.get_movements(i, e, az, current_motor=current_motor)
-    
+
             if movements == None:
                 print("NO PATH FOUND")
                 self.controller.log(
@@ -727,10 +756,10 @@ class CliManager():
                     + ", az="
                     + str(az)
                 )
-    
+
             else:
                 temp_queue = []
-    
+
                 for movement in movements:
                     if "az" in movement:
                         next_motor_az = movement["az"]
@@ -748,9 +777,9 @@ class CliManager():
                             temp_queue.append({self.controller.set_incidence: [next_motor_i]})
                     else:
                         print("UNEXPECTED: " + str(movement))
-    
+
                 self.controller.queue = temp_queue + self.controller.queue
-    
+
             if len(self.controller.queue) > 0:
                 self.controller.next_in_queue()
             else:
@@ -763,24 +792,26 @@ class CliManager():
             print()
             print(self.controller.goniometer_view.movements)
             print()
-    
+
             if len(self.controller.queue) > 0:
                 self.controller.next_in_queue()
             else:
                 self.controller.script_running = False
                 self.controller.queue = []
-    
+
         elif "set_display" in cmd:
             params = cmd.split("set_display(")[1].strip(")").split(",")
             if len(params) != 3:
                 self.controller.log(str(len(params)))
                 self.controller.log("Error: invalid display setting. Enter set_display(i, e, az")
                 return
-    
+
             valid_i = utils.validate_int_input(params[0], self.controller.min_science_i, self.controller.max_science_i)
             valid_e = utils.validate_int_input(params[1], self.controller.min_science_e, self.controller.max_science_e)
-            valid_az = utils.validate_int_input(params[2], self.controller.min_science_az, self.controller.max_science_az)
-    
+            valid_az = utils.validate_int_input(
+                params[2], self.controller.min_science_az, self.controller.max_science_az
+            )
+
             if not valid_i or not valid_e or not valid_az:
                 self.controller.log("Error: invalid geometry")
                 if len(self.controller.queue) > 0:
@@ -790,18 +821,22 @@ class CliManager():
                     self.controller.script_running = False
                     self.controller.queue = []
                     return
-    
+
             i = int(params[0])
             e = int(params[1])
             az = int(params[2])
-    
-            current_motor = (self.controller.goniometer_view.motor_i, self.controller.goniometer_view.motor_e, self.controller.goniometer_view.motor_az)
+
+            current_motor = (
+                self.controller.goniometer_view.motor_i,
+                self.controller.goniometer_view.motor_e,
+                self.controller.goniometer_view.motor_az,
+            )
             movements = self.controller.get_movements(i, e, az, current_motor=current_motor)
-    
+
             current_science_i = self.controller.goniometer_view.science_i
             current_science_e = self.controller.goniometer_view.science_e
             current_science_az = self.controller.goniometer_view.science_az
-    
+
             if movements == None:
                 print("NO PATH FOUND")
                 self.controller.log(
@@ -812,10 +847,10 @@ class CliManager():
                     + ", az="
                     + str(az)
                 )
-    
+
             if movements != None:
                 temp_queue = []
-    
+
                 for movement in movements:
                     if "az" in movement:
                         next_motor_az = movement["az"]
@@ -828,18 +863,18 @@ class CliManager():
                         temp_queue.append({self.controller.goniometer_view.set_incidence: [next_motor_i]})
                     else:
                         print("UNEXPECTED: " + str(movement))
-    
+
                 for item in temp_queue:
                     for func in item:
                         args = item[func]
                         func(*args)
-    
+
             if len(self.controller.queue) > 0:
                 self.controller.next_in_queue()
             else:
                 self.controller.script_running = False
                 self.controller.queue = []
-    
+
         elif "rotate_display" in cmd:
             angle = cmd.split("rotate_display(")[1].strip(")")
             valid = utils.validate_int_input(angle, -360, 360)
@@ -848,24 +883,26 @@ class CliManager():
                 return
             else:
                 angle = int(angle)
-    
+
             self.controller.goniometer_view.set_goniometer_tilt(0)
-    
+
             self.controller.goniometer_view.wireframes["i"].rotate_az(angle)
             self.controller.goniometer_view.wireframes["light"].rotate_az(angle)
             self.controller.goniometer_view.wireframes["light guide"].rotate_az(angle)
             self.controller.goniometer_view.wireframes["motor az guide"].rotate_az(angle)
             self.controller.goniometer_view.wireframes["science az guide"].rotate_az(angle)
-    
+
             self.controller.goniometer_view.wireframes["e"].rotate_az(angle)
             self.controller.goniometer_view.wireframes["detector"].rotate_az(angle)
             self.controller.goniometer_view.wireframes["detector guide"].rotate_az(angle)
-    
+
             self.controller.goniometer_view.set_goniometer_tilt(20)
-    
-            self.controller.goniometer_view.draw_3D_goniometer(self.controller.goniometer_view.width, self.controller.goniometer_view.height)
+
+            self.controller.goniometer_view.draw_3D_goniometer(
+                self.controller.goniometer_view.width, self.controller.goniometer_view.height
+            )
             self.controller.goniometer_view.flip()
-    
+
         elif "rotate_tray_display" in cmd:
             angle = cmd.split("rotate_tray_display(")[1].strip(")")
             valid = utils.validate_int_input(angle, -360, 360)
@@ -875,23 +912,23 @@ class CliManager():
             else:
                 angle = int(angle)
             self.controller.goniometer_view.rotate_tray(angle)
-            self.controller.goniometer_view.draw_3D_goniometer(self.controller.goniometer_view.width, self.controller.goniometer_view.height)
+            self.controller.goniometer_view.draw_3D_goniometer(
+                self.controller.goniometer_view.width, self.controller.goniometer_view.height
+            )
             self.controller.goniometer_view.flip()
-    
+
         elif cmd == "end file":
             self.controller.script_running = False
             self.controller.queue = []
             if self.controller.wait_dialog != None:
-                self.controller.wait_dialog.interrupt(
-                    "Success!"
-                )  # If there is a wait dialog up, make it say success.
+                self.controller.wait_dialog.interrupt("Success!")  # If there is a wait dialog up, make it say success.
                 # There may never have been one that was made though.
                 self.controller.wait_dialog.top.wm_geometry("376x140")
             return True
-    
+
         else:
             self.controller.fail_script_command("Error: could not parse command " + cmd)
             return False
-    
+
         self.controller.text_only = False
         return True

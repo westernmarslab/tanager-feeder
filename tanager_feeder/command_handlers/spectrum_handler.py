@@ -5,9 +5,9 @@ from tanager_feeder import utils
 
 
 class SpectrumHandler(CommandHandler):
-    def __init__(self, controller, title="Saving Spectrum...", label="Saving spectrum..."):
-        timeout = (
-            int(controller.spec_config_count) / 8 + utils.BUFFER
+    def __init__(self, controller, title: str = "Saving Spectrum...", label: str = "Saving spectrum..."):
+        timeout: int = (
+            controller.spec_config_count / 8 + utils.BUFFER
         )  # This timeout grows faster than the actual time to take a spectrum grows, which would be numspectra/9
         self.listener = controller.spec_listener
         super().__init__(controller, title, label, timeout=timeout)
@@ -72,12 +72,16 @@ class SpectrumHandler(CommandHandler):
 
             time.sleep(utils.INTERVAL)
             self.timeout_s -= utils.INTERVAL
-        dialog_string = "Error: Operation timed out while waiting to save spectrum.\n\nIf it completes later," \
-                        " an unexpected file could be saved to the data directory.\nThis could cause errors." \
-                        " Restart the software to be safe."
-        log_string = "Error: Operation timed out while waiting to save spectrum.\n\t" \
-                     "If it completes later, an unexpected file could be saved to the data directory.\n\t" \
-                     "This could cause errors. Restart the software to be safe."
+        dialog_string = (
+            "Error: Operation timed out while waiting to save spectrum.\n\nIf it completes later,"
+            " an unexpected file could be saved to the data directory.\nThis could cause errors."
+            " Restart the software to be safe."
+        )
+        log_string = (
+            "Error: Operation timed out while waiting to save spectrum.\n\t"
+            "If it completes later, an unexpected file could be saved to the data directory.\n\t"
+            "This could cause errors. Restart the software to be safe."
+        )
         self.timeout(log_string=log_string, dialog_string=dialog_string, retry=True)
         self.wait_dialog.top.wm_geometry("680x173")
 

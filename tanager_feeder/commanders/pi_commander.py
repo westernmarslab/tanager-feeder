@@ -1,6 +1,7 @@
 from typing import List
 
 from tanager_feeder.commanders.commander import Commander
+from tanager_feeder.utils import MovementUnits
 
 
 class PiCommander(Commander):
@@ -8,7 +9,7 @@ class PiCommander(Commander):
         super().__init__(connection_tracker.pi_ip, listener)
         self.connection_tracker = connection_tracker
 
-    def configure(self, i, e, pos):
+    def configure(self, i: int, e: int, pos: str):
         self.remove_from_listener_queue(["piconfigsuccess"])
         filename = self.encrypt("configure", [i, e, pos])
         self.send(filename)
@@ -21,9 +22,9 @@ class PiCommander(Commander):
         return filename
 
     # We may specify either an incidence angle to move to, or a number of steps to move
-    def set_incidence(self, num, type="angle"):
+    def set_incidence(self, num: int, unit: str = MovementUnits.ANGLE.value):
         self.remove_from_listener_queue(["donemoving", "nopiconfig"])
-        if type == "angle":
+        if unit == MovementUnits.ANGLE.value:
             incidence = num
             filename = self.encrypt("moveincidence", [incidence])
         else:
@@ -33,9 +34,9 @@ class PiCommander(Commander):
         return filename
 
     # We may specify either an azimuth angle to move to, or a number of steps to move
-    def set_azimuth(self, num, type="angle"):
+    def set_azimuth(self, num: int, unit: str = MovementUnits.ANGLE.value):
         self.remove_from_listener_queue(["donemoving", "nopiconfig"])
-        if type == "angle":
+        if unit == MovementUnits.ANGLE.value:
             azimuth = num
             filename = self.encrypt("moveazimuth", [azimuth])
         else:
@@ -45,9 +46,9 @@ class PiCommander(Commander):
         return filename
 
     # We may specify either an emission angle to move to, or a number of steps to move
-    def set_emission(self, num, type="angle"):
+    def set_emission(self, num: int, unit: str = MovementUnits.ANGLE.value):
         self.remove_from_listener_queue(["donemoving", "nopiconfig"])
-        if type == "angle":
+        if unit == MovementUnits.ANGLE.value:
             emission = num
             filename = self.encrypt("moveemission", [emission])
         else:
@@ -58,9 +59,9 @@ class PiCommander(Commander):
 
     # pos can be either a sample position, or a number of motor steps.
 
-    def move_tray(self, pos, type):
+    def move_tray(self, pos: str, unit: str):
         self.remove_from_listener_queue(["donemoving"])
-        if type == "position":
+        if unit == MovementUnits.POSITION.value:
             positions = {
                 "wr": "wr",
                 "Sample 1": "one",
@@ -75,5 +76,5 @@ class PiCommander(Commander):
             filename = self.encrypt("movetray", [pos, "steps"])
         self.send(filename)
 
-    def send(self, filename):
+    def send(self, filename: str):
         return super().send(filename, self.connection_tracker.PI_PORT, self.connection_tracker.pi_offline)

@@ -1,6 +1,6 @@
 import time
-
 from tkinter import END
+from typing import List
 
 from tanager_feeder.command_handlers.command_handler import CommandHandler
 from tanager_feeder.dialogs.wait_dialog import WaitDialog
@@ -9,11 +9,15 @@ from tanager_feeder import utils
 
 class SaveConfigHandler(CommandHandler):
     def __init__(
-        self, controller, title="Setting Save Configuration...", label="Setting save configuration...", timeout=30
+        self,
+        controller,
+        title: str = "Setting Save Configuration...",
+        label: str = "Setting save configuration...",
+        timeout: int = 30,
     ):
         self.listener = controller.spec_listener
-        self.keep_around = False
-        self.unexpected_files = []
+        self.keep_around: bool = False
+        self.unexpected_files: List = []
         self.listener.new_dialogs = False
         super().__init__(controller, title, label=label, timeout=timeout)
 

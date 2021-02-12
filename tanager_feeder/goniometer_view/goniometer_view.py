@@ -500,7 +500,7 @@ class GoniometerView:
                 for sample in self.sample_names:
                     if w == self.wireframes[sample]:
                         draw = False
-                if w in (self.wireframes['tray'], self.wireframes['e_base'], self.wireframes['i_base']):
+                if w in (self.wireframes["tray"], self.wireframes["e_base"], self.wireframes["i_base"]):
                     draw = False
                 if draw:
                     draw_me.append(w)

@@ -1,4 +1,5 @@
 import time
+from typing import Optional
 
 from tanager_feeder.command_handlers.command_handler import CommandHandler
 from tanager_feeder import utils
@@ -8,12 +9,12 @@ class MotionHandler(CommandHandler):
     def __init__(
         self,
         controller,
-        title="Moving...",
-        label="Moving...",
-        timeout=90,
-        new_sample_loc="foo",
-        steps=False,
-        destination=None,
+        title: str = "Moving...",
+        label: str = "Moving...",
+        timeout: int = 90,
+        new_sample_loc: str = "foo",
+        steps: bool = False,
+        destination: Optional[str] = None,
     ):
         self.steps = steps
         self.listener = controller.pi_listener
@@ -44,7 +45,7 @@ class MotionHandler(CommandHandler):
 
         self.timeout()
 
-    def interrupt(self, label):
+    def interrupt(self, label: str):
         if label == "Failure moving...":
             if "incidence" in self.label:
                 super().interrupt("Error moving incidence.", retry=True)

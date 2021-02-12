@@ -46,8 +46,6 @@ def main():
 
     computer = "new"
 
-
-
     home_loc = os.path.expanduser("~")
 
     if opsys == "Linux":
@@ -120,8 +118,6 @@ def check_pi_connection(connection_tracker, config_info):
 def launch(connection_tracker, config_info):
     # Create a listener, which listens for commands, and a controller, which manages the model (which writes commands) and the view.
     Controller(connection_tracker, config_info)
-
-
 
 
 if __name__ == "__main__":

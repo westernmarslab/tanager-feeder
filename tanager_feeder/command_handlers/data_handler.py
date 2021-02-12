@@ -1,19 +1,21 @@
 import time
+from typing import Optional
 
 import shutil
 
 from tanager_feeder.command_handlers.command_handler import CommandHandler
 from tanager_feeder import utils
 
+
 class DataHandler(CommandHandler):
     def __init__(
         self,
         controller,
-        title="Transferring data...",
-        label="Tranferring data...",
-        source=None,
-        temp_destination=None,
-        final_destination=None,
+        title: str = "Transferring data...",
+        label: str = "Tranferring data...",
+        source: Optional[str] = None,
+        temp_destination: Optional[str] = None,
+        final_destination: Optional[str] = None,
     ):
         self.listener = controller.spec_listener
         super().__init__(controller, title, label, timeout=2 * utils.BUFFER)
@@ -39,8 +41,6 @@ class DataHandler(CommandHandler):
 
                     self.success()
                     return
-
-
 
             elif "datafailure" in self.listener.queue:
                 self.listener.queue.remove("datafailure")

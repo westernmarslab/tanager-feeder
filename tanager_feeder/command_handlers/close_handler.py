@@ -6,7 +6,7 @@ from tanager_feeder import utils
 
 class CloseHandler(CommandHandler):
     def __init__(
-        self, controller, title="Closing...", label="Setting to default geometry and closing...", buttons={"cancel": {}}
+        self, controller, title: str = "Closing...", label: str = "Setting to default geometry and closing..."
     ):
         self.listener = controller.pi_listener
         super().__init__(controller, title, label, timeout=90 + utils.BUFFER)
@@ -27,6 +27,6 @@ class CloseHandler(CommandHandler):
         self.controller.complete_queue_item()
         if len(self.controller.queue) == 0:
             self.interrupt("Finished. Ready to exit")
-            self.wait_dialog.set_buttons({"exit": {exit_func: []}})
+            self.wait_dialog.set_buttons({"exit": {utils.exit_func: []}})
         else:
             self.controller.next_in_queue()
