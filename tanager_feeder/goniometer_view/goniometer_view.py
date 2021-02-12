@@ -1,44 +1,34 @@
-
-
 import time
 
 from tkinter import ttk, Frame, BOTH
 import os
 import math
-from typing import Dict, List, Tuple, Union
+from typing import List, Tuple
 
 # I don't want pygame to print a welcome message when it loads.
 import contextlib
+
 with contextlib.redirect_stdout(None):
     import pygame
 import numpy as np
 
 from tanager_feeder.goniometer_view.wireframe import Wireframe
-from tanager_feeder.controller import Controller
 
 
 # Animated graphic of goniometer
 class GoniometerView:
-    def __init__(self, controller: Controller, notebook: ttk.Notebook):
-        self.movements = {"i": [], "e": [], "az": []}
-
-        self.width = 1800
-        self.height = 1200
+    def __init__(self, controller, notebook: ttk.Notebook):
         self.controller = controller
+
         self.master = self.controller.master
         self.notebook = notebook
-
-        self.collision = False
-        self.invalid = False
-
+        self.width: int = 1800
+        self.height: int = 1200
         self.embed = Frame(self.notebook, width=self.width, height=self.height)
         self.embed.pack(fill=BOTH, expand=True)
-
         self.double_embed = Frame(self.embed, width=self.width, height=self.height)
         self.double_embed.pack(fill=BOTH, expand=True)
-
         self.notebook.add(self.embed, text="Goniometer view")
-
         self.master.update()
 
         os.environ["SDL_WINDOWID"] = str(self.double_embed.winfo_id())
@@ -47,42 +37,43 @@ class GoniometerView:
         #             os.environ['SDL_VIDEODRIVER'] = 'windib'
         self.screen = pygame.display.set_mode((self.width, self.height))
 
-        self.light = pygame.Rect(30, 30, 60, 60)
+        self.display_info = {
+            "collision": False,
+            "show_nodes": False,
+            "show_edges": False,
+            "show_faces": True,
+            "node_color": (255, 255, 255),
+            "node_radius": 4,
+            "edge_color": (200, 200, 200),
+            "char_len": self.height,
+            "tilt": 0,  # tilt of entire goniometer
+        }
+        self.position = {
+            "motor_i": 20,
+            "science_i": 20,
+            "motor_az": 90,
+            "science_az": 90,
+            "motor_e": 0,
+            "science_e": 0,
+            "tray_angle": 0,
+            "current_sample": "WR",
+        }
 
-        self.d_up = False
-        self.l_up = False
-        self.current_sample = "WR"
-        self.tray_angle = 0
-
-        self.wireframes = {}
-        self.display_nodes = False
-        self.display_edges = False
-        self.display_faces = True
-        self.nodeColour = (255, 255, 255)
-        self.edge_color = (200, 200, 200)
-        self.node_radius = 4
-        self.char_len = self.height
-        self.sample_names = ["spectralon"]
+        self.sample_names = ["WR"]
         for i in range(1, 6):
             self.sample_names.append("Sample " + str(i))
+
+        self.wireframes = {}
         self.define_goniometer_wireframes()
         self.define_sample_tray_wireframes()
-
-        self.tilt = 0  # tilt of entire goniometer
-
-        self.motor_i = 20
-        self.science_i = 20
-        self.motor_az = 90
-        self.science_az = 90
-        self.science_e = 0
-        self.motor_e = 0
         self.define_az_guide_wireframes()
 
-        self.samples = ["WR", "Sample 1", "Sample 2", "Sample 3", "Sample 4", "Sample 5"]
         self.standard_delay = 0.0001
+        self.config_delay = 0.005
         pygame.init()
 
     def tab_switch(self, event) -> None:
+        # TODO: find type of event
         print("here is the event!")
         print(event)
         print(type(event))
@@ -102,13 +93,14 @@ class GoniometerView:
 
     def define_sample_tray_wireframes(self) -> None:
         tray_wireframe = Wireframe()
-        samples = Dict[str: Dict[str: Union[Tuple[int, int, int]], Wireframe, List]]
-        samples["spectralon"] = {"color": (200, 200, 200)}
-        samples["1"] = {"color": (120, 0, 20)}
-        samples["2"] = {"color": (120, 80, 0)}
-        samples["3"] = {"color": (80, 120, 0)}
-        samples["4"] = {"color": (0, 80, 120)}
-        samples["5"] = {"color": (20, 0, 120)}
+        samples = {
+            "WR": {"color": (200, 200, 200)},
+            "1": {"color": (120, 0, 20)},
+            "2": {"color": (120, 80, 0)},
+            "3": {"color": (80, 120, 0)},
+            "4": {"color": (0, 80, 120)},
+            "5": {"color": (20, 0, 120)},
+        }
 
         for sample_attribute_dictionary in samples.values():
             sample_attribute_dictionary["wireframe"] = Wireframe()
@@ -234,8 +226,8 @@ class GoniometerView:
         i_base_wireframe = Wireframe()
         e_base_wireframe = Wireframe()
 
-        i_base_nodes = self.draw_arc(0, math.pi*2)
-        e_base_nodes = self.draw_arc(0, math.pi*2)
+        i_base_nodes = self.draw_arc(0, math.pi * 2)
+        e_base_nodes = self.draw_arc(0, math.pi * 2)
 
         i_base_wireframe.add_nodes(i_base_nodes)
         e_base_wireframe.add_nodes(e_base_nodes)
@@ -395,8 +387,8 @@ class GoniometerView:
         science_az_guide_wireframe = Wireframe()
 
         first_angle = -1 * (self.wireframes["detector"].az - 90) * math.pi / 180
-        last_motor_angle = -1 * (self.wireframes["detector"].az + self.motor_az - 90) * math.pi / 180
-        last_science_angle = -1 * (self.wireframes["detector"].az + self.science_az - 90) * math.pi / 180
+        last_motor_angle = -1 * (self.wireframes["detector"].az + self.position["motor_az"] - 90) * math.pi / 180
+        last_science_angle = -1 * (self.wireframes["detector"].az + self.position["science_az"] - 90) * math.pi / 180
 
         motor_az_guide_nodes = self.draw_arc(first_angle, last_motor_angle)
         science_az_guide_nodes = self.draw_arc(first_angle, last_science_angle)
@@ -409,7 +401,7 @@ class GoniometerView:
             if n % 2 == 0:
                 motor_az_guide_faces.append((n, n + 1, n + 3, n + 2))
 
-        if self.motor_az >= 0:
+        if self.position["motor_az"] >= 0:
             motor_az_guide_wireframe.add_faces(motor_az_guide_faces, color=(100, 200, 255))
         else:
             motor_az_guide_wireframe.add_faces(motor_az_guide_faces, color=(255, 155, 255))
@@ -422,34 +414,28 @@ class GoniometerView:
 
         self.wireframes["motor az guide"] = motor_az_guide_wireframe
         self.wireframes["science az guide"] = science_az_guide_wireframe
-        motor_az_guide_wireframe.rotate_el(-1 * self.tilt)
-        science_az_guide_wireframe.rotate_el(-1 * self.tilt)
+        motor_az_guide_wireframe.rotate_el(-1 * self.display_info["tilt"])
+        science_az_guide_wireframe.rotate_el(-1 * self.display_info["tilt"])
 
     def draw_3D_goniometer(self, width: int, height: int) -> None:
-        # pylint: disable=function-naming-style
         self.width = width
         self.height = height
 
-        self.char_len = self.height  # characteristic length we use to scale drawings
+        self.display_info["char_len"] = self.height  # characteristic length we use to scale drawings
         if self.width - 120 < self.height:
-            self.char_len = self.width - 120
+            self.display_info["char_len"] = self.width - 120
 
         pivot = (int(self.width / 2) - 20, int(0.7 * self.height), 0)
 
-        i_radius = int(self.char_len / 2)  # 250
+        i_radius = int(self.display_info["char_len"] / 2)  # 250
         e_radius = int(i_radius * 0.75)
         tray_radius = i_radius * 0.25
 
-        if self.collision:
+        if self.display_info["collision"]:
             for face in self.wireframes["i"].faces:
                 face.color = (150, 50, 50)
             for face in self.wireframes["e"].faces:
                 face.color = (150, 50, 50)
-        elif self.invalid:
-            for face in self.wireframes["i"].faces:
-                face.color = (50, 50, 150)
-            for face in self.wireframes["e"].faces:
-                face.color = (50, 50, 150)
         else:
             for face in self.wireframes["i"].faces:
                 face.color = (80, 80, 80)
@@ -471,7 +457,6 @@ class GoniometerView:
         self.wireframes["e_base"].set_scale(e_radius)
         self.wireframes["detector"].set_scale(e_radius)
         self.wireframes["detector guide"].set_scale(e_radius)
-        # self.wireframes['spectralon'].set_scale(tray_radius)
 
         for sample in self.sample_names:
             self.wireframes[sample].set_scale(tray_radius)
@@ -484,18 +469,24 @@ class GoniometerView:
                 slopes.append(abs(edge.delta_y))
         for wireframe in self.wireframes.values():
             wireframe.move_to(pivot)
-            if self.display_edges:
+            if self.display_info["show_edges"]:
                 for edge in wireframe.edges:
                     slope = abs(edge.delta_y)
                     scale = 1 - slope / max(slopes)
                     shade = (100 + 100 * scale, 100 + 100 * scale, 100 + 100 * scale)
                     pygame.draw.line(self.screen, shade, (edge.start.x, edge.start.y), (edge.stop.x, edge.stop.y), 2)
 
-            if self.display_nodes:
+            if self.display_info["show_nodes"]:
                 for node in wireframe.nodes:
-                    pygame.draw.circle(self.screen, self.nodeColour, (int(node.x), int(node.y)), self.node_radius, 0)
+                    pygame.draw.circle(
+                        self.screen,
+                        self.display_info["node_color"],
+                        (int(node.x), int(node.y)),
+                        self.display_info["node_radius"],
+                        0,
+                    )
 
-        if self.display_faces:
+        if self.display_info["show_faces"]:
 
             self.draw_wireframes([self.wireframes["tray"]])
             draw_me = [self.wireframes["e_base"], self.wireframes["i_base"]]
@@ -509,19 +500,19 @@ class GoniometerView:
                 for sample in self.sample_names:
                     if w == self.wireframes[sample]:
                         draw = False
-                if w == self.wireframes["tray"] or w == self.wireframes["e_base"] or w == self.wireframes["i_base"]:
+                if w in (self.wireframes['tray'], self.wireframes['e_base'], self.wireframes['i_base']):
                     draw = False
                 if draw:
                     draw_me.append(w)
             self.draw_wireframes(draw_me)
             self.set_goniometer_tilt(20)
 
-            i_str = "i=" + str(int(self.science_i))
-            e_str = "e=" + str(int(self.science_e))
-            az_str = "az=" + str(int(self.science_az))
-            sample_str = self.current_sample
+            i_str = "i=" + str(self.position["science_i"])
+            e_str = "e=" + str(self.position["science_e"])
+            az_str = "az=" + str(self.position["science_az"])
+            sample_str = self.position["current_sample"]
 
-            text_size = np.max([int(self.char_len / 18), 20])
+            text_size = np.max([int(self.display_info["char_len"] / 18), 20])
             large_text = pygame.font.Font("freesansbold.ttf", text_size)
             sample_font = pygame.font.Font("freesansbold.ttf", int(0.75 * text_size))
             i_text = large_text.render(i_str, True, pygame.Color(self.controller.textcolor))
@@ -546,12 +537,12 @@ class GoniometerView:
             self.screen.blit(i_text, (x_l_text, y_l_text))
             self.screen.blit(e_text, (x_d_text, y_d_text))
             self.screen.blit(az_text, (x_az_text, y_az_text))
-            if self.current_sample == "WR":
+            if self.position["current_sample"] == "WR":
                 self.screen.blit(sample_text, (pivot[0] - int(0.7 * text_size), pivot[1] + int(1.2 * text_size)))
             else:
                 self.screen.blit(sample_text, (pivot[0] - int(1.2 * text_size), pivot[1] + int(1.2 * text_size)))
 
-    def draw_wireframes(self, wireframes: List[Wireframe]):
+    def draw_wireframes(self, wireframes: List[Wireframe]) -> None:
         faces_to_draw = []
         for wireframe in wireframes:
             faces_to_draw += wireframe.faces
@@ -575,57 +566,53 @@ class GoniometerView:
                 shade = (r, g, b)
             pygame.draw.polygon(self.screen, shade, [(node.x, node.y) for node in nodes], 0)
 
-    def set_goniometer_tilt(self, degrees: int):
-        diff = self.tilt - degrees
+    def set_goniometer_tilt(self, degrees: int) -> None:
+        diff = self.display_info["tilt"] - degrees
         for wireframe in self.wireframes.values():
             wireframe.rotate_el(diff)
-        self.tilt = degrees
+        self.display_info["tilt"] = degrees
 
     # draws the side view of the goniometer
-    def draw_side_view(self, width: int, height: int):
+    def draw_side_view(self, width: int, height: int) -> None:
         self.draw_3D_goniometer(width, height)
-        return
 
     def check_collision(self, i: int, e: int, az: int) -> None:
-        self.collision = self.controller.check_if_good_measurement(i, e, az)
+        self.display_info["collision"] = self.controller.check_if_good_measurement(i, e, az)
 
     def set_incidence(self, motor_i: int, config: bool = False) -> None:
-        self.movements["i"].append(np.abs(self.motor_i - motor_i))
-
         def next_pos(delta_theta):
-            self.motor_i = self.motor_i + delta_theta
-            if 0 <= self.motor_az < 180:
-                self.science_i = self.motor_i
+            self.position["motor_i"] = self.position["motor_i"] + delta_theta
+            if 0 <= self.position["motor_az"] < 180:
+                self.position["science_i"] = self.position["motor_i"]
             else:
-                self.science_i = -1 * self.motor_i
+                self.position["science_i"] = -1 * self.position["motor_i"]
 
             if not config:
                 time.sleep(self.standard_delay)
             else:
-                time.sleep(0.005)
+                time.sleep(self.config_delay)
 
             self.set_goniometer_tilt(0)
 
-            self.wireframes["i"].set_elevation(self.motor_i)
-            self.wireframes["light"].set_elevation(self.motor_i)
-            self.wireframes["light guide"].set_elevation(self.motor_i)
+            self.wireframes["i"].set_elevation(self.position["motor_i"])
+            self.wireframes["light"].set_elevation(self.position["motor_i"])
+            self.wireframes["light guide"].set_elevation(self.position["motor_i"])
 
-            self.check_collision(self.science_i, self.science_e, self.science_az)
+            self.check_collision(self.position["science_i"], self.position["science_e"], self.position["science_az"])
 
             self.set_goniometer_tilt(20)
             self.draw_3D_goniometer(self.width, self.height)
             self.flip()
 
-        next_delta_theta = -1 * 5 * np.sign(self.motor_i - motor_i)
-        while np.abs(self.motor_i - motor_i) >= 5:
+        next_delta_theta = -1 * 5 * np.sign(self.position["motor_i"] - motor_i)
+        while np.abs(self.position["motor_i"] - motor_i) >= 5:
             next_pos(next_delta_theta)
 
-        next_delta_theta = -1 * np.sign(self.motor_i - motor_i)
-        while np.abs(self.motor_i - motor_i) >= 1:
+        next_delta_theta = -1 * np.sign(self.position["motor_i"] - motor_i)
+        while np.abs(self.position["motor_i"] - motor_i) >= 1:
             next_pos(next_delta_theta)
 
     def set_azimuth(self, motor_az: int, config: bool = False) -> None:
-        self.movements["az"].append(np.abs(self.motor_az - motor_az))
         if motor_az > self.controller.max_motor_az or motor_az < self.controller.min_motor_az:
             raise Exception("MOTOR AZ OUTSIDE RANGE: " + str(motor_az))
 
@@ -635,45 +622,45 @@ class GoniometerView:
             if not config:
                 time.sleep(self.standard_delay)
             else:
-                time.sleep(0.005)
+                time.sleep(self.config_delay)
 
             self.set_goniometer_tilt(0)
             self.wireframes["i"].set_azimuth(next_drawing_az)
             self.wireframes["light"].set_azimuth(next_drawing_az)
             self.wireframes["light guide"].set_azimuth(next_drawing_az)
             self.set_goniometer_tilt(20)
-            self.motor_az = self.wireframes["i"].az - self.wireframes["e"].az
-            if 0 <= self.motor_az < 180:
-                self.science_az = self.motor_az
-                self.science_i = self.motor_i
-            elif self.motor_az >= 180:
-                self.science_az = self.motor_az - 180
-                self.science_i = -1 * self.motor_i
-            elif self.motor_az < 0:
-                self.science_az = self.motor_az + 180
-                self.science_i = -1 * self.motor_i
+            self.position["motor_az"] = self.wireframes["i"].az - self.wireframes["e"].az
+            if 0 <= self.position["motor_az"] < 180:
+                self.position["science_az"] = self.position["motor_az"]
+                self.position["science_i"] = self.position["motor_i"]
+            elif self.position["motor_az"] >= 180:
+                self.position["science_az"] = self.position["motor_az"] - 180
+                self.position["science_i"] = -1 * self.position["motor_i"]
+            elif self.position["motor_az"] < 0:
+                self.position["science_az"] = self.position["motor_az"] + 180
+                self.position["science_i"] = -1 * self.position["motor_i"]
 
-            self.check_collision(self.science_i, self.science_e, self.science_az)
+            self.check_collision(self.position["science_i"], self.position["science_e"], self.position["science_az"])
             self.define_az_guide_wireframes()
             self.draw_3D_goniometer(self.width, self.height)
             self.flip()
 
-        next_delta_theta = 5 * np.sign(motor_az - self.motor_az)
-        while np.abs(motor_az - self.motor_az) >= 5:
+        next_delta_theta = 5 * np.sign(motor_az - self.position["motor_az"])
+        while np.abs(motor_az - self.position["motor_az"]) >= 5:
             next_pos(next_delta_theta)
 
-        next_delta_theta = np.sign(motor_az - self.motor_az)
-        while np.abs(motor_az - self.motor_az) >= 0.5:
+        next_delta_theta = np.sign(motor_az - self.position["motor_az"])
+        while np.abs(motor_az - self.position["motor_az"]) >= 0.5:
             next_pos(next_delta_theta)
 
     def set_current_sample(self, sample: str) -> None:
-        if self.current_sample == "wr":
-            self.current_sample = "WR"
+        if self.position["current_sample"] == "wr":
+            self.position["current_sample"] = "WR"
         if sample == "wr":
             sample = "WR"
-        current_degrees = self.samples.index(self.current_sample) * 60
-        self.current_sample = sample
-        next_degrees = self.samples.index(sample) * 60
+        current_degrees = self.sample_names.index(self.position["current_sample"]) * 60
+        self.position["current_sample"] = sample
+        next_degrees = self.sample_names.index(sample) * 60
 
         delta_theta = np.sign(next_degrees - current_degrees) * 10
         degrees_moved = 0
@@ -685,46 +672,44 @@ class GoniometerView:
             self.flip()
 
     def set_emission(self, motor_e: int, config: bool = False) -> None:
-        self.movements["e"].append(np.abs(self.motor_e - motor_e))
-
         def next_pos(delta_theta: int) -> None:
-            self.motor_e = self.motor_e + delta_theta
-            self.science_e = self.science_e + delta_theta
+            self.position["motor_e"] = self.position["motor_e"] + delta_theta
+            self.position["science_e"] = self.position["science_e"] + delta_theta
             if not config:
                 time.sleep(self.standard_delay)
             else:
-                time.sleep(0.005)
+                time.sleep(self.config_delay)
 
             self.set_goniometer_tilt(0)
-            self.wireframes["e"].set_elevation(self.motor_e)
-            self.wireframes["detector"].set_elevation(self.motor_e)
-            self.wireframes["detector guide"].set_elevation(self.motor_e)
+            self.wireframes["e"].set_elevation(self.position["motor_e"])
+            self.wireframes["detector"].set_elevation(self.position["motor_e"])
+            self.wireframes["detector guide"].set_elevation(self.position["motor_e"])
 
-            self.check_collision(self.science_i, self.science_e, self.science_az)
+            self.check_collision(self.position["science_i"], self.position["science_e"], self.position["science_az"])
 
             self.set_goniometer_tilt(20)
             self.draw_3D_goniometer(self.width, self.height)
             self.flip()
 
-        next_delta_theta = 5 * np.sign(motor_e - self.motor_e)
-        while np.abs(motor_e - self.motor_e) >= 5:
+        next_delta_theta = 5 * np.sign(motor_e - self.position["motor_e"])
+        while np.abs(motor_e - self.position["motor_e"]) >= 5:
             next_pos(next_delta_theta)
 
-        next_delta_theta = np.sign(motor_e - self.motor_e)
-        while np.abs(motor_e - self.motor_e) >= 1:
+        next_delta_theta = np.sign(motor_e - self.position["motor_e"])
+        while np.abs(motor_e - self.position["motor_e"]) >= 1:
             next_pos(next_delta_theta)
 
     def rotate_tray(self, degrees: float) -> None:
-        tilt = self.tilt
+        tilt = self.display_info["tilt"]
         self.set_goniometer_tilt(0)
         for sample in self.sample_names:
             self.wireframes[sample].rotate_az(degrees)
         self.set_goniometer_tilt(tilt)
 
     def set_tray_position(self, theta: float) -> None:
-        diff = self.tray_angle - theta
+        diff = self.position["tray_angle"] - theta
         self.rotate_tray(diff)
-        self.tray_angle = theta
+        self.position["tray_angle"] = theta
 
     @staticmethod
     def quit():

@@ -1,6 +1,6 @@
 # see reference: http://www.petercollingridge.co.uk/tutorials/3d/pygame/nodes-and-edges/
 import math
-from typing import Dict, Tuple
+from typing import Dict, Tuple, cast
 
 from tanager_feeder.goniometer_view.wireframe_components import Node, Edge, Face
 
@@ -16,7 +16,7 @@ class Wireframe:
         self.el = 0
         self.home_azimuth = 90  # used for rotating
 
-    def set_center(self, center: Dict[str: Tuple[int, int, int]]):
+    def set_center(self, center: Dict[str : Tuple[int, int, int]]):
         self.center = center
 
     def set_rotation_center(self, center):
@@ -48,13 +48,6 @@ class Wireframe:
             print(" %d: (%.2f, %.2f, %.2f)" % (i, edge.start.x, edge.start.y, edge.start.z))
             print("to (%.2f, %.2f, %.2f)" % (edge.stop.x, edge.stop.y, edge.stop.z))
 
-    def scale(self, scale):
-        # Scale the wireframe from the centre of the screen.
-        for node in self.nodes:
-            node.x = self.center["scale"][0] + scale * (node.x - self.center["scale"][0])
-            node.y = self.center["scale"][1] + scale * (node.y - self.center["scale"][1])
-            node.z *= scale
-
     def translate(self, axis, d):
         # Translate each node of a wireframe by d along a given axis.
         if axis in ["x", "y", "z"]:
@@ -62,15 +55,16 @@ class Wireframe:
                 setattr(node, axis, getattr(node, axis) + d)
 
     def move_to(self, center: Tuple[int, int, int]):
-        diff = Dict[str: int]
-        diff["x"] = center[0] - self.center["translate"][0]
-        diff["y"] = center[1] - self.center["translate"][1]
-        diff["z"] = center[2] - self.center["translate"][2]
+        diff = {
+            "x": center[0] - self.center["translate"][0],
+            "y": center[1] - self.center["translate"][1],
+            "z": center[2] - self.center["translate"][2],
+        }
         for node in self.nodes:
             for axis in ["x", "y", "z"]:
                 setattr(node, axis, getattr(node, axis) + diff[axis])
         self.center["translate"] = center
-        rotate = Tuple[int, int, int]
+        rotate: Tuple = ()
         for i, val in enumerate(diff.values()):
             rotate += (self.center["rotate"][i] + val,)
         self.center["rotate"] = rotate
@@ -81,13 +75,13 @@ class Wireframe:
             node.x = self.center["scale"][0] + diff * (node.x - self.center["scale"][0])
             node.y = self.center["scale"][1] + diff * (node.y - self.center["scale"][1])
             node.z = self.center["scale"][2] + diff * (node.z - self.center["scale"][2])
-        rotate = Tuple[int, int, int]
-        translate = Tuple[int, int, int]
+        rotate = ()
+        translate = ()
         for i in range(0, 3):
             rotate += (self.center["rotate"][i] * diff,)
             translate += (self.center["translate"][i] * diff,)
-        self.center["rotate"] = rotate
-        self.center["translate"] = translate
+        self.center["rotate"] = cast(Tuple[int, int, int], rotate)
+        self.center["translate"] = cast(Tuple[int, int, int], translate)
         self.scale = scale
 
     def rotate_az(self, degrees):

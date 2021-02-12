@@ -18,8 +18,8 @@ class CloseHandler(CommandHandler):
                 self.success()
                 return
 
-            time.sleep(INTERVAL)
-            self.timeout_s -= INTERVAL
+            time.sleep(utils.INTERVAL)
+            self.timeout_s -= utils.INTERVAL
 
         self.timeout()
 

@@ -1,4 +1,10 @@
+import time
+
+from tkinter import END
+
 from tanager_feeder.command_handlers.command_handler import CommandHandler
+from tanager_feeder.dialogs.wait_dialog import WaitDialog
+from tanager_feeder import utils
 
 
 class SaveConfigHandler(CommandHandler):
@@ -14,8 +20,8 @@ class SaveConfigHandler(CommandHandler):
     def wait(self):
         t = 30
         while "donelookingforunexpected" not in self.listener.queue and t > 0:
-            t = t - INTERVAL
-            time.sleep(INTERVAL)
+            t = t - utils.INTERVAL
+            time.sleep(utils.INTERVAL)
         if t <= 0:
             self.timeout()
             return
@@ -29,14 +35,14 @@ class SaveConfigHandler(CommandHandler):
         self.listener.queue.remove("donelookingforunexpected")
 
         while self.timeout_s > 0:
-            self.timeout_s -= INTERVAL
+            self.timeout_s -= utils.INTERVAL
             if "saveconfigsuccess" in self.listener.queue:
 
                 self.listener.queue.remove("saveconfigsuccess")
                 self.success()
                 return
 
-            elif "saveconfigfailedfileexists" in self.listener.queue:
+            if "saveconfigfailedfileexists" in self.listener.queue:
 
                 self.listener.queue.remove("saveconfigfailedfileexists")
                 self.interrupt("Error: File exists.\nDo you want to overwrite this data?")
@@ -45,7 +51,7 @@ class SaveConfigHandler(CommandHandler):
                     # self.wait_dialog.top.destroy()
                     self.remove_retry(need_new=False)  # No need for new wait dialog
 
-                elif self.controller.manual_automatic.get() == 0 and self.controller.script_running == False:
+                elif self.controller.manual_automatic.get() == 0 and not self.controller.script_running:
                     self.interrupt("Error: File exists.\nDo you want to overwrite this data?")
                     buttons = {"yes": {self.remove_retry: []}, "no": {self.finish: []}}
 
@@ -63,10 +69,11 @@ class SaveConfigHandler(CommandHandler):
                 self.wait_dialog.top.geometry("%dx%d%+d%+d" % (376, 175, 107, 69))
                 return
 
-            elif "saveconfigfailed" in self.listener.queue:
+            if "saveconfigfailed" in self.listener.queue:
                 self.listener.queue.remove("saveconfigfailed")
                 self.interrupt(
-                    "Error: There was a problem setting the save configuration.\nIs the spectrometer connected?\nIs the spectrometer computer awake and unlocked?",
+                    "Error: There was a problem setting the save configuration.\nIs the spectrometer connected?\n"
+                    "Is the spectrometer computer awake and unlocked?",
                     retry=True,
                 )
                 self.controller.log("Error: There was a problem setting the save configuration.")
@@ -76,10 +83,11 @@ class SaveConfigHandler(CommandHandler):
 
                 return
 
-            elif "saveconfigerror" in self.listener.queue:
+            if "saveconfigerror" in self.listener.queue:
                 self.listener.queue.remove("saveconfigerror")
                 self.interrupt(
-                    "Error: There was a problem setting the save configuration.\n\nIs the spectrometer connected?\nIs the spectrometer computer awake and unlocked?",
+                    "Error: There was a problem setting the save configuration.\n\nIs the spectrometer connected?\n"
+                    "Is the spectrometer computer awake and unlocked?",
                     retry=True,
                 )
                 self.controller.log("Error: There was a problem setting the save configuration.")
@@ -89,18 +97,16 @@ class SaveConfigHandler(CommandHandler):
 
                 return
 
-            time.sleep(INTERVAL)
+            time.sleep(utils.INTERVAL)
 
         self.timeout(log_string="Error: Operation timed out while waiting to set save configuration.")
 
     def success(self):
-
         self.controller.spec_save_path = self.controller.spec_save_dir_entry.get()
         self.controller.spec_basename = self.controller.spec_basename_entry.get()
         spec_num = self.controller.spec_startnum_entry.get()
         self.controller.spec_num = int(spec_num)
 
-        self.allow_exit = True
         self.controller.log(
             "Save configuration set.\n\tDirectory: "
             + self.controller.spec_save_dir_entry.get()
@@ -115,12 +121,15 @@ class SaveConfigHandler(CommandHandler):
             dialog = WaitDialog(self.controller, title="Warning: Untracked Files", buttons={"ok": []})
             dialog.top.geometry("400x300")
             dialog.interrupt(
-                "There are untracked files in the\ndata directory. Do these belong here?\n\nIf the directory already contains an AutoSpec\nlog file, metadata will be appended to that file."
+                "There are untracked files in the\n"
+                "data directory. Do these belong here?\n\n"
+                "If the directory already contains a Tanager\n"
+                "log file, metadata will be appended to that file."
             )
 
             self.controller.log("Untracked files in data directory:\n\t" + "\n\t".join(self.unexpected_files))
 
-            listbox = ScrollableListbox(
+            listbox = utils.ScrollableListbox(
                 dialog.top,
                 self.wait_dialog.bg,
                 self.wait_dialog.entry_background,
@@ -131,4 +140,4 @@ class SaveConfigHandler(CommandHandler):
 
             listbox.config(height=1)
 
-        super(SaveConfigHandler, self).success()
+        super().success()

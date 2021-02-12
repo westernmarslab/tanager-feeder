@@ -1,27 +1,33 @@
 from threading import Thread
 import time
 
+import playsound
+
+from tanager_feeder.dialogs.error_dialog import ErrorDialog
 from tanager_feeder.dialogs.wait_dialog import WaitDialog
 
 
 class CommandHandler:
-    def __init__(self, controller, title="Working...", label="Working...", buttons={}, timeout=30):
+    def __init__(self, controller, title="Working...", label="Working...", buttons=None, timeout=30):
+        if buttons is None:
+            buttons = {}
         self.controller = controller
         self.text_only = self.controller.text_only
         self.label = label
         self.title = title
         # Either update the existing wait dialog, or make a new one.
-        if label == "test":
-            print("testy test!")
         try:
             self.controller.wait_dialog.reset(title=title, label=label, buttons=buttons)
-        except:
+        # pylint: disable = broad-except
+        except Exception as e:
+            print(e)
+            # TODO: figure out what kind of exception happens if there is no wait dialog.
             self.controller.wait_dialog = WaitDialog(controller, title, label)
         self.wait_dialog = self.controller.wait_dialog
         self.controller.freeze()
 
         if len(self.controller.queue) > 1:
-            buttons = {"pause": {self.pause: []}, "cancel_queue": {self.cancel: []}}
+            buttons = {"pause": {self.pause_function: []}, "cancel_queue": {self.cancel_function: []}}
             self.wait_dialog.set_buttons(buttons)
         else:
             self.wait_dialog.top.geometry("%dx%d%+d%+d" % (376, 130, 107, 69))
@@ -34,10 +40,12 @@ class CommandHandler:
         self.pause = False
         self.cancel = False
 
-        # A Listener object is always running a loop in a separate thread. It  listens for files dropped into a command folder and changes its attributes based on what it finds.
+        # A Listener object is always running a loop in a separate thread. It  listens for files dropped into a
+        # command folder and changes its attributes based on what it finds.
         self.timeout_s = timeout
 
-        # Start the wait function, which will watch the listener to see what attributes change and react accordingly. If this isn't in its own thread, the dialog box doesn't pop up until after it completes.
+        # Start the wait function, which will watch the listener to see what attributes change and react accordingly.
+        # If this isn't in its own thread, the dialog box doesn't pop up until after it completes.
         self.thread = Thread(target=self.wait)
         self.thread.start()
 
@@ -59,9 +67,8 @@ class CommandHandler:
 
     def timeout(self, log_string=None, retry=True, dialog=True, dialog_string="Error: Operation timed out"):
         if self.text_only:
-            # self.cmd_complete=True
-            self.script_failed = True
-        if log_string == None:
+            self.controller.script_failed = True
+        if log_string is None:
             self.controller.log("Error: Operation timed out")
         else:
             self.controller.log(log_string)
@@ -75,27 +82,29 @@ class CommandHandler:
         self.controller.reset()
         self.wait_dialog.close()
 
-    def pause(self):
+    def pause_function(self):
         self.pause = True
         self.wait_dialog.label = "Pausing after command completes..."
 
-    def cancel(self):
+    def cancel_function(self):
         self.cancel = True
         self.controller.reset()
         self.wait_dialog.label = "Canceling..."
 
     def interrupt(self, label, info_string=None, retry=False):
-        self.allow_exit = True
         self.wait_dialog.interrupt(label)
         if info_string != None:
-            self.log(info_string)
+            self.controller.log(info_string)
         if retry:
             buttons = {"retry": {self.controller.next_in_queue: []}, "cancel": {self.finish: []}}
             self.wait_dialog.set_buttons(buttons)
         self.controller.freeze()
         try:
             self.wait_dialog.ok_button.focus_set()
-        except:
+        # pylint: disable=broad-except
+        except Exception as e:
+            # TODO: figure out type of exception.
+            print(e)
             self.wait_dialog.top.focus_set()
 
         if self.controller.audio_signals:
@@ -112,7 +121,7 @@ class CommandHandler:
             numstr = str(self.controller.spec_num)
             if numstr == "None":
                 numstr = self.controller.spec_startnum_entry.get()
-            while len(numstr) < NUMLEN:
+            while len(numstr) < utils.NUMLEN:
                 numstr = "0" + numstr
             self.controller.log(
                 "Warning: overwriting "
@@ -132,16 +141,15 @@ class CommandHandler:
                 self.controller.queue[0] = {self.controller.wr: [True, True]}
             self.controller.next_in_queue()
         else:
-            dialog = ErrorDialog(
+            ErrorDialog(
                 self.controller,
-                label="Error: Failed to remove file. Choose a different base name,\nspectrum number, or save directory and try again.",
+                label="Error: Failed to remove file. Choose a different base name,\nspectrum number, or save"
+                 " directory and try again.",
             )
-            # self.wait_dialog.set_buttons({'ok':{}})
 
     def success(self, close=True):
         try:
             self.controller.complete_queue_item()
-
         except Exception as e:
             print(e)
             print("canceled by user?")
@@ -155,7 +163,6 @@ class CommandHandler:
             self.interrupt("Paused.")
             self.wait_dialog.set_buttons(buttons)
         elif len(self.controller.queue) > 0:
-            print("QUEUE HERE!")
             print(self.controller.queue)
             self.controller.next_in_queue()
         elif self.controller.script_running:

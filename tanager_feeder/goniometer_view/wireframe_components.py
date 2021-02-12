@@ -1,4 +1,6 @@
 # see reference: http://www.petercollingridge.co.uk/tutorials/3d/pygame/nodes-and-edges/
+import numpy as np
+
 
 class Node:
     def __init__(self, coordinates):
@@ -37,7 +39,8 @@ class Face:
         return normal
 
     def set_normal(self, val):
-        return None
+        # pylint: disable=unused-argument, no-self-use
+        raise Exception("Cannot set normal")
 
     def get_min_z(self):
         z_vals = []
@@ -46,7 +49,8 @@ class Face:
         return min(z_vals)
 
     def set_min_z(self, val):
-        return None
+        # pylint: disable=unused-argument, no-self-use
+        raise Exception("Cannot set max z")
 
     def get_max_z(self):
         z_vals = []
@@ -55,7 +59,8 @@ class Face:
         return max(z_vals)
 
     def set_max_z(self, val):
-        return None
+        # pylint: disable=unused-argument, no-self-use
+        raise Exception("Cannot set max z")
 
     normal = property(get_normal, set_normal)
     min_z = property(get_min_z, set_min_z)

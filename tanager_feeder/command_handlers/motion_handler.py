@@ -10,7 +10,6 @@ class MotionHandler(CommandHandler):
         controller,
         title="Moving...",
         label="Moving...",
-        buttons={"cancel": {}},
         timeout=90,
         new_sample_loc="foo",
         steps=False,
@@ -23,19 +22,18 @@ class MotionHandler(CommandHandler):
         super().__init__(controller, title, label, timeout=timeout)
 
     def wait(self):
-        print(self.listener)
         while self.timeout_s > 0:
             for item in self.listener.queue:
                 if "donemoving" in item:
-                    print("DONE MOVING!")
                     self.listener.queue.remove(item)
                     self.success()
                     return
-                elif "failuremoving" in item:
+                if "failuremoving" in item:
                     self.listener.queue.remove(item)
                     self.interrupt("Failure moving...")
                     return
             if "nopiconfig" in self.listener.queue:
+                # TODO: Manange nopiconfig (maybe take it out).
                 print("nopiconfig")
                 self.listener.queue.remove("nopiconfig")
                 self.controller.set_manual_automatic(force=0)
@@ -60,45 +58,30 @@ class MotionHandler(CommandHandler):
             super().interrupt(label)
 
     def success(self):
-        print("SUCCESS!")
         if "emission" in self.label:
-            print("emission!")
             self.controller.angles_change_time = time.time()
-            self.controller.motor_e = self.destination
-            try:
-                self.controller.log(
-                    "Goniometer moved to an emission angle of " + str(self.controller.science_e) + " degrees."
-                )
-            except:
-                self.controller.log("Emission set")
+            self.controller.science_e = self.destination
+            self.controller.log(
+                "Goniometer moved to an emission angle of " + str(self.controller.science_e) + " degrees."
+            )
+
         elif "incidence" in self.label:
             self.controller.angles_change_time = time.time()
-            self.controller.motor_i = self.destination
-            try:
-                self.controller.log(
-                    "Goniometer moved to an incidence angle of " + str(self.controller.science_i) + " degrees."
-                )
-            except:
-                self.controller.log("Incidence set")
+            self.controller.science_i = self.destination
+            self.controller.log(
+                "Goniometer moved to an incidence angle of " + str(self.controller.science_i) + " degrees."
+            )
 
         elif "azimuth" in self.label:
             self.controller.angles_change_time = time.time()
-            self.controller.motor_az = self.destination
-            try:
-                self.controller.log(
-                    "Goniometer moved to an azimuth angle of " + str(self.controller.science_az) + " degrees."
-                )
-            except:
-                self.controller.log("Azimuth set")
+            self.controller.science_az = self.destination
+            self.controller.log(
+                "Goniometer moved to an azimuth angle of " + str(self.controller.science_az) + " degrees."
+            )
 
         elif "tray" in self.label:
-            try:
-                x = (
-                    self.steps
-                )  # For some reason sometimes get an error saying MotionHandler has no attribute self.steps
-            except:
-                self.steps = False
-            if self.steps == False:  # If we're specifying a position, not a number of motor steps
+
+            if not self.steps:  # If we're specifying a position, not a number of motor steps
                 self.controller.log("Sample tray moved to " + str(self.new_sample_loc) + " position.")
                 try:
                     self.controller.sample_tray_index = self.controller.available_sample_positions.index(
@@ -107,8 +90,9 @@ class MotionHandler(CommandHandler):
                     self.controller.goniometer_view.set_current_sample(
                         self.controller.available_sample_positions[self.controller.sample_tray_index]
                     )
-
+                # pylint: disable=bare-except
                 except:
+                    # TODO: figure out what kind of exception this would be and why we'd catch it.
                     self.controller.sample_tray_index = -1  # White reference
                     self.controller.goniometer_view.set_current_sample("WR")
                 samples_in_gui_order = []
@@ -118,12 +102,16 @@ class MotionHandler(CommandHandler):
                 try:
                     i = samples_in_gui_order.index(self.new_sample_loc)
                     self.controller.current_sample_gui_index = i
+                # pylint: disable=bare-except
                 except:
+                    # TODO: figure out what kind of exception this would be and why we'd catch it.
+
                     self.controller.current_sample_gui_index = 0
                 self.controller.current_label = self.controller.sample_label_entries[
                     self.controller.current_sample_gui_index
                 ].get()
-            else:  # If we specified steps, don't change the tray index, but still tell the goniometer view to change back from 'Moving'
+            else:  # If we specified steps, don't change the tray index, but still tell the goniometer view
+                # to change back from 'Moving'
                 if self.controller.sample_tray_index > -1:
                     self.controller.goniometer_view.set_current_sample(
                         self.controller.available_sample_positions[self.controller.sample_tray_index]

@@ -46,17 +46,7 @@ def main():
 
     computer = "new"
 
-    NUMLEN = None  # number of digits in the raw data filename. Could change from one version of software to next.
-    if computer == "old":
-        # Number of digits in spectrum number for spec save config
-        NUMLEN = 3
-    elif computer == "desktop":
-        # Number of digits in spectrum number for spec save config
-        NUMLEN = 5
-        # Time added to timeouts to account for time to read/write files
-    elif computer == "new":
-        # Number of digits in spectrum number for spec save config
-        NUMLEN = 5
+
 
     home_loc = os.path.expanduser("~")
 
