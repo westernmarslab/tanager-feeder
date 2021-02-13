@@ -2,6 +2,7 @@
 # It opens a Tkinter GUI with options for instrument control parameters and sample configuration
 # The user can use the GUI to operate the goniometer motors and the spectrometer software.
 
+import ctypes
 import os
 import platform
 import sys
@@ -15,7 +16,7 @@ from tanager_feeder.connection_checkers.spec_connection_checker import SpecConne
 def main():
     # Figure out where this file is hanging out and tell python to look there for custom modules. This will depend on
     # what operating system you are using.
-    opsys = platform.system()
+    opsys: str = platform.system()
     if opsys == "Darwin":
         opsys = "Mac"  # For some reason Macs identify themselves as Darwin. I don't know why but I think this is more
         # intuitive.
@@ -44,13 +45,9 @@ def main():
 
     sys.path.append(package_loc)
 
-    computer = "new"
-
     home_loc = os.path.expanduser("~")
 
     if opsys == "Linux":
-        import ctypes
-
         x11 = ctypes.cdll.LoadLibrary("libX11.so")
         x11.XInitThreads()
 
@@ -86,13 +83,14 @@ def main():
         connection_tracker = utils.ConnectionTracker()
 
     icon_loc = package_loc + "exception"  # eventually someone should make this icon thing work. I haven't!
-    config_info = utils.ConfigInfo(local_config_loc, global_config_loc, icon_loc, NUMLEN, opsys)
+    config_info = utils.ConfigInfo(local_config_loc, global_config_loc, icon_loc, utils.NUMLEN, opsys)
 
     check_spec_connection(connection_tracker, config_info)
 
 
 def check_spec_connection(connection_tracker, config_info):
-    # Check if you are connected to the server. If not, put up dialog box and wait. If you are connected, go on to checking pi connection.
+    # Check if you are connected to the server. If not, put up dialog box and wait. If you are connected,
+    # go on to checking pi connection.
     spec_connection_checker = SpecConnectionChecker(
         connection_tracker, config_info, func=check_pi_connection, args=[connection_tracker, config_info]
     )
@@ -116,7 +114,8 @@ def check_pi_connection(connection_tracker, config_info):
 
 
 def launch(connection_tracker, config_info):
-    # Create a listener, which listens for commands, and a controller, which manages the model (which writes commands) and the view.
+    # Create a listener, which listens for commands, and a controller, which manages the model (which writes commands)
+    # and the view.
     Controller(connection_tracker, config_info)
 
 

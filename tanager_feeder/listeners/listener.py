@@ -1,11 +1,15 @@
 from threading import Thread
 import time
 
+from tanager_feeder import utils
+from tanager_feeder.connection_checkers.connection_checker import ConnectionChecker
+
 
 class Listener(Thread):
-    def __init__(self, connection_tracker, config_info, test=False):
+    def __init__(self, connection_tracker: utils.ConnectionTracker, connection_checker: ConnectionChecker):
         Thread.__init__(self)
         self.connection_tracker = connection_tracker
+        self.connection_checker = connection_checker
         self.controller = None
         self.queue = []
 
@@ -13,12 +17,11 @@ class Listener(Thread):
         i = 0
         while True:
             if not self.connection_tracker.offline and i % 20 == 0:
-                connection = self.connection_checker.check_connection(timeout=8)
-
+                self.connection_checker.check_connection(timeout=8)
             else:
                 self.listen()
             i += 1
-            time.sleep(INTERVAL)
+            time.sleep(utils.INTERVAL)
 
     def listen(self):
         pass

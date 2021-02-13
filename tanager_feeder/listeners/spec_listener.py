@@ -1,24 +1,27 @@
 from threading import Thread
 import time
 
-from tanager_feeder.listeners.listener import Listener
-from tanager_feeder import utils
-from tanager_feeder.connection_checkers.spec_connection_checker import SpecConnectionChecker
 from tanager_tcp import TanagerClient
 from tanager_tcp import TanagerServer
 
+from tanager_feeder.listeners.listener import Listener
+from tanager_feeder import utils
+from tanager_feeder.connection_checkers.spec_connection_checker import SpecConnectionChecker
+from tanager_feeder.dialogs.error_dialog import ErrorDialog
+
 
 class SpecListener(Listener):
-    def __init__(self, connection_tracker, config_info):
-        super().__init__(connection_tracker, config_info)
-        self.connection_checker = SpecConnectionChecker(connection_tracker, config_info, func=self.listen)
+    def __init__(self, connection_tracker: utils.ConnectionTracker, config_info: utils.ConfigInfo):
+        connection_checker = SpecConnectionChecker(connection_tracker, config_info, func=self.listen)
+        super().__init__(connection_tracker, connection_checker)
         self.unexpected_files = []
         self.wait_for_unexpected_count = 0
         self.alert_lostconnection = True
         self.new_dialogs = True
         self.local_server = TanagerServer(port=self.connection_tracker.SPEC_PORT)
         if not self.connection_tracker.spec_offline:
-            client = TanagerClient(
+            # TODO: don't make a new client each time
+            TanagerClient(
                 (self.connection_tracker.spec_ip, 12345),
                 "setcontrolserveraddress&"
                 + self.local_server.server_address[0]
@@ -30,14 +33,15 @@ class SpecListener(Listener):
         thread.start()
 
     def set_control_address(self):
-        client = TanagerClient(
-            (spec_server_ip, 12345),
+        TanagerClient(
+            (self.connection_tracker.spec_ip, 12345),
             "setcontrolserveraddress&"
             + self.local_server.server_address[0]
             + "&"
             + str(self.connection_tracker.SPEC_PORT),
             self.connection_tracker.SPEC_PORT,
         )
+        # TODO: don't make a new client each time
 
     def run(self):
         i = 0
@@ -101,38 +105,34 @@ class SpecListener(Listener):
                             self.set_alert_lostconnection: [True],
                         },
                         "work offline": {},
-                        "exit": {exit_func: []},
+                        "exit": {utils.exit_func: []},
                     }
-                    try:
-                        dialog = ErrorDialog(
-                            controller=self.controller,
-                            title="Lost Connection",
-                            label="Error: RS3 has no connection with the spectrometer.\nCheck that the spectrometer is"
-                            " on.\n\nNote that RS3 can take some time to connect to the spectrometer.\nBe patient"
-                            " and wait for the dot at the lower right of RS3 to turn green.",
-                            buttons=buttons,
-                            button_width=15,
-                            width=600,
-                        )
-                    except:
-                        print("Ignoring an error in Listener when I make a new error dialog")
+                    ErrorDialog(
+                        controller=self.controller,
+                        title="Lost Connection",
+                        label="Error: RS3 has no connection with the spectrometer.\nCheck that the spectrometer is"
+                        " on.\n\nNote that RS3 can take some time to connect to the spectrometer.\nBe patient"
+                        " and wait for the dot at the lower right of RS3 to turn green.",
+                        buttons=buttons,
+                        button_width=15,
+                        width=600,
+                    )
+                    # TODO: confirm try/except block wasn't needed.
 
             elif "unexpectedfile" in cmd:
                 if self.new_dialogs:
-                    try:
-                        dialog = ErrorDialog(
-                            self.controller,
-                            title="Untracked Files",
-                            label="There is an untracked file in the data directory.\nDoes this belong here?\n\n"
-                            + params[0],
-                        )
-                    except:
-                        print("Ignoring an error in Listener when I make a new error dialog")
+                    ErrorDialog(
+                        self.controller,
+                        title="Untracked Files",
+                        label="There is an untracked file in the data directory.\nDoes this belong here?\n\n"
+                        + params[0],
+                    )
+                    # TODO: confirm try/except block wasn't needed.
                 else:
                     self.unexpected_files.append(params[0])
 
             else:
                 self.queue.append(cmd)
 
-    def set_alert_lostconnection(self, bool):
-        self.alert_lostconnection = bool
+    def set_alert_lostconnection(self, val: bool):
+        self.alert_lostconnection = val

@@ -1,3 +1,5 @@
+import time
+
 from tanager_feeder import utils
 
 
@@ -33,15 +35,15 @@ class RemoteDirectoryWorker:
                     self.listener.queue.remove(item)
                     return contents
 
-                elif "listdirfailed" in self.listener.queue:
+                if "listdirfailed" in self.listener.queue:
                     self.listener.queue.remove("listdirfailed")
                     return "listdirfailed"
 
-                elif "listdirfailedpermission" in self.listener.queue:
+                if "listdirfailedpermission" in self.listener.queue:
                     self.listener.queue.remove("listdirfailedpermission")
                     return "listdirfailedpermission"
 
-                elif "listfilesfailed" in self.listener.queue:
+                if "listfilesfailed" in self.listener.queue:
                     self.listener.queue.remove("listfilesfailed")
                     return "listfilesfailed"
 

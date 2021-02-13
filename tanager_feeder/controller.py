@@ -46,7 +46,7 @@ from tanager_feeder.command_handlers.config_handler import ConfigHandler
 from tanager_feeder.command_handlers.data_handler import DataHandler
 from tanager_feeder.command_handlers.get_position_handler import GetPositionHandler
 from tanager_feeder.command_handlers.instrument_config_handler import InstrumentConfigHandler
-from tanager_feeder.command_handlers.motion_handler import s
+from tanager_feeder.command_handlers.motion_handler import MotionHandler
 from tanager_feeder.command_handlers.opt_handler import OptHandler
 from tanager_feeder.command_handlers.process_handler import ProcessHandler
 from tanager_feeder.command_handlers.save_config_handler import SaveConfigHandler
@@ -67,7 +67,7 @@ from tanager_feeder.goniometer_view.goniometer_view import GoniometerView
 from tanager_feeder.listeners.pi_listener import PiListener
 from tanager_feeder.listeners.spec_listener import SpecListener
 
-from tanager_feeder.plotter import Plotter
+from tanager_feeder.plotter.plotter import Plotter
 from tanager_feeder.remote_directory_worker import RemoteDirectoryWorker
 from tanager_feeder.utils import VerticalScrolledFrame, MovementUnits
 from tanager_feeder import utils
@@ -4399,47 +4399,22 @@ class Controller:
     #            http://astrophysicsformulas.com/astronomy-formulas-astrophysics-
     #            formulas/angular-distance-between-two-points-on-a-sphere
     def get_closest_approach(self, i, e, az, print_me=False):
-        def cos(theta):
-            return np.cos(theta * 3.14159 / 180)
-
-        def sin(theta):
-            return np.sin(theta * 3.14159 / 180)
-
-        def arccos(ratio):
-            return np.arccos(ratio) * 180 / 3.14159
-
-        def arctan2(y, x):
-            return np.arctan2(y, x) * 180 / 3.14159
-
-        def arctan(ratio):
-            return np.arctan(ratio) * 180 / 3.14159
-
         #         need to subtract component that is in same direction
         #         or add component in opposite direction
         #         for az=0: full component in same or opposite
         #         az=90: no component in same or opposite
         #         component in same plane is cos(az) or, if az > 90, cos(180-az)
-        def get_lat1_lat2_delta_long(i, e, az):
-            if np.sign(i) == np.sign(e):
-                delta_long = az
-            else:
-                delta_long = 180 - az
-            lat1 = 90 - np.abs(i)
-            lat2 = 90 - np.abs(e)
-            return lat1, lat2, delta_long
 
-        def get_angular_distance(i, e, az):
-            lat1, lat2, delta_long = get_lat1_lat2_delta_long(i, e, az)
-            dist = np.abs(arccos(sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(delta_long)))
-            return dist
+
+
 
         def get_initial_bearing(e):
             lat2 = 90 - np.abs(e)
-            bearing = arctan2(cos(lat2), sin(lat2))
+            bearing = utils.arctan2(utils.cos(lat2), utils.sin(lat2))
             return bearing
 
         i, e, az = self.motor_pos_to_science_pos(i, e, az)
-        closest_dist = get_angular_distance(i, e, az)
+        closest_dist = utils.get_phase_angle(i, e, az)
         closest_pos = (i, e, az)
 
         return closest_pos, closest_dist

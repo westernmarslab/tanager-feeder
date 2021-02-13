@@ -1,4 +1,4 @@
-from tkinter import *
+from tkinter import VERTICAL, Scrollbar, Canvas, BOTH, LEFT, TRUE, NW, RIGHT, FALSE, Frame, Y
 
 
 class VerticalScrolledFrame(Frame):
@@ -13,7 +13,8 @@ class VerticalScrolledFrame(Frame):
         self.controller = controller
         Frame.__init__(self, parent, *args, **kw)
 
-        self.min_height = 600  # Miniumum height for interior frame to show all elements. Changes as new samples or viewing geometries are added.
+        self.min_height = 600  # Miniumum height for interior frame to show all elements.
+        # Changes as new samples or viewing geometries are added.
 
         # create a canvas object and a vertical scrollbar for scrolling it
         self.scrollbar = Scrollbar(self, orient=VERTICAL)
@@ -22,7 +23,8 @@ class VerticalScrolledFrame(Frame):
         canvas.pack(side=LEFT, fill=BOTH, expand=TRUE)
         canvas.config(
             width=100
-        )  # I have this set so the actual width is always greater than this. There is an issue where the scrollbar will disappear with horizontal resize otherwise.
+        )  # I have this set so the actual width is always greater than this.
+        # There is an issue where the scrollbar will disappear with horizontal resize otherwise.
         self.scrollbar.config(command=canvas.yview)
 
         # reset the view
@@ -35,12 +37,15 @@ class VerticalScrolledFrame(Frame):
         self.interior = interior = Frame(canvas)
         interior.pack_propagate(
             0
-        )  # This makes it so we can easily manually set the interior frame's size as needed. See _configure_canvas() for how it's done.
+        )  # This makes it so we can easily manually set the interior frame's size as needed.
+        # See _configure_canvas() for how it's done.
         self.interior_id = canvas.create_window(0, 0, window=interior, anchor=NW)
         self.canvas.bind("<Configure>", self._configure_canvas)
 
     def _configure_canvas(self, event):
-
+        print(type(event))
+        #TODO: find type of event
+        # pylint: disable = unused-argument
         if self.canvas.winfo_height() >= self.min_height:
             self.interior.config(height=self.canvas.winfo_height())
             if self.scrollbar.winfo_ismapped():

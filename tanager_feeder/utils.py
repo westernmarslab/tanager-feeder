@@ -1,14 +1,17 @@
 from enum import Enum
 import os
-import psutil
-from tkinter import Frame, Scrollbar, StringVar, Canvas, VERTICAL, TRUE, FALSE, RIGHT, Y, NW, LEFT, BOTH, Listbox
+from tkinter import Frame, Scrollbar, StringVar, Canvas, VERTICAL, TRUE, FALSE, RIGHT, Y, NW, LEFT, BOTH, Listbox, SINGLE
 from typing import Any
+
+import numpy as np
+import psutil
 
 AZIMUTH_HOME = 0
 INTERVAL = 0.25
 BUFFER = 15
 PI_BUFFER = 20
 
+computer = "new"
 NUMLEN = None  # number of digits in the raw data filename. Could change from one version of software to next.
 if computer == "old":
     # Number of digits in spectrum number for spec save config
@@ -49,30 +52,30 @@ computer = "desktop"
 computer = "new"
 
 
-def limit_len(input, max):
-    return input[:max]
+def limit_len(input_str, max_len):
+    return input_str[:max_len]
 
 
-def validate_int_input(input, min, max):
+def validate_int_input(input_int, min_int, max_int):
     try:
-        input = int(input)
-    except:
+        input_int = int(input_int)
+    except ValueError:
         return False
-    if input > max:
+    if input_int > max_int:
         return False
-    if input < min:
+    if input_int < min_int:
         return False
     return True
 
 
-def validate_float_input(input: Any, min: float, max: float):
+def validate_float_input(input_float: Any, min_float: float, max_float: float):
     try:
-        input = float(input)
-    except:
+        input_float = float(input_float)
+    except ValueError:
         return False
-    if input > max:
+    if input_float > max_float:
         return False
-    if input < min:
+    if input_float < min_float:
         return False
     return True
 
@@ -88,9 +91,9 @@ def decrypt(encrypted):
     return cmd, params
 
 
-def rm_reserved_chars(input):
+def rm_reserved_chars(input_str):
     output = (
-        input.replace("&", "")
+        input_str.replace("&", "")
         .replace("+", "")
         .replace("=", "")
         .replace("$", "")
@@ -118,21 +121,10 @@ def rm_reserved_chars(input):
     return output
 
 
-def numbers_only(input):
+def numbers_only(input_str):
     output = ""
-    for digit in input:
-        if (
-            digit == "1"
-            or digit == "2"
-            or digit == "3"
-            or digit == "4"
-            or digit == "5"
-            or digit == "6"
-            or digit == "7"
-            or digit == "8"
-            or digit == "9"
-            or digit == "0"
-        ):
+    for digit in input_str:
+        if digit in ('1', '2', '3', '4', '5', '6', '7', '8', '9', '0'):
             output += digit
     return output
 
@@ -153,24 +145,22 @@ class PrivateEntry:
 
 
 class SampleFrame:
-    def __init__(self, controller):
+    def __init__(self):
         self.position = "Sample 1"
 
 
 # http://tkinter.unpythonic.net/wiki/VerticalScrolledFrame
-
-
 class VerticalScrolledFrame(Frame):
 
     # Use the 'interior' attribute to place widgets inside the scrollable frame
     # Construct and pack/place/grid normally
     # This frame only allows vertical scrolling
 
-    def __init__(self, controller, parent, min_height=600, width=468, *args, **kw):
-        self.controller = controller
+    def __init__(self, parent, min_height=600, width=468, *args, **kw):
         Frame.__init__(self, parent, *args, **kw)
 
-        self.min_height = min_height  # Miniumum height for interior frame to show all elements. Changes as new samples or viewing geometries are added.
+        self.min_height = min_height  # Miniumum height for interior frame to show all elements. Changes as new samples
+        # or viewing geometries are added.
 
         # create a canvas object and a vertical scrollbar for scrolling it
         self.scrollbar = Scrollbar(self, orient=VERTICAL)
@@ -191,12 +181,15 @@ class VerticalScrolledFrame(Frame):
         self.interior = interior = Frame(canvas)
         interior.pack_propagate(
             0
-        )  # This makes it so we can easily manually set the interior frame's size as needed. See _configure_canvas() for how it's done.
+        )  # This makes it so we can easily manually set the interior frame's size as needed. See _configure_canvas()
+        # for how it's done.
         self.interior_id = canvas.create_window(0, 0, window=interior, anchor=NW)
         self.canvas.bind("<Configure>", self._configure_canvas)
         self.width = width
 
     def _configure_canvas(self, event):
+        # pylint: disable = unused-argument
+        #TODO: figure out type of event
         if self.canvas.winfo_height() > self.min_height:
             self.interior.config(height=self.canvas.winfo_height())
             if self.scrollbar.winfo_ismapped():
@@ -228,7 +221,7 @@ class StringVarWithEntry(StringVar):
 
 
 class ScrollableListbox(Listbox):
-    def __init__(self, frame, bg, entry_background, listboxhighlightcolor, selectmode=tkinter.SINGLE):
+    def __init__(self, frame, bg, entry_background, listboxhighlightcolor, selectmode=SINGLE):
 
         self.scroll_frame = Frame(frame, bg=bg)
         self.scroll_frame.pack(fill=BOTH, expand=True)
@@ -268,3 +261,38 @@ class MovementUnits(Enum):
 class CompyTypes(Enum):
     SPEC_COMPY = "spec compy"
     PI = "pi"
+
+
+def cos(theta):
+    return np.cos(theta * 3.14159 / 180)
+
+
+def sin(theta):
+    return np.sin(theta * 3.14159 / 180)
+
+
+def arccos(ratio):
+    return np.arccos(ratio) * 180 / 3.14159
+
+
+def arctan2(y, x):
+    return np.arctan2(y, x) * 180 / 3.14159
+
+
+def arctan(ratio):
+    return np.arctan(ratio) * 180 / 3.14159
+
+
+def get_lat1_lat2_delta_long(i, e, az):
+    if np.sign(i) == np.sign(e):
+        delta_long = az
+    else:
+        delta_long = 180 - az
+    lat1 = 90 - np.abs(i)
+    lat2 = 90 - np.abs(e)
+    return lat1, lat2, delta_long
+
+def get_phase_angle(i, e, az):
+    lat1, lat2, delta_long = get_lat1_lat2_delta_long(i, e, az)
+    dist = np.abs(arccos(sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(delta_long)))
+    return dist
