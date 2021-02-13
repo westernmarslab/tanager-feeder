@@ -1,3 +1,11 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import matplotlib as mpl
+import matplotlib.tri as mtri
+
+from tanager_feeder import utils
+
 class Plot:
     def __init__(
         self,
@@ -23,7 +31,8 @@ class Plot:
         self.white_fig = white_fig
         self.original_fig_size = (self.fig.get_figwidth(), self.fig.get_figheight())
         self.title = ""  # This will be the text to put on the notebook tab
-        # self.geoms={'i':[],'e':[]} #This is a dict like this: {'i':[10,20],'e':[-10,0,10,20,30,40,50]} telling which incidence and emission angles to include on the plot. empty lists mean plot all available.
+        # self.geoms={'i':[],'e':[]} #This is a dict like this: {'i':[10,20],'e':[-10,0,10,20,30,40,50]} telling which
+        # incidence and emission angles to include on the plot. empty lists mean plot all available.
 
         self.x_axis = x_axis
         self.y_axis = y_axis
@@ -121,7 +130,8 @@ class Plot:
         else:  # This will be specified if this is a zoomed in plot
             self.xlim = xlim
 
-        # we'll use these to generate hsv lists of colors for each sample, which will be evenly distributed across a gradient to make it easy to see what the overall trend of reflectance is.
+        # we'll use these to generate hsv lists of colors for each sample, which will be evenly distributed across a
+        # gradient to make it easy to see what the overall trend of reflectance is.
         #         self.hues=[200,12,130,290,170,37,330]
         self.hues = [200, 12, 130, 290, 170, 37]
         self.color_names = ["Blue", "Red", "Green", "Magenta", "Teal", "Custom"]
@@ -133,7 +143,8 @@ class Plot:
         self.white_annotations = []
 
         self.files = []
-        self.num_spectra = 0  # This is the total number of spectra we're plotting. We want to get a count so we know where to put the legend (on top or to the right).
+        self.num_spectra = 0  # This is the total number of spectra we're plotting. We want to get a count so we know
+        # where to put the legend (on top or to the right).
         for i, sample in enumerate(self.samples):
             if sample.file not in self.files:
                 self.files.append(sample.file)
@@ -226,7 +237,8 @@ class Plot:
         return label
 
     def assign_legend_labels(self):
-        self.repeats = False  # Find if there are samples with the exact same name. If so, put the title in the legend as well as the name.
+        self.repeats = False  # Find if there are samples with the exact same name. If so, put the title in the
+        # legend as well as the name.
         self.names = []
         self.legend_labels = {}
         for sample in self.samples:
@@ -518,10 +530,10 @@ class Plot:
                             e, i, g = self.plotter.get_e_i_g(label)
                             if self.plotter.artifact_danger(g):  # Only exclude data for high phase angle spectra
                                 artifact_index_left = self.plotter.get_index(
-                                    np.array(wavelengths), MIN_WAVELENGTH_ARTIFACT_FREE
+                                    np.array(wavelengths), utils.MIN_WAVELENGTH_ARTIFACT_FREE
                                 )
                                 artifact_index_right = self.plotter.get_index(
-                                    np.array(wavelengths), MAX_WAVELENGTH_ARTIFACT_FREE
+                                    np.array(wavelengths), utils.MAX_WAVELENGTH_ARTIFACT_FREE
                                 )
                                 w_1, r_1 = wavelengths[0:artifact_index_left], reflectance[0:artifact_index_left]
                                 w_2 = [wavelengths[artifact_index_left], wavelengths[artifact_index_right]]

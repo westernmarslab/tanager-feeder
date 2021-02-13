@@ -11,6 +11,11 @@ INTERVAL = 0.25
 BUFFER = 15
 PI_BUFFER = 20
 
+MIN_WAVELENGTH_ARTIFACT_FREE = 1000
+MAX_WAVELENGTH_ARTIFACT_FREE = 1400
+MIN_G_ARTIFACT_FREE = -20
+MAX_G_ARTIFACT_FREE = 40
+
 computer = "new"
 NUMLEN = None  # number of digits in the raw data filename. Could change from one version of software to next.
 if computer == "old":
@@ -296,3 +301,17 @@ def get_phase_angle(i, e, az):
     lat1, lat2, delta_long = get_lat1_lat2_delta_long(i, e, az)
     dist = np.abs(arccos(sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(delta_long)))
     return dist
+
+class NotScrolledFrame(Frame):
+    def __init__(self, parent, *args, **kw):
+        Frame.__init__(self, parent, *args, **kw)
+        self.interior = self
+        self.scrollbar = NotScrollbar()
+
+
+class NotScrollbar:
+    def __init__(self):
+        pass
+
+    def pack_forget(self):
+        pass

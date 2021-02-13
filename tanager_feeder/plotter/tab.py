@@ -1,3 +1,16 @@
+from tkinter import BOTH, Menu
+
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import numpy as np
+
+from tanager_feeder.plotter.sample import Sample
+from tanager_feeder.plotter.plot import Plot
+
+from tanager_feeder import utils
+
+
 class Tab:
     # Title override is true if the title of this individual tab is set manually by user.
     # If it is False, then the tab and plot title will be a combo of the file title plus the sample that is plotted.
@@ -8,7 +21,7 @@ class Tab:
         samples,
         tab_index=None,
         title_override=False,
-        geoms = None,
+        geoms=None,
         scrollable=True,
         original=None,
         x_axis="wavelength",
@@ -24,7 +37,7 @@ class Tab:
             geoms = {"i": [], "e": [], "az": []}
         self.plotter = plotter
         if (
-            original == None
+            original is None
         ):  # This is true if we're not normalizing anything. holding on to the original data lets us reset.
             self.original_samples = list(samples)
 
@@ -68,20 +81,22 @@ class Tab:
 
         if scrollable:  # User can specify this in edit_plot#self.legend_len>7:
             print("Scrolled frame")
-            self.top = VerticalScrolledFrame(self.plotter.controller, self.plotter.notebook)
+            self.top = utils.VerticalScrolledFrame(self.plotter.controller, self.plotter.notebook)
 
         else:
-            self.top = NotScrolledFrame(self.plotter.notebook)
+            self.top = utils.NotScrolledFrame(self.plotter.notebook)
 
         self.top.min_height = np.max([self.legend_height, self.height - 50])
         self.top.pack()
 
-        # If this is being created from the File -> Plot option, or from right click -> new tab, just put the tab at the end.
-        if tab_index == None:
+        # If this is being created from the File -> Plot option, or from right click -> new tab, just put the
+        # tab at the end.
+        if tab_index is None:
             self.plotter.notebook.add(self.top, text=self.notebook_title + " x")
             self.plotter.notebook.select(self.plotter.notebook.tabs()[-1])
             self.index = self.plotter.notebook.index(self.plotter.notebook.select())
-        # If this is being called after the user did Right click -> choose samples to plot, put it at the same index as before.
+        # If this is being called after the user did Right click -> choose samples to plot, put it at the same
+        # index as before.
         else:
             self.plotter.notebook.add(self.top, text=self.title + " x")
             self.plotter.notebook.insert(tab_index, self.plotter.notebook.tabs()[-1])
@@ -120,7 +135,10 @@ class Tab:
         )
 
         if draw:
-            self.canvas.draw()  # sometimes silently crashes if run from pip module (not IDE) on some login configurations. Related to thread safety (only crashes for remote plotting, which involves a separate thread). To protect against this, draw will be false if this is called from a separate thread and the user is asked for input instead.
+            self.canvas.draw()  # sometimes silently crashes if run from pip module (not IDE) on some login
+            # configurations. Related to thread safety (only crashes for remote plotting, which involves a
+            # separate thread). To protect against this, draw will be false if this is called from a separate
+            # thread and the user is asked for input instead.
 
         self.popup_menu = Menu(self.top.interior, tearoff=0)
         if self.x_axis == "wavelength" and (self.y_axis == "reflectance" or self.y_axis == "normalized reflectance"):
@@ -204,8 +222,10 @@ class Tab:
     def open_options(self):
         self.plotter.controller.open_options(self, self.title)
 
-    # This is needed so that this can be one of the parts of a dict for buttons: self.view_notebook.select:[lambda:tab.get_top()],.
-    # That way when the top gets recreated in refresh, the reset button will get the new one instead of creating errors by getting the old one.
+    # This is needed so that this can be one of the parts of a dict for buttons:
+    # self.view_notebook.select:[lambda:tab.get_top()],.
+    # That way when the top gets recreated in refresh, the reset button will get the new one instead of creating
+    # errors by getting the old one.
     def get_top(self):
         return self.top
 
@@ -271,7 +291,7 @@ class Tab:
             name = sample_name
         for i, sample in enumerate(self.samples):
             if name == sample.name:
-                if title == None or sample.title == title:
+                if title is None or sample.title == title:
                     break
         self.samples.pop(i)
 
@@ -310,7 +330,8 @@ class Tab:
 
                 if (
                     self.exclude_artifacts
-                ):  # If we are excluding artifacts, don't calculate reflectance for anything in the range that is considered to be suspect
+                ):  # If we are excluding artifacts, don't calculate reflectance for anything in the range that
+                    # is considered to be suspect
                     if self.plotter.artifact_danger(g, left, right):
                         artifact_warning = True
                         continue
@@ -371,7 +392,8 @@ class Tab:
 
                 if (
                     self.exclude_artifacts
-                ):  # If we are excluding artifacts, don't calculate slopes for anything in the range that is considered to be suspect
+                ):  # If we are excluding artifacts, don't calculate slopes for anything in the range that is
+                    # considered to be suspect
                     if self.plotter.artifact_danger(g, left, right):
                         artifact_warning = True
                         continue
@@ -396,7 +418,8 @@ class Tab:
                 if center_based_on_delta_to_continuum:
                     index_peak = list(diff).index(
                         np.min(diff)
-                    )  # this is confusing, because we report an absorption band as positive depth, a local maximum in the spectrum occurs at the minimum value of diff.
+                    )  # this is confusing, because we report an absorption band as positive depth, a local maximum
+                    # in the spectrum occurs at the minimum value of diff.
                     index_trough = list(diff).index(np.max(diff))
                 else:
                     r_trough = np.min(reflectance[index_left:index_right])
@@ -458,7 +481,8 @@ class Tab:
 
                 if (
                     self.exclude_artifacts
-                ):  # If we are excluding artifacts, don't calculate slopes for anything in the range that is considered to be suspect
+                ):  # If we are excluding artifacts, don't calculate slopes for anything in the range that is
+                    # considered to be suspect
                     if self.plotter.artifact_danger(g, left, right):
                         artifact_warning = True
                         continue
@@ -483,7 +507,8 @@ class Tab:
                 if center_based_on_delta_to_continuum:
                     index_peak = list(diff).index(
                         np.min(diff)
-                    )  # this is confusing, because we report an absorption band as positive depth, a local maximum in the spectrum occurs at the minimum value of diff.
+                    )  # this is confusing, because we report an absorption band as positive depth, a local maximum
+                    # in the spectrum occurs at the minimum value of diff.
                     index_trough = list(diff).index(np.max(diff))
                 else:
                     r_trough = np.min(reflectance[index_left:index_right])
@@ -554,9 +579,11 @@ class Tab:
 
                 if (
                     self.exclude_artifacts
-                ):  # If we are excluding artifacts, don't calculate slopes for anything in the range that is considered to be suspect
+                ):  # If we are excluding artifacts, don't calculate slopes for anything in the range that is
+                    # considered to be suspect
                     if self.plotter.artifact_danger(g, left, right):
-                        artifact_warning = True  # We'll return this to the controller, which will throw up a dialog warning the user that we are skipping some spectra.
+                        artifact_warning = True  # We'll return this to the controller, which will throw up a dialog
+                        # warning the user that we are skipping some spectra.
                         continue
 
                 wavelengths = np.array(sample.data[label]["wavelength"])
@@ -647,7 +674,8 @@ class Tab:
 
                 continue
             elif len(self.samples) == 1:
-                # if there is only one sample, we'll use the base to build an error sample with spectra showing difference from middle spectrum in list.
+                # if there is only one sample, we'll use the base to build an error sample with spectra showing
+                # difference from middle spectrum in list.
                 i = int(len(sample.geoms) / 2)
                 self.base_spectrum_label = sample.geoms[i]
                 self.base_sample = Sample(
@@ -663,9 +691,11 @@ class Tab:
                 e, i, g = self.plotter.get_e_i_g(label)
                 if (
                     self.exclude_artifacts
-                ):  # If we are excluding artifacts, don't calculate slopes for anything in the range that is considered to be suspect
+                ):  # If we are excluding artifacts, don't calculate slopes for anything in the range that is
+                    # considered to be suspect
                     if self.plotter.artifact_danger(g, left, right):
-                        artifact_warning = True  # We'll return this to the controller, which will throw up a dialog warning the user that we are skipping some spectra.
+                        artifact_warning = True  # We'll return this to the controller, which will throw up a
+                        # dialog warning the user that we are skipping some spectra.
                         continue
 
                 index_left = self.get_index(wavelengths, left)
@@ -772,7 +802,9 @@ class Tab:
         avgs = []
         self.recip_samples = (
             []
-        )  # for each recip_sample.data[label], there will be up to two points, which should be reciprocal measurements of each other. E.g. recip_sample.name=White Reference, recip_sample.data['White reference (i=-20,e=20)'] will contain data for both i=-30,e=-10, and also i=10, e=30.
+        )  # for each recip_sample.data[label], there will be up to two points, which should be reciprocal
+        # measurements of each other. E.g. recip_sample.name=White Reference,
+        # recip_sample.data['White reference (i=-20,e=20)'] will contain data for both i=-30,e=-10, and also i=10, e=30.
         artifact_warning = False
 
         self.contour_sample = Sample("all samples", "file", "title")
@@ -786,9 +818,11 @@ class Tab:
 
                 if (
                     self.exclude_artifacts
-                ):  # If we are excluding artifacts, don't calculate for anything in the range that is considered to be suspect
+                ):  # If we are excluding artifacts, don't calculate for anything in the range that is
+                    # considered to be suspect
                     if self.plotter.artifact_danger(g, left, right):
-                        artifact_warning = True  # We'll return this to the controller, which will throw up a dialog warning the user that we are skipping some spectra.
+                        artifact_warning = True  # We'll return this to the controller, which will throw up a
+                        # dialog warning the user that we are skipping some spectra.
                         continue
 
                 wavelengths = np.array(sample.data[label]["wavelength"])
@@ -829,10 +863,11 @@ class Tab:
                         diff = np.abs(
                             np.max(recip_sample.data[recip_label]["average reflectance"])
                             - np.min(recip_sample.data[recip_label]["average reflectance"])
-                        )  # This works fine if for some reason there are multiple measurements for the same sample at the same geometry. It just takes the min and max.
+                        )  # This works fine if for some reason there are multiple measurements for the same sample
+                        # at the same geometry. It just takes the min and max.
                         recip = diff / np.mean(recip_sample.data[recip_label]["average reflectance"])
 
-                if diff != None:
+                if diff is not None:
                     avgs.append(label + ": " + str(recip))  # I don't think this is the average of anything
             self.recip_samples.append(recip_sample)
 
@@ -844,7 +879,8 @@ class Tab:
                     diff = np.abs(
                         np.max(sample.data[label]["average reflectance"])
                         - np.min(sample.data[label]["average reflectance"])
-                    )  # This works fine if for some reason there are multiple measurements for the same sample at the same geometry. It just takes the min and max.
+                    )  # This works fine if for some reason there are multiple measurements for the same sample
+                    # at the same geometry. It just takes the min and max.
                     recip = diff / np.mean(sample.data[label]["average reflectance"])
 
                     self.contour_sample.data["all samples"]["e"].append(e)
@@ -1036,7 +1072,8 @@ class Tab:
 
         self.refresh(
             original=self.original_samples, xlim=self.xlim, y_axis="normalized reflectance"
-        )  # Let the tab know this data has been modified and we want to hold on to a separate set of original samples. If we're zoomed in, save the xlim but not the ylim (since y scale will be changing)
+        )  # Let the tab know this data has been modified and we want to hold on to a separate set of original
+        # samples. If we're zoomed in, save the xlim but not the ylim (since y scale will be changing)
 
     def lift_widget(self, widget):
         widget.focus_set()
@@ -1051,7 +1088,7 @@ class Tab:
             name = sample_name
         for i, sample in enumerate(self.samples):
             if name == sample.name:
-                if title == None or sample.title == title:
+                if title is None or sample.title == title:
                     break
         return sample
 
@@ -1105,7 +1142,8 @@ class Tab:
         self.popup_menu.unpost()
 
     def open_analysis_tools(self):
-        # Build up lists of strings telling available samples, which of those samples a currently plotted, and a dictionary mapping those strings to the sample options.
+        # Build up lists of strings telling available samples, which of those samples a currently plotted,
+        # and a dictionary mapping those strings to the sample options.
         self.build_sample_lists()
         self.plotter.controller.open_analysis_tools(self)
         # self.plotter.controller.open_data_analysis_tools(self,self.existing_indices,self.sample_options_list)
@@ -1115,12 +1153,14 @@ class Tab:
         self.plotter.controller.open_plot_settings(self)
 
     def build_sample_lists(self):
-        # Sample options will be the list of strings to put in the listbox. It may include the sample title, depending on whether there is more than one title.
+        # Sample options will be the list of strings to put in the listbox. It may include the sample title,
+        # depending on whether there is more than one title.
         self.sample_options_dict = {}
         self.sample_options_list = []
         self.existing_indices = []
 
-        # Each file got a title assigned to it when loaded, so each group of samples from a file will have a title associated with them.
+        # Each file got a title assigned to it when loaded, so each group of samples from a file will
+        # have a title associated with them.
         # If there are multiple possible titles, list that in the listbox along with the sample name.
         if len(self.plotter.titles) > 1:
             for i, sample in enumerate(self.plotter.sample_objects):
@@ -1142,9 +1182,11 @@ class Tab:
 
     # We want to pass a list of existing samples and a list of possible samples.
     def ask_which_samples(self):
-        # Build up lists of strings telling available samples, which of those samples a currently plotted, and a dictionary mapping those strings to the sample options.
+        # Build up lists of strings telling available samples, which of those samples a currently plotted, and
+        # a dictionary mapping those strings to the sample options.
         self.build_sample_lists()
-        # We tell the controller which samples are already plotted so it can initiate the listbox with those samples highlighted.
+        # We tell the controller which samples are already plotted so it can initiate the listbox with those
+        # samples highlighted.
         self.plotter.controller.ask_plot_samples(
             self, self.existing_indices, self.sample_options_list, self.geoms, self.title
         )
@@ -1152,7 +1194,8 @@ class Tab:
     def set_samples(
         self, listbox_labels, title, incidences, emissions, azimuths, exclude_specular=False, tolerance=None
     ):
-        # we made a dict mapping sample labels for a listbox to available samples to plot. This was passed back when the user clicked ok. Reset this tab's samples to be those ones, then replot.
+        # we made a dict mapping sample labels for a listbox to available samples to plot. This was passed back
+        # when the user clicked ok. Reset this tab's samples to be those ones, then replot.
         self.samples = []
         if title == "":
             title = ", ".join(listbox_labels)
@@ -1170,7 +1213,8 @@ class Tab:
                 self.specularity_tolerance = 0
         winnowed_samples = (
             []
-        )  # These will only have the data we are actually going to plot, which will only be from the specificied geometries.
+        )  # These will only have the data we are actually going to plot, which will only be from the
+        # specificied geometries.
 
         for i, sample in enumerate(self.samples):
             winnowed_sample = Sample(sample.name, sample.file, sample.title)
@@ -1179,7 +1223,8 @@ class Tab:
                 geom
             ) in (
                 sample.geoms
-            ):  # For every spectrum associated with the sample, check if it is for a geometry we are going to plot. if it is, attach that spectrum to the winnowed sample data
+            ):  # For every spectrum associated with the sample, check if it is for a geometry we are going to plot.
+                # if it is, attach that spectrum to the winnowed sample data
                 try:  # If there is no geometry information for this sample, this will throw an exception.
                     i = geom[0]
                     e = geom[1]
@@ -1204,7 +1249,8 @@ class Tab:
 
     def refresh(
         self, original=None, xlim=None, ylim=None, x_axis="wavelength", y_axis="reflectance"
-    ):  # Gets called when data is updated, either from edit plot or analysis tools. We set original = False if calling from normalize, that way we will still hold on to the unchanged data.
+    ):  # Gets called when data is updated, either from edit plot or analysis tools. We set original = False if
+        # calling from normalize, that way we will still hold on to the unchanged data.
         tab_index = self.plotter.notebook.index(self.plotter.notebook.select())
         self.plotter.notebook.forget(self.plotter.notebook.select())
         self.__init__(
@@ -1243,13 +1289,15 @@ class Tab:
             return lat1, lat2, delta_long
 
         lat1, lat2, delta_long = get_lat1_lat2_delta_long(i, e, az)
-        dist = np.abs(utils.arccos(utils.sin(lat1) * utils.sin(lat2) + utils.cos(lat1) * utils.cos(lat2) * utils.cos(delta_long)))
+        dist = np.abs(
+            utils.arccos(utils.sin(lat1) * utils.sin(lat2) + utils.cos(lat1) * utils.cos(lat2) * utils.cos(delta_long))
+        )
         return dist
 
     def check_geom(self, i, e, az, exclude_specular=False, tolerance=None):
         i = int(float(i))  # Get exception from int('0.0')
         e = int(float(e))
-        if az != None:
+        if az is not None:
             az = int(float(az))
 
         if exclude_specular:

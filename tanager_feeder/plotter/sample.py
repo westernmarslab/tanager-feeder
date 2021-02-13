@@ -1,3 +1,6 @@
+import colorutils
+import numpy as np
+
 class Sample:
     def __init__(self, name, file, title):
         self.title = title
@@ -7,6 +10,10 @@ class Sample:
         self.geoms = []
         self.linestyle = "-"
         self.markerstyle = "o"
+        self.colors = None
+        self.white_colors = None
+        self.index = None
+        self.white_index = None
 
     def add_spectrum(self, geom, reflectance, wavelengths):
         self.geoms.append(geom)
@@ -44,15 +51,15 @@ class Sample:
             hsv_tuples = [(hue, 1, x * 1.0 / N) for x in range(4, N)]
             hsv_tuples = hsv_tuples + [(hue, (N - x) * 1.0 / N, 1) for x in range(N)]
             self.colors = []
-            for tuple in hsv_tuples:
-                self.colors.append(colorutils.hsv_to_hex(tuple))
+            for h_tuple in hsv_tuples:
+                self.colors.append(colorutils.hsv_to_hex(h_tuple))
 
             N = N + 2
             white_hsv_tuples = [(hue, 1, x * 1.0 / N) for x in range(1, N)]
             white_hsv_tuples = white_hsv_tuples + [(hue, (N - x) * 1.0 / N, 1) for x in range(N - 4)]
             self.white_colors = []
-            for tuple in white_hsv_tuples:
-                self.white_colors.append(colorutils.hsv_to_hex(tuple))
+            for wh_tuple in white_hsv_tuples:
+                self.white_colors.append(colorutils.hsv_to_hex(wh_tuple))
 
         # For small numbers of spectra, you end up with a couple extra and the first plotted are darker than you want.
         elif len(self.geoms) == 3:
