@@ -1,21 +1,12 @@
 # Plotter takes a Tk root object and uses it as a base to spawn Tk Toplevel plot windows.
+from tkinter import filedialog
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from tkinter import filedialog
-
-from matplotlib.backends.backend_agg import FigureCanvasAgg
-
-
-from tanager_feeder.verticalscrolledframe import VerticalScrolledFrame  # slightly different than vsf defined in main
 from tanager_feeder import utils
-
-
-# These are related to the region of spectra that are sensitive to polarization artifacts. This is at high phase
-# angles between 1000 and 1400 nm.
-
-
+from tanager_feeder.plotter.tab import Tab
+from tanager_feeder.plotter.sample import Sample
 
 class Plotter:
     def __init__(self, controller, dpi, style):
@@ -37,14 +28,12 @@ class Plotter:
         self.menus = []
 
         self.save_dir = None  # This will get set 1)when the user plots data for the first time to be that folder. 2)
-        # if the user saves a plot so that the next time they click save plot, the save dialog opens into the same directory where they just saved.
+        # if the user saves a plot so that the next time they click save plot, the save dialog opens into the same
+        # directory where they just saved.
 
     def get_path(self):
         initialdir = self.save_dir
-
-        path = None
-        print("asksaveas")
-        if initialdir != None:
+        if initialdir is not None:
             print("initial dir set to " + self.save_dir)
             path = filedialog.asksaveasfilename(initialdir=initialdir)
         else:
@@ -58,7 +47,8 @@ class Plotter:
         print("return")
         return path
 
-    def get_index(self, array, val):
+    @staticmethod
+    def get_index(array, val):
         index = (np.abs(array - val)).argmin()
         return index
 
@@ -66,11 +56,8 @@ class Plotter:
         self.close_right_click_menus(event)
         self.maybe_close_tab(event)
 
-    def update_tab_names(self):
-        pass
-
     def new_tab(self):
-        tab = Tab(self, "New tab", [], title_override=True)
+        tab = Tab(self, "New tab", [])
         self.tabs.append(tab)
         tab.ask_which_samples()
 
@@ -78,8 +65,7 @@ class Plotter:
         for tab in self.tabs:
             tab.top.configure(height=height)
 
-    # caption should get
-    def plot_spectra(self, title, file, caption, exclude_wr=True, draw=True):
+    def plot_spectra(self, title, file):
         if title == "":
             title = "Plot " + str(self.num + 1)
             self.num += 1
@@ -90,11 +76,10 @@ class Plotter:
                 j += 1
                 new = title + " (" + str(j) + ")"
             title = new
-
         try:
             wavelengths, reflectance, labels = self.load_data(file)
-        except:
-            raise (Exception("Error loading data!"))
+        except OSError:
+            print("Error: Could not load data.")
             return
 
         for i, spectrum_label in enumerate(labels):
@@ -117,7 +102,7 @@ class Plotter:
                     if self.samples[file][sample].name == sample_label:
                         sample_exists = True
 
-                if sample_exists == False:
+                if not sample_exists:
                     new = Sample(sample_label, file, title)
                     self.samples[file][sample_label] = new
                     self.sample_objects.append(new)
@@ -125,7 +110,6 @@ class Plotter:
             # if spectrum_label not in self.samples[file][sample_label].geoms: #This should do better and actually
             # check that all the data is an exact duplicate, but that seems hard. Just don't label things exactly the
             # same and save them in the same file with the same viewing geometry.
-            # self.samples[file][sample_label].add_spectrum(spectrum_label, reflectance[i], wavelengths)
             spectrum_label = spectrum_label.replace(")", "").replace("(", "")
             if "i=" in spectrum_label.replace(" ", ""):
                 incidence = spectrum_label.split("i=")[1].split(" ")[0]
@@ -145,24 +129,20 @@ class Plotter:
         new_samples = []
         for sample in self.samples[file]:
             new_samples.append(self.samples[file][sample])
-
-        #         tab=Tab(self,title+': '+new_samples[0].name,[new_samples[0]], draw=draw)
-        #         tab=Tab(self,title+': '+new_samples[0].name,[new_samples[0]], draw=draw)
         self.new_tab()
 
-    #         self.tabs.append(tab)
-
-    def load_data(self, file, format="spectral_database_csv"):
+    @staticmethod
+    def load_data(file, file_format="spectral_database_csv"):
         labels = []
         # This is the format I was initially using. It is a simple .tsv file with a single row of headers
         # e.g. Wavelengths     Sample_1 (i=0 e=30)     Sample_2 (i=0 e=30).
-        if format == "simple_tsv":
+        if file_format == "simple_tsv":
             data = np.genfromtxt(file, names=True, dtype=float, encoding=None, delimiter="\t", deletechars="")
             labels = list(data.dtype.names)[1:]  # the first label is wavelengths
-            for i in range(len(labels)):
-                labels[i] = labels[i].replace("_(i=", " (i=").replace("_e=", " e=").replace("( i", "(i")
+            for i, label in enumerate(labels):
+                labels[i] = label.replace("_(i=", " (i=").replace("_e=", " e=").replace("( i", "(i")
         # This is the current format, which is compatible with the WWU spectral library format.
-        elif format == "spectral_database_csv":
+        elif file_format == "spectral_database_csv":
             skip_header = 1
 
             labels_found = False  # We want to use the Sample Name field for labels, but if we haven't found
@@ -185,21 +165,16 @@ class Plotter:
                             geom = geom.strip("\n").replace(" i", "i")
                             labels[i] += " (" + geom + ")"
                     elif line[0:7].lower() == "data id":
-                        if (
-                            labels_found == False
-                        ):  # Only use Data ID for labels if we haven't found the Sample Name field.
+                        if not labels_found:  # Only use Data ID for labels if we haven't found the Sample Name field.
                             labels = line.split(",")[1:]
                             labels[-1] = labels[-1].strip("\n")
                     elif line[0:9].lower() == "sample id":
-                        if (
-                            labels_found == False
-                        ):  # Only use Sample ID for labels if we haven't found the Sample Name field.
+                        if not labels_found:  # Only use Sample ID for labels if we haven't found the Sample Name field.
                             labels = line.split(",")[1:]
                             labels[-1] = labels[-1].strip("\n")
                     elif line[0:12].lower() == "mineral name":
-                        if (
-                            labels_found == False
-                        ):  # Only use mineral ID for labels if we haven't found the Sample Name field.
+                        if not labels_found:  # Only use mineral ID for labels if we haven't found
+                            # the Sample Name field.
                             labels = line.split(",")[1:]
                             labels[-1] = labels[-1].strip("\n")
                     skip_header += 1
@@ -230,7 +205,7 @@ class Plotter:
 
     def maybe_close_tab(self, event):
         dist_to_edge = self.dist_to_edge(event)
-        if dist_to_edge == None:  # not on a tab
+        if dist_to_edge is None:  # not on a tab
             return
 
         if dist_to_edge < 18:
@@ -241,7 +216,7 @@ class Plotter:
                 self.notebook.forget(index)
                 try:
                     self.titles.remove(name)
-                except:
+                except IndexError:
                     print(name)
                     print("NOT IN TITLES!")
                 self.notebook.event_generate("<<NotebookTabClosed>>")
@@ -249,7 +224,7 @@ class Plotter:
     # This capitalizes Xs for closing tabs when you hover over them.
     def mouseover_tab(self, event):
         dist_to_edge = self.dist_to_edge(event)
-        if dist_to_edge == None or dist_to_edge > 17:  # not on an X, or not on a tab at all.
+        if dist_to_edge is None or dist_to_edge > 17:  # not on an X, or not on a tab at all.
             for i, tab in enumerate(self.notebook.tabs()):
                 if i == 0:
                     continue  # Don't change text on Goniometer view tab
@@ -263,10 +238,10 @@ class Plotter:
             text = tab["text"][:-1]
             if "Goniometer" in text:
                 return
-            else:
-                self.notebook.tab("@%d,%d" % (event.x, event.y), text=text + "X")
+            self.notebook.tab("@%d,%d" % (event.x, event.y), text=text + "X")
 
     def close_right_click_menus(self, event):
+        # pylint: disable = unused-argument
         for menu in self.menus:
             menu.unpost()
 
@@ -276,8 +251,11 @@ class Plotter:
             tab0 = self.notebook.tab(id_str)
             tab = self.notebook.tab(id_str)
         # There might not actually be any tab here at all.
-        except:
-            return None
+        # pylint: disable = broad-except
+        except Exception as e:
+            # TODO: figure out exception type.
+            raise e
+            # return None
         dist_to_edge = 0
         while (
             tab == tab0
@@ -286,38 +264,37 @@ class Plotter:
             id_str = "@" + str(event.x + dist_to_edge) + "," + str(event.y)
             try:
                 tab = self.notebook.tab(id_str)
-            except:  # If this didn't work, we were off the right edge of any tabs.
+            except IndexError:  # If this didn't work, we were off the right edge of any tabs.
+                # TODO: confirm this was the right type of error to catch.
                 break
 
         return dist_to_edge
 
-    def get_e_i_g(self, label):  # Extract e, i, and g from a label.
+    @staticmethod
+    def get_e_i_g(label):  # Extract e, i, and g from a label.
         i = int(label.split("i=")[1].split(" ")[0])
         e = int(label.split("e=")[1].strip(")"))
-        if i <= 0:
-            g = e - i
-        else:
-            g = -1 * (e - i)
+        az = int(label.split("az=")[1].strip(")"))
+        # TODO: make this work for both 2D and 3D geometries.
+        g = utils.get_phase_angle(i, e, az)
         return e, i, g
 
-    def artifact_danger(self, g, left=0, right=100000000000000000000):
+    @staticmethod
+    def artifact_danger(g, left=0, right=100000000000000000000):
         if (
             g < utils.MIN_G_ARTIFACT_FREE or g > utils.MAX_G_ARTIFACT_FREE
         ):  # If the phase angle is outside the safe region, we might have potential artifacts, but only at specific
             # wavelengths.
             if (
-                left > utils.MIN_WAVELENGTH_ARTIFACT_FREE and left < utils.MAX_WAVELENGTH_ARTIFACT_FREE
+                utils.MIN_WAVELENGTH_ARTIFACT_FREE < left < utils.MAX_WAVELENGTH_ARTIFACT_FREE
             ):  # if the left wavelength is in the artifact zone
                 return True
-            elif (
-                right > utils.MIN_WAVELENGTH_ARTIFACT_FREE and right < utils.MAX_WAVELENGTH_ARTIFACT_FREE
+            if (
+                utils.MIN_WAVELENGTH_ARTIFACT_FREE < right < utils.MAX_WAVELENGTH_ARTIFACT_FREE
             ):  # if the right wavelength is in the artifact zone
                 return True
-            elif (
+            if (
                 left < utils.MIN_WAVELENGTH_ARTIFACT_FREE and right > utils.MAX_WAVELENGTH_ARTIFACT_FREE
             ):  # If the region spans the artifact zone
                 return True
-            else:
-                return False
-        else:  # If we're at a safe phase angle
-            return False
+        return False

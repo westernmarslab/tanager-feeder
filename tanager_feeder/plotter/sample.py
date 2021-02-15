@@ -30,8 +30,8 @@ class Sample:
     def add_offset(self, offset, y_axis):
         try:
             offset = float(offset)
-        except:
-            print("invalid offset")
+        except ValueError:
+            print("Error: Invalid offset")
             return
 
         for spec_label in self.data:

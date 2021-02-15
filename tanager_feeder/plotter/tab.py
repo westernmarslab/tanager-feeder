@@ -20,9 +20,7 @@ class Tab:
         title,
         samples,
         tab_index=None,
-        title_override=False,
         geoms=None,
-        scrollable=True,
         original=None,
         x_axis="wavelength",
         y_axis="reflectance",
@@ -36,11 +34,9 @@ class Tab:
         if geoms is None:
             geoms = {"i": [], "e": [], "az": []}
         self.plotter = plotter
-        if (
-            original is None
-        ):  # This is true if we're not normalizing anything. holding on to the original data lets us reset.
+        if original is None:  # This is true if we're not normalizing anything.
+            # holding on to the original data lets us reset.
             self.original_samples = list(samples)
-
         else:
             self.original_samples = original
         self.samples = samples
@@ -59,6 +55,8 @@ class Tab:
         self.y_axis = y_axis
         self.xlim = xlim
         self.ylim = ylim
+        self.zlim = None
+
         self.exclude_artifacts = exclude_artifacts
         self.exclude_specular = exclude_specular
         self.specularity_tolerance = specularity_tolerance
@@ -73,18 +71,13 @@ class Tab:
         self.legend_height = self.legend_len * 21 + 100  # 21 px per legend entry.
         self.plot_scale = (self.height - 130) / 21
         self.plot_width = self.width / 9  # very vague character approximation of plot width
-        self.oversize_legend = False
+
         if self.height > self.legend_height:
-            scrollable = False
-        else:
-            self.oversize_legend = True
-
-        if scrollable:  # User can specify this in edit_plot#self.legend_len>7:
-            print("Scrolled frame")
-            self.top = utils.VerticalScrolledFrame(self.plotter.controller, self.plotter.notebook)
-
-        else:
             self.top = utils.NotScrolledFrame(self.plotter.notebook)
+            self.oversize_legend = False
+        else:
+            self.top = utils.VerticalScrolledFrame(self.plotter.controller, self.plotter.notebook)
+            self.oversize_legend = True
 
         self.top.min_height = np.max([self.legend_height, self.height - 50])
         self.top.pack()
@@ -103,7 +96,6 @@ class Tab:
             self.plotter.notebook.select(self.plotter.notebook.tabs()[tab_index])
             self.index = tab_index
 
-        # self.fig = mpl.figure.Figure(figsize=(width/self.plotter.dpi, height/self.plotter.dpi), dpi=self.plotter.dpi)
         self.fig = mpl.figure.Figure(
             figsize=(self.width / self.plotter.dpi, self.height / self.plotter.dpi), dpi=self.plotter.dpi
         )
@@ -158,7 +150,19 @@ class Tab:
         self.popup_menu.add_command(label="Close tab", command=self.close)
 
         self.plotter.menus.append(self.popup_menu)
-        print("tab init finish")
+
+        self.contour_sample = None
+        self.incidence_samples = None
+        self.emission_samples = None
+        self.error_samples = None
+        self.base_sample = None
+        self.recip_samples = None
+        self.sample_options_dict = None
+        self.sample_options_list = None
+        self.base_spectrum_label = None
+        self.existing_indices = None
+
+        self.frozen = False
 
     def freeze(self):
         self.frozen = True
@@ -183,8 +187,8 @@ class Tab:
 
         headers = self.plot.visible_data_headers
         data = self.plot.visible_data
-
         headers = (",").join(headers)
+
         # data=np.transpose(data) doesn't work if not all columns are same length
         data_lines = []
         max_len = 0
@@ -192,7 +196,7 @@ class Tab:
             if len(col) > max_len:
                 max_len = len(col)
 
-        for i, col in enumerate(data):
+        for col in data:
             j = 0
             for val in col:
                 if j < len(data_lines):
@@ -229,10 +233,10 @@ class Tab:
     def get_top(self):
         return self.top
 
-    def set_exclude_artifacts(self, bool):
+    def set_exclude_artifacts(self, exclude_bool):
         for i, sample in enumerate(self.plot.samples):
             sample.set_colors(self.plot.hues[i % len(self.plot.hues)])
-        self.exclude_artifacts = bool
+
         i = len(self.plot.ax.lines)
         j = 0
         # Delete all of the lines except annotations e.g. vertical lines showing where slopes are being calculated.
@@ -247,6 +251,8 @@ class Tab:
                 self.plot.white_ax.lines[j].remove()
             else:
                 j += 1
+
+        self.exclude_artifacts = exclude_bool
         self.plot.exclude_artifacts = bool
         self.plot.draw()
         self.canvas.draw()
@@ -257,7 +263,8 @@ class Tab:
 
     # find reflectance at a given wavelength.
     # if we're on the edges, average out a few values.
-    def get_vals(self, wavelengths, reflectance, nm):
+    @staticmethod
+    def get_vals(wavelengths, reflectance, nm):
         index = (np.abs(wavelengths - nm)).argmin()  # find index of wavelength
 
         r = reflectance[index]
@@ -266,8 +273,8 @@ class Tab:
         if (
             wavelengths[index] < 600 or wavelengths[index] > 2200
         ):  # If we're on the edges, spectra are noisy. Calculate slopes based on an average.
-            if index < len(reflectance) - 3 and index > 2:
-                r = np.mean(reflectance[index - 3 : index + 3])
+            if 2 < index < len(reflectance):
+                r = np.mean(reflectance[index - 3: index + 3])
                 w = wavelengths[index]
             elif index > 2:
                 r = np.mean(reflectance[-7:-1])
@@ -278,7 +285,8 @@ class Tab:
 
         return w, r
 
-    def get_index(self, array, val):
+    @staticmethod
+    def get_index(array, val):
         index = (np.abs(array - val)).argmin()
         return index
 
@@ -292,20 +300,18 @@ class Tab:
         for i, sample in enumerate(self.samples):
             if name == sample.name:
                 if title is None or sample.title == title:
+                    self.samples.pop(i)
+                    new_sample = Sample(sample.name, sample.file, sample.title)
+                    new_sample.data = {}
+                    for key in sample.data:
+                        new_sample.data[key] = {}
+                        for key2 in sample.data[key]:
+                            new_sample.data[key][key2] = list(sample.data[key][key2])
+                    new_sample.geoms = list(sample.geoms)
+                    new_sample.add_offset(offset, self.y_axis)
+                    self.samples.insert(i, new_sample)
+                    self.refresh(original=self.original_samples, y_axis=self.y_axis)
                     break
-        self.samples.pop(i)
-
-        new_sample = Sample(sample.name, sample.file, sample.title)
-
-        new_sample.data = {}  # dict(sample.data)
-        for key in sample.data:
-            new_sample.data[key] = {}
-            for key2 in sample.data[key]:
-                new_sample.data[key][key2] = list(sample.data[key][key2])
-        new_sample.geoms = list(sample.geoms)
-        new_sample.add_offset(offset, self.y_axis)
-        self.samples.insert(i, new_sample)
-        self.refresh(original=self.original_samples, y_axis=self.y_axis)
 
     def calculate_avg_reflectance(self, left, right):
         left, right = self.validate_left_right(left, right)
@@ -346,7 +352,6 @@ class Tab:
 
                 incidence = sample.name + " (i=" + str(i) + ")"
                 emission = sample.name + " (e=" + str(e) + ")"
-                phase = sample.name
 
                 if incidence not in incidence_sample.data:
                     incidence_sample.data[incidence] = {"e": [], "theta": [], "g": [], "average reflectance": []}
@@ -434,7 +439,6 @@ class Tab:
 
                 incidence = sample.name + " (i=" + str(i) + ")"
                 emission = sample.name + " (e=" + str(e) + ")"
-                phase = sample.name
 
                 if incidence not in incidence_sample.data:
                     incidence_sample.data[incidence] = {"e": [], "theta": [], "g": [], "band center": []}
@@ -466,7 +470,6 @@ class Tab:
         depths = []
         self.incidence_samples = []
         self.emission_samples = []
-        self.phase_samples = []
         artifact_warning = False
 
         self.contour_sample = Sample("all samples", "file", "title")
@@ -523,7 +526,6 @@ class Tab:
 
                 incidence = sample.name + " (i=" + str(i) + ")"
                 emission = sample.name + " (e=" + str(e) + ")"
-                phase = sample.name
 
                 if incidence not in incidence_sample.data:
                     incidence_sample.data[incidence] = {"e": [], "theta": [], "g": [], "band depth": []}
@@ -550,11 +552,12 @@ class Tab:
 
         return left, right, depths, artifact_warning
 
-    def get_e_i_g(self, label):  # Extract e, i, and g from a label.
+    @staticmethod
+    def get_e_i_g(label):  # Extract e, i, and g from a label.
         i = int(label.split("i=")[1].split(" ")[0])
         e = int(label.split("e=")[1].split(" ")[0].strip(")"))
         az = int(label.split("az=")[1].strip(")"))
-        g = self.get_phase_angle(i, e, az)
+        g = utils.get_phase_angle(i, e, az)
         return e, i, g
 
     def calculate_slopes(self, left, right):
@@ -562,7 +565,6 @@ class Tab:
         slopes = []
         self.incidence_samples = []
         self.emission_samples = []
-        self.phase_samples = []
 
         self.contour_sample = Sample("all samples", "file", "title")
         self.contour_sample.data = {"all samples": {"i": [], "e": [], "slope": []}}
@@ -573,7 +575,6 @@ class Tab:
         for i, sample in enumerate(self.samples):
             incidence_sample = Sample(sample.name, sample.file, sample.title)
             emission_sample = Sample(sample.name, sample.file, sample.title)
-            phase_sample = Sample(sample.name, sample.file, sample.title)
             for label in sample.geoms:
                 e, i, g = self.plotter.get_e_i_g(label)
 
@@ -600,7 +601,6 @@ class Tab:
 
                 incidence = sample.name + " (i=" + str(i) + ")"
                 emission = sample.name + " (e=" + str(e) + ")"
-                phase = sample.name
 
                 if incidence not in incidence_sample.data:
                     incidence_sample.data[incidence] = {"e": [], "theta": [], "g": [], "slope": []}
@@ -630,11 +630,9 @@ class Tab:
     def validate_left_right(self, left, right):
         try:
             left = float(left)
-        except:
-
+        except ValueError:
             for sample in self.samples:
                 for i, label in enumerate(sample.geoms):
-
                     wavelengths = np.array(sample.data[label]["wavelength"])
                     if i == 0:
                         left = np.min(wavelengths)
@@ -642,8 +640,7 @@ class Tab:
                         left = np.min([left, np.min(wavelengths)])
         try:
             right = float(right)
-        except:
-
+        except ValueError:
             for sample in self.samples:
                 for i, label in enumerate(sample.geoms):
 
@@ -657,10 +654,7 @@ class Tab:
 
     def calculate_error(self, left, right, abs_val):
         left, right = self.validate_left_right(left, right)
-
-        avgs = []
         self.error_samples = []
-        error_sample_names = []
         artifact_warning = False
         error = False
 
@@ -671,9 +665,9 @@ class Tab:
         for i, sample in enumerate(self.samples):
             if i == 0 and len(self.samples) > 1:
                 self.base_sample = sample  # Sample(sample.name,sample.file,sample.title)
-
                 continue
-            elif len(self.samples) == 1:
+
+            if len(self.samples) == 1:
                 # if there is only one sample, we'll use the base to build an error sample with spectra showing
                 # difference from middle spectrum in list.
                 i = int(len(sample.geoms) / 2)
@@ -730,7 +724,7 @@ class Tab:
                 else:
                     found = False
                     for existing_label in self.base_sample.geoms:
-                        e_old, i_old, g_old = self.plotter.get_e_i_g(existing_label)
+                        e_old, i_old, _ = self.plotter.get_e_i_g(existing_label)
                         if e == e_old and i == i_old:
                             error_sample.data[label] = {}
                             error_sample.data[label]["difference"] = (
@@ -760,9 +754,7 @@ class Tab:
 
                             found = True
                             break
-                    if found == False:
-                        print("NO MATCH!!")
-                        print(label)
+                    if not found:
                         if error == "":
                             error = "Error: No corresponding spectrum found.\n"
                         error += "\n" + label
@@ -919,13 +911,12 @@ class Tab:
             x_axis = "contour"
             tab = Tab(self.plotter, "Reciprocity", [self.contour_sample], x_axis=x_axis, y_axis="delta R")
         else:
-
             tab = Tab(self.plotter, "Reciprocity", self.recip_samples, x_axis=x_axis, y_axis="average reflectance")
         return tab
 
     def plot_avg_reflectance(self, x_axis):
-        if x_axis == "e" or x_axis == "theta":
-            tab = Tab(
+        if x_axis in ("e", "theta"):
+            Tab(
                 self.plotter,
                 "Reflectance vs " + x_axis,
                 self.incidence_samples,
@@ -933,7 +924,7 @@ class Tab:
                 y_axis="average reflectance",
             )
         elif x_axis == "i":
-            tab = Tab(
+            Tab(
                 self.plotter,
                 "Reflectance vs " + x_axis,
                 self.emission_samples,
@@ -941,7 +932,7 @@ class Tab:
                 y_axis="average reflectance",
             )
         elif x_axis == "g":
-            tab = Tab(
+            Tab(
                 self.plotter,
                 "Reflectance vs " + x_axis,
                 self.incidence_samples,
@@ -949,53 +940,53 @@ class Tab:
                 y_axis="average reflectance",
             )
         elif x_axis == "e,i":
-            tab = Tab(
+            Tab(
                 self.plotter, "Reflectance", [self.contour_sample], x_axis="contour", y_axis="average reflectance"
             )
 
     def plot_band_centers(self, x_axis):
-        if x_axis == "e" or x_axis == "theta":
-            tab = Tab(
+        if x_axis in ("e", "theta"):
+            Tab(
                 self.plotter, "Band center vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band center"
             )
         elif x_axis == "i":
-            tab = Tab(
+            Tab(
                 self.plotter, "Band center vs " + x_axis, self.emission_samples, x_axis=x_axis, y_axis="band center"
             )
         elif x_axis == "g":
-            tab = Tab(
+            Tab(
                 self.plotter, "Band center vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band center"
             )
         elif x_axis == "e,i":
-            tab = Tab(self.plotter, "Band center", [self.contour_sample], x_axis="contour", y_axis="band center")
+            Tab(self.plotter, "Band center", [self.contour_sample], x_axis="contour", y_axis="band center")
 
     def plot_band_depths(self, x_axis):
-        if x_axis == "e" or x_axis == "theta":
-            tab = Tab(
+        if x_axis in ("e", "theta"):
+            Tab(
                 self.plotter, "Band depth vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band depth"
             )
         elif x_axis == "i":
-            tab = Tab(
+            Tab(
                 self.plotter, "Band depth vs " + x_axis, self.emission_samples, x_axis=x_axis, y_axis="band depth"
             )
         elif x_axis == "g":
-            tab = Tab(
+            Tab(
                 self.plotter, "Band depth vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band depth"
             )
         elif x_axis == "e,i":
-            tab = Tab(self.plotter, "Band depth", [self.contour_sample], x_axis="contour", y_axis="band depth")
+            Tab(self.plotter, "Band depth", [self.contour_sample], x_axis="contour", y_axis="band depth")
 
     def plot_slopes(self, x_axis):
         if x_axis == "e,i":
-            tab = Tab(self.plotter, "Slope", [self.contour_sample], x_axis="contour", y_axis="slope")
-        elif x_axis == "e" or x_axis == "theta":
-            tab = Tab(self.plotter, "Slope vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="slope")
+            Tab(self.plotter, "Slope", [self.contour_sample], x_axis="contour", y_axis="slope")
+        elif x_axis in ("e", "theta"):
+            Tab(self.plotter, "Slope vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="slope")
         elif x_axis == "i":
-            tab = Tab(self.plotter, "Slope vs " + x_axis, self.emission_samples, x_axis=x_axis, y_axis="slope")
+            Tab(self.plotter, "Slope vs " + x_axis, self.emission_samples, x_axis=x_axis, y_axis="slope")
         elif x_axis == "g":
-            tab = Tab(self.plotter, "Slope vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="slope")
+            Tab(self.plotter, "Slope vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="slope")
         elif x_axis == "i,e":
-            tab = Tab(self.plotter, "Slope", [self.contour_sample], x_axis="contour", y_axis="slope")
+            Tab(self.plotter, "Slope", [self.contour_sample], x_axis="contour", y_axis="slope")
 
     # not implemented
     def calculate_photometric_variability(self, left, right):
@@ -1003,7 +994,7 @@ class Tab:
         right = float(right)
         photo_var = []
 
-        for i, sample in enumerate(self.samples):
+        for sample in self.samples:
             min_slope = None
             max_slope = None
             for i, label in enumerate(sample.geoms):
@@ -1039,12 +1030,12 @@ class Tab:
         wavelength = float(wavelength)
 
         normalized_samples = []
-        for i, sample in enumerate(self.samples):
+        for sample in self.samples:
 
             normalized_sample = Sample(
                 sample.name, sample.file, sample.title
-            )  # Note that we aren't editing the original samples list, we're making entirely new objects. This way we can reset later.
-            multiplier = None
+            )  # Note that we aren't editing the original samples list, we're making entirely new objects.
+            # This way we can reset later.
             for label in sample.geoms:
                 wavelengths = np.array(sample.data[label]["wavelength"])
                 if "reflectance" in sample.data[label]:
@@ -1075,7 +1066,8 @@ class Tab:
         )  # Let the tab know this data has been modified and we want to hold on to a separate set of original
         # samples. If we're zoomed in, save the xlim but not the ylim (since y scale will be changing)
 
-    def lift_widget(self, widget):
+    @staticmethod
+    def lift_widget(widget):
         widget.focus_set()
         widget.lift()
 
@@ -1086,15 +1078,15 @@ class Tab:
         else:
             title = None
             name = sample_name
-        for i, sample in enumerate(self.samples):
+        for sample in self.samples:
             if name == sample.name:
                 if title is None or sample.title == title:
-                    break
-        return sample
+                    return sample
+        return None
 
     def set_color(self, sample_name, color):
         sample = self.get_sample(sample_name)
-        if type(color) == int:  # If the user entered a custom hue value
+        if isinstance(color, int):  # If the user entered a custom hue value
             hue = color
         else:
             color_index = self.plot.color_names.index(color)
@@ -1139,6 +1131,7 @@ class Tab:
         self.refresh()
 
     def close_right_click_menu(self, event):
+        # pylint: disable = unused-argument
         self.popup_menu.unpost()
 
     def open_analysis_tools(self):
@@ -1146,7 +1139,6 @@ class Tab:
         # and a dictionary mapping those strings to the sample options.
         self.build_sample_lists()
         self.plotter.controller.open_analysis_tools(self)
-        # self.plotter.controller.open_data_analysis_tools(self,self.existing_indices,self.sample_options_list)
 
     def open_plot_settings(self):
         self.build_sample_lists()
@@ -1209,7 +1201,7 @@ class Tab:
         if self.exclude_specular:
             try:
                 self.specularity_tolerance = int(tolerance)
-            except:
+            except ValueError:
                 self.specularity_tolerance = 0
         winnowed_samples = (
             []
@@ -1219,11 +1211,8 @@ class Tab:
         for i, sample in enumerate(self.samples):
             winnowed_sample = Sample(sample.name, sample.file, sample.title)
 
-            for (
-                geom
-            ) in (
-                sample.geoms
-            ):  # For every spectrum associated with the sample, check if it is for a geometry we are going to plot.
+            for geom in sample.geoms:  # For every spectrum associated with the sample,
+                # check if it is for a geometry we are going to plot.
                 # if it is, attach that spectrum to the winnowed sample data
                 try:  # If there is no geometry information for this sample, this will throw an exception.
                     i = geom[0]
@@ -1235,8 +1224,7 @@ class Tab:
                         winnowed_sample.add_spectrum(
                             geom, sample.data[geom]["reflectance"], sample.data[geom]["wavelength"]
                         )
-                except Exception as e:  # If there's no geometry information, plot the sample.
-                    print(e)
+                except (IndexError, KeyError):  # If there's no geometry information, plot the sample.
                     print("plotting spectrum with invalid geometry information")
                     winnowed_sample.add_spectrum(
                         geom, sample.data[geom]["reflectance"], sample.data[geom]["wavelength"]
@@ -1258,11 +1246,11 @@ class Tab:
             self.title,
             self.samples,
             tab_index=tab_index,
-            title_override=True,
             geoms=self.geoms,
             original=original,
             xlim=xlim,
             ylim=ylim,
+            x_axis=x_axis,
             y_axis=y_axis,
             exclude_artifacts=self.exclude_artifacts,
             exclude_specular=self.exclude_specular,
@@ -1277,22 +1265,6 @@ class Tab:
         tabid = self.plotter.notebook.select()
         self.plotter.notebook.forget(tabid)
         self.plotter.titles.remove(self.notebook_title)
-
-    def get_phase_angle(self, i, e, az):
-        def get_lat1_lat2_delta_long(i, e, az):
-            if np.sign(i) == np.sign(e):
-                delta_long = az
-            else:
-                delta_long = 180 - az
-            lat1 = 90 - np.abs(i)
-            lat2 = 90 - np.abs(e)
-            return lat1, lat2, delta_long
-
-        lat1, lat2, delta_long = get_lat1_lat2_delta_long(i, e, az)
-        dist = np.abs(
-            utils.arccos(utils.sin(lat1) * utils.sin(lat2) + utils.cos(lat1) * utils.cos(lat2) * utils.cos(delta_long))
-        )
-        return dist
 
     def check_geom(self, i, e, az, exclude_specular=False, tolerance=None):
         i = int(float(i))  # Get exception from int('0.0')
@@ -1316,10 +1288,7 @@ class Tab:
         if az in self.geoms["az"] or self.geoms["az"] == []:
             good_az = True
 
-        if good_i and good_e and good_az:
-            return True
-        else:
-            return False
+        return good_i and good_e and good_az
 
     def adjust_x(self, left, right):
         left = float(left)

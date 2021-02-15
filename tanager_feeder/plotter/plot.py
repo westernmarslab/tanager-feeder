@@ -42,7 +42,7 @@ class Plot:
         self.markers_drawn = False  # Referenced to decide whether to display markerstyle options in open_options
         self.lines_drawn = False  # Referenced to decide whether to display linestyle options in open_options
         # If y limits for plot not specified, make the plot wide enough to display min and max values for all samples.
-        if ylim == None and xlim == None:
+        if ylim is None and xlim is None:
             for i, sample in enumerate(self.samples):
                 for j, label in enumerate(sample.geoms):
                     if self.y_axis not in sample.data[label] or self.x_axis not in sample.data[label]:
@@ -58,13 +58,13 @@ class Plot:
                         self.ylim[1] = np.max([self.ylim[1], sample_max])
 
             # add a little margin around edges
-            if self.ylim == None:
+            if self.ylim is None:
                 self.ylim = [0, 1]  # Happens if you are making a new tab with no data
             delta_y = self.ylim[1] - self.ylim[0]
             self.ylim[0] = self.ylim[0] - delta_y * 0.02
             self.ylim[1] = self.ylim[1] + delta_y * 0.02
 
-        elif ylim == None:
+        elif ylim is None:
             for i, sample in enumerate(self.samples):
                 for j, label in enumerate(sample.geoms):
                     if self.y_axis not in sample.data[label] or self.x_axis not in sample.data[label]:
@@ -92,7 +92,7 @@ class Plot:
                         self.ylim[1] = np.max([self.ylim[1], sample_max])
 
             # add a little margin around edges
-            if self.ylim == None:
+            if self.ylim is None:
                 self.ylim = [0, 1]  # Happens if you are making a new tab with no data
             delta_y = self.ylim[1] - self.ylim[0]
             self.ylim[0] = self.ylim[0] - delta_y * 0.02
@@ -102,7 +102,7 @@ class Plot:
             self.ylim = ylim
 
         # If x limits for plot not specified, make the plot wide enough to display min and max values for all samples.
-        if xlim == None:
+        if xlim is None:
             for i, sample in enumerate(self.samples):
                 for j, label in enumerate(sample.geoms):
                     if self.y_axis not in sample.data[label] or self.x_axis not in sample.data[label]:
@@ -119,7 +119,7 @@ class Plot:
                         self.xlim[0] = np.min([self.xlim[0], sample_min])
                         self.xlim[1] = np.max([self.xlim[1], sample_max])
 
-            if self.xlim == None:
+            if self.xlim is None:
                 self.xlim = [400, 2400]  # Happens if you are making a new tab with no data
             delta_x = self.xlim[1] - self.xlim[0]
 
@@ -199,7 +199,6 @@ class Plot:
         self.white_leg_ax.tick_params(axis="both", which="both", colors="1")
 
         pos1 = self.ax.get_position()  # get the original position
-        #         self.original_ax_position=[pos1.x0+0.12, pos1.y0*1.5, pos1.width, pos1.height*0.9]
         y0 = pos1.y0 * 1.5  # This is all just magic to tweak the exact position.
         height = pos1.height * 0.9
         if self.oversize_legend:
@@ -229,7 +228,13 @@ class Plot:
         if draw:
             self.draw()
 
-    def geom_to_label(self, geom):
+        self.contour = None
+        self.colorbar = None
+        self.white_contour = None
+        self.white_colorbar = None
+
+    @staticmethod
+    def geom_to_label(geom):
         i = geom[0]
         e = geom[1]
         az = geom[2]
@@ -251,8 +256,8 @@ class Plot:
             else:
                 self.names.append(sample.name)
 
-        for j, sample in enumerate(self.samples):
-            for i, geom in enumerate(sample.geoms):
+        for sample in self.samples:
+            for geom in sample.geoms:
                 if self.y_axis not in sample.data[geom] or self.x_axis not in sample.data[geom]:
                     continue
                 legend_label = sample.name + " " + self.geom_to_label(geom)
@@ -267,15 +272,13 @@ class Plot:
                 self.legend_len += 1
 
     def save(self, fig):
-        print("save")
         path = self.plotter.get_path()
-        print(path)
         if not path:
             return
         if "." in path:
             available_formats = ["eps", "pdf", "pgf", "png", "ps", "raw", "rgba", "svg", "svgz"]
-            format = path.split(".")[-1]
-            if format not in available_formats:
+            save_format = path.split(".")[-1]
+            if save_format not in available_formats:
                 path = path + ".png"
         fig.savefig(path, facecolor=fig.get_facecolor())
 
@@ -300,16 +303,15 @@ class Plot:
         for _ in range(len(self.annotations)):
             try:
                 self.annotations.pop(0).remove()
-            except:
+            except IndexError:
                 print("Error! Annotation was erased somewhere it was not supposed to be!")
-                pass  # Shouldn't ever come up, but would happen if we already erased an annotation elsewhere.
 
         for _ in range(len(self.white_annotations)):
             try:
                 self.white_annotations.pop(0).remove()
-            except:
+            except IndexError:
                 print("Error! Annotation was erased somewhere it was not supposed to be!")
-                pass  # Shouldn't ever come up, but would happen if we already erased an annotation elsewhere.
+
         for x in xcoords:
             self.annotations.append(self.ax.axvline(x=x, color="lightgray", linewidth=1))
             self.white_annotations.append(self.white_ax.axvline(x=x, color="black", linewidth=1))
@@ -447,7 +449,6 @@ class Plot:
 
         if np.isnan(interval):  # Happens if all y values are equal
             interval = 0.002
-        y_ticks = np.arange(self.ylim[0], self.ylim[1] + 0.01, interval)
 
         self.ax.grid(which="minor", alpha=0.1)
         self.ax.grid(which="major", alpha=0.1)
@@ -455,8 +456,7 @@ class Plot:
             self.white_ax.grid(which="minor", alpha=0.3)
             self.white_ax.grid(which="major", alpha=0.3)
 
-    def draw(self, exclude_wr=True):
-        print("starting to draw")
+    def draw(self):
         self.ax.cla()
         self.white_ax.cla()
 
@@ -502,8 +502,8 @@ class Plot:
             self.adjust_y(np.min(y), np.max(y))
 
         else:
-            min = None  # we'll use these for setting polar r limits if we are doing a polar plot.
-            max = None
+            min_r = None  # we'll use these for setting polar r limits if we are doing a polar plot.
+            max_r = None
 
             for j, sample in enumerate(self.samples):
                 for i, label in enumerate(sample.geoms):
@@ -526,8 +526,11 @@ class Plot:
 
                         if (
                             self.exclude_artifacts
-                        ):  # If we are excluding data from the suspect region from 1050 to 1450 nm, divide each spectrum into 3 segments. One on either side of that bad region, and then one straight dashed line through the bad region. All the same color. Only attach a legend label to the first one so the legend only gets drawn once.
-                            e, i, g = self.plotter.get_e_i_g(label)
+                        ):  # If we are excluding data from the suspect region from 1050 to 1450 nm, divide each
+                            # spectrum into 3 segments. One on either side of that bad region, and then one straight
+                            # dashed line through the bad region. All the same color. Only attach a legend label to
+                            # the first one so the legend only gets drawn once.
+                            _, _, g = self.plotter.get_e_i_g(label)
                             if self.plotter.artifact_danger(g):  # Only exclude data for high phase angle spectra
                                 artifact_index_left = self.plotter.get_index(
                                     np.array(wavelengths), utils.MIN_WAVELENGTH_ARTIFACT_FREE
@@ -673,7 +676,8 @@ class Plot:
                                 markersize=6,
                             )
                         )
-                        # self.lines.append(self.ax.plot(sample.data[label][self.x_axis], sample.data[label][self.y_axis],label=legend_label,color=color, markersize=6))
+                        # self.lines.append(self.ax.plot(sample.data[label][self.x_axis],
+                        # sample.data[label][self.y_axis],label=legend_label,color=color, markersize=6))
                         with plt.style.context("default"):
                             self.lines.append(
                                 self.white_ax.plot(
@@ -685,7 +689,8 @@ class Plot:
                                     markersize=6,
                                 )
                             )
-                            # self.lines.append(self.white_ax.plot(sample.data[label][self.x_axis], sample.data[label][self.y_axis], label=legend_label,color=white_color, markersize=6))
+                            # self.lines.append(self.white_ax.plot(sample.data[label][self.x_axis],
+                            # sample.data[label][self.y_axis], label=legend_label,color=white_color, markersize=6))
                     elif self.x_axis == "theta":
                         self.markers_drawn = True
                         self.lines_drawn = False
@@ -695,7 +700,7 @@ class Plot:
                         if (
                             i == 0 and j == 0
                         ):  # If this is the first line we are plotting, we'll need to create the polar axis.
-                            c = self.ax.plot(
+                            self.ax.plot(
                                 theta,
                                 np.array(r),
                                 "-" + sample.markerstyle,
@@ -705,7 +710,7 @@ class Plot:
                             )
 
                             with plt.style.context("default"):
-                                c_white = self.white_ax.plot(
+                                self.white_ax.plot(
                                     theta,
                                     np.array(r),
                                     "-" + sample.markerstyle,
@@ -714,14 +719,14 @@ class Plot:
                                     markersize=6,
                                 )
 
-                            min = np.min(r)  # 0.9990460801637914
-                            max = np.max(r)  # 1.0025749009476894
-                            delta = max - min
-                            self.ax.set_ylim(min - delta / 10, max + delta / 10)
+                            min_r = np.min(r)
+                            max_r = np.max(r)
+                            delta = max_r - min_r
+                            self.ax.set_ylim(min_r - delta / 10, max_r + delta / 10)
                             self.ax.set_thetamin(0)
                             self.ax.set_thetamax(180)
 
-                            self.white_ax.set_ylim(min - delta / 10, max + delta / 10)
+                            self.white_ax.set_ylim(min_r - delta / 10, max_r + delta / 10)
                             self.white_ax.set_thetamin(0)
                             self.white_ax.set_thetamax(180)
 
@@ -729,7 +734,7 @@ class Plot:
 
                         else:  # if this is not the first line being plotted on this radial plot, we can just add on
 
-                            c = self.ax.plot(
+                            self.ax.plot(
                                 theta,
                                 np.array(r),
                                 "-" + sample.markerstyle,
@@ -738,7 +743,7 @@ class Plot:
                                 markersize=6,
                             )
                             with plt.style.context("default"):
-                                c = self.white_ax.plot(
+                                self.white_ax.plot(
                                     theta,
                                     np.array(r),
                                     "-" + sample.markerstyle,
@@ -746,31 +751,29 @@ class Plot:
                                     label=legend_label,
                                     markersize=6,
                                 )
-                            if np.min(r) < min or np.max(r) > max:
-                                min = np.min([min, np.min(r)])
-                                max = np.max([max, np.max(r)])
+                            if np.min(r) < min_r or np.max(r) > max_r:
+                                min_r = np.min([min_r, np.min(r)])
+                                max_r = np.max([max_r, np.max(r)])
 
                         if (
                             i == len(sample.geoms) - 1 and j == len(self.samples) - 1
                         ):  # On the last sample, set the range of the value being plotted on the radial axis.
 
-                            delta = max - min
-                            self.ax.set_ylim(min - delta / 10, max + delta / 10)
-                            self.ax.set_yticks(np.round(np.arange(min, max + delta / 10, delta / 2), 4))
+                            delta = max_r - min_r
+                            self.ax.set_ylim(min_r - delta / 10, max_r + delta / 10)
+                            self.ax.set_yticks(np.round(np.arange(min_r, max_r + delta / 10, delta / 2), 4))
                             self.ax.set_thetagrids(
                                 np.arange(0, 180.1, 30), labels=["90", "60", "30", "0", "-30", "-60", "-90"]
                             )
-                            #                             self.ax.legend(bbox_to_anchor=(self.legend_anchor*1.2, 1), loc=1, borderaxespad=0.) #The legend needs to be a little farther to the right for polar plots.
 
                             with plt.style.context("default"):
-                                self.white_ax.set_ylim(min - delta / 10, max + delta / 10)
-                                self.white_ax.set_rgrids(np.round(np.arange(min, max + delta / 10, delta / 2), 3))
-                                self.white_ax.set_yticks(np.round(np.arange(min, max + delta / 10, delta / 2), 3))
+                                self.white_ax.set_ylim(min - delta / 10, max_r + delta / 10)
+                                self.white_ax.set_rgrids(np.round(np.arange(min_r, max_r + delta / 10, delta / 2), 3))
+                                self.white_ax.set_yticks(np.round(np.arange(min_r, max_r + delta / 10, delta / 2), 3))
                                 self.white_ax.set_thetagrids(
                                     np.arange(0, 180.1, 30), labels=["90", "60", "30", "0", "-30", "-60", "-90"]
                                 )
                                 self.white_ax.tick_params(axis="both", colors="black")
-                    #                                 self.white_ax.legend(bbox_to_anchor=(self.legend_anchor*1.2, 1), loc=1, borderaxespad=0.)
                     else:
                         self.visible_data_headers.append(legend_label)
                         self.visible_data.append(sample.data[label][self.y_axis])
@@ -814,8 +817,10 @@ class Plot:
             with plt.style.context("default"):
                 self.white_ax.set_ylabel("Normalized Reflectance", fontsize=18)
         elif self.y_axis == "difference":
+            # pylint: disable = anomalous-backslash-in-string
             self.ax.set_ylabel("$\Delta$R", fontsize=18)
             with plt.style.context("default"):
+                # pylint: disable = anomalous-backslash-in-string
                 self.white_ax.set_ylabel("$\Delta$R", fontsize=18)
         elif self.y_axis == "slope":
             self.ax.set_ylabel("Slope", fontsize=18)
@@ -868,9 +873,9 @@ class Plot:
         self.legend_style = (
             legend_style  # Does something if this method is called from Plot settings changing legend style
         )
-        if self.ax.get_legend() != None:
+        if self.ax.get_legend() is not None:
             self.ax.get_legend().remove()
-        if self.white_ax.get_legend() != None:
+        if self.white_ax.get_legend() is not None:
             self.white_ax.get_legend().remove()
 
         self.leg_ax.patches = []
@@ -890,11 +895,6 @@ class Plot:
                 with plt.style.context(("default")):
                     self.white_ax.legend(bbox_to_anchor=(self.legend_anchor * 1.2, 0.85), loc=1, borderaxespad=0.0)
         else:
-            #             self.fig.set_figheight(self.original_fig_size[1])
-            #             self.ax.set_position(self.original_ax_position)
-            #             self.white_ax.set_position(self.original_ax_position)
-            #             self.fig.canvas.draw()
-            #             self.white_fig.canvas.draw()
             self.leg_ax.set_visible(True)
             self.white_leg_ax.set_visible(True)
 
@@ -906,7 +906,8 @@ class Plot:
             total_buffer = buffer_per_sample * (num_samples_plotted - 1)
             sample_height = (
                 0.99 / num_samples_plotted - total_buffer / num_samples_plotted
-            )  # full height of plot =1, divide by number of samples plotted, subtract a buffer for each after the first one.
+            )  # full height of plot =1, divide by number of samples plotted,
+            # subtract a buffer for each after the first one.
             sample_height = sample_height * 0.999
             for sample in self.samples:
                 if num_samples_plotted == 1:

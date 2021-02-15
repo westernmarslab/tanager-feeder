@@ -11,6 +11,9 @@ INTERVAL = 0.25
 BUFFER = 15
 PI_BUFFER = 20
 
+
+# These are related to the region of spectra that are sensitive to polarization artifacts. This is at high phase
+# angles between 1000 and 1400 nm.
 MIN_WAVELENGTH_ARTIFACT_FREE = 1000
 MAX_WAVELENGTH_ARTIFACT_FREE = 1400
 MIN_G_ARTIFACT_FREE = -20
