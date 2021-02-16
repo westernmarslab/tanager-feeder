@@ -187,11 +187,3 @@ class CommandHandler:
         else:
             self.controller.reset()
             self.interrupt("Success!")
-
-    @staticmethod
-    def set_text(widget: Widget, text: str):
-        state = widget.cget("state")
-        widget.configure(state="normal")
-        widget.delete(0, "end")
-        widget.insert(0, text)
-        widget.configure(state=state)

@@ -1,6 +1,6 @@
 from enum import Enum
 import os
-from tkinter import Frame, Scrollbar, StringVar, Canvas, VERTICAL, TRUE, FALSE, RIGHT, Y, NW, LEFT, BOTH, Listbox, SINGLE
+from tkinter import Frame, Scrollbar, StringVar, Canvas, VERTICAL, TRUE, FALSE, RIGHT, Y, NW, LEFT, BOTH, Listbox, SINGLE, Widget
 from typing import Any
 
 import numpy as np
@@ -318,3 +318,16 @@ class NotScrollbar:
 
     def pack_forget(self):
         pass
+
+
+def set_text(widget: Widget, text: str):
+    state = widget.cget("state")
+    widget.configure(state="normal")
+    widget.delete(0, "end")
+    widget.insert(0, text)
+    widget.configure(state=state)
+
+
+def lift_widget(widget: Widget):
+    widget.focus_set()
+    widget.lift()

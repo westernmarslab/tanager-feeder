@@ -4,12 +4,7 @@ import time
 from threading import Thread
 from tkinter.filedialog import askopenfilename
 from tkinter.filedialog import askdirectory
-from typing import Optional
-
-import numpy as np
-import sys
 import tkinter as tk
-
 from tkinter import (
     Button,
     Frame,
@@ -17,30 +12,28 @@ from tkinter import (
     END,
     RIGHT,
     LEFT,
-    BOTTOM,
     Tk,
     Label,
     BOTH,
     Menu,
     NORMAL,
     DISABLED,
-    EXTENDED,
     ttk,
-    Toplevel,
     StringVar,
     IntVar,
     Radiobutton,
     OptionMenu,
-    Scrollbar,
-    Text,
-    X,
-    Y,
     INSERT,
-    Checkbutton,
 )
+from typing import Optional
 
-from tanager_feeder.cli_manager import CliManager
+import numpy as np
+import sys
 
+# pylint: disable = attribute-defined-outside-init
+# TODO: get rid of attributes defined outside init.
+
+from tanager_feeder.controller.cli_manager import CliManager
 from tanager_feeder.command_handlers.close_handler import CloseHandler
 from tanager_feeder.command_handlers.config_handler import ConfigHandler
 from tanager_feeder.command_handlers.data_handler import DataHandler
@@ -308,7 +301,7 @@ class Controller:
 
         self.goniometer_view = GoniometerView(self, self.view_notebook)
         self.view_notebook.bind("<<NotebookTabChanged>>", lambda event: self.goniometer_view.tab_switch(event))
-        self.view_notebook.bind("<Button-3>", lambda event: self.plot_right_click(event))
+        # self.view_notebook.bind("<Button-3>", lambda event: self.plot_right_click(event))
 
         # The plotter, surprisingly, plots things.
         self.plotter = Plotter(
@@ -867,44 +860,9 @@ class Controller:
             fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
         )
 
-        # ************************Console********************************
-        self.console_frame = Frame(
-            self.view_frame, bg=self.border_color, height=200, highlightthickness=2, highlightcolor=self.bg
-        )
-        self.console_frame.pack(fill=BOTH, expand=True, padx=(1, 1))
-        self.console_title_label = Label(
-            self.console_frame,
-            padx=self.padx,
-            pady=self.pady,
-            bg=self.border_color,
-            fg="black",
-            text="Console",
-            font=("Helvetica", 11),
-        )
-        self.console_title_label.pack(pady=(5, 5))
-        self.text_frame = Frame(self.console_frame)
-        self.scrollbar = Scrollbar(self.text_frame)
-        self.some_width = self.control_frame.winfo_width()
-        self.console_log = Text(self.text_frame, width=self.some_width, bg=self.bg, fg=self.textcolor)
-        self.scrollbar.pack(side=RIGHT, fill=Y)
-
-        self.scrollbar.config(command=self.console_log.yview)
-        self.console_log.configure(yscrollcommand=self.scrollbar.set)
-        self.console_entry = Entry(
-            self.console_frame,
-            width=self.some_width,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
-        )
-        self.console_entry.bind("<Return>", self.execute_cmd)
-        self.console_entry.bind("<Up>", self.iterate_cmds)
-        self.console_entry.bind("<Down>", self.iterate_cmds)
-        self.console_entry.pack(fill=BOTH, side=BOTTOM)
-        self.text_frame.pack(fill=BOTH, expand=True)
-        self.console_log.pack(fill=BOTH, expand=True)
-        self.console_entry.focus()
+        self.console = Console(self.master, self.view_frame)
+        self.console_entry = self.console.console_entry
+        self.console_log = self.console.console_log
 
         # check before taking spectra whether conditions have been met regarding when the last white reference was, etc
         self.wrfailsafe = IntVar()
@@ -959,12 +917,12 @@ class Controller:
 
     @science_i.setter
     def science_i(self, value):
-        if value == None:
+        if value is None:
             self.__science_i = value
         else:
             try:
                 self.__science_i = int(value)
-            except:
+            except ValueError:
                 raise Exception("Invalid science i value")
 
     @property
@@ -973,7 +931,7 @@ class Controller:
 
     @science_e.setter
     def science_e(self, value):
-        if value == None:
+        if value is None:
             self.__science_e = value
         else:
             try:
@@ -999,187 +957,9 @@ class Controller:
         time.sleep(0.5)
         self.control_frame.update()
 
-    # ********************** Process frame ******************************
     # called when user goes to File > Process and export data
     def show_process_frame(self):
-
-        self.process_top = Toplevel(self.master)
-        self.process_top.wm_title("Process Data")
-        self.process_frame = Frame(self.process_top, bg=self.bg, pady=15, padx=15)
-        self.process_frame.pack()
-
-        self.input_dir_label = Label(
-            self.process_frame,
-            padx=self.padx,
-            pady=self.pady,
-            bg=self.bg,
-            fg=self.textcolor,
-            text="Raw spectral data input directory:",
-        )
-        self.input_dir_label.pack(padx=self.padx, pady=(10, 5))
-
-        self.input_frame = Frame(self.process_frame, bg=self.bg)
-        self.input_frame.pack()
-
-        self.process_input_browse_button = Button(
-            self.input_frame, text="Browse", command=self.choose_process_input_dir
-        )
-        self.process_input_browse_button.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
-        )
-        self.process_input_browse_button.pack(side=RIGHT, padx=self.padx)
-        self.tk_buttons.append(self.process_input_browse_button)
-
-        self.input_dir_var = StringVar()
-        self.input_dir_var.trace("w", self.validate_input_dir)
-
-        self.input_dir_entry = Entry(
-            self.input_frame,
-            width=50,
-            bd=self.bd,
-            textvariable=self.input_dir_var,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
-        )
-        self.input_dir_entry.insert(0, self.process_input_dir)
-        self.input_dir_entry.pack(side=RIGHT, padx=self.padx, pady=self.pady)
-        self.entries.append(self.input_dir_entry)
-
-        self.proc_local_remote_frame = Frame(self.process_frame, bg=self.bg)
-        self.proc_local_remote_frame.pack()
-
-        self.output_dir_label = Label(
-            self.proc_local_remote_frame,
-            padx=self.padx,
-            pady=self.pady,
-            bg=self.bg,
-            fg=self.textcolor,
-            text="Processed data output directory:",
-        )
-        self.output_dir_label.pack(padx=self.padx, pady=(10, 5), side=LEFT)
-
-        self.proc_local_check = Checkbutton(
-            self.proc_local_remote_frame,
-            fg=self.textcolor,
-            text=" Local",
-            selectcolor=self.check_bg,
-            bg=self.bg,
-            pady=self.pady,
-            variable=self.proc_local,
-            highlightthickness=0,
-            highlightbackground=self.bg,
-            command=self.local_process_cmd,
-        )
-        self.proc_local_check.pack(side=LEFT, pady=(5, 0), padx=(5, 5))
-        if self.proc_local_remote == "local":
-            self.proc_local_check.select()
-        self.tk_check_buttons.append(self.proc_local_check)
-
-        self.proc_remote_check = Checkbutton(
-            self.proc_local_remote_frame,
-            fg=self.textcolor,
-            text=" Remote",
-            bg=self.bg,
-            pady=self.pady,
-            highlightthickness=0,
-            variable=self.proc_remote,
-            command=self.remote_process_cmd,
-            selectcolor=self.check_bg,
-        )
-        self.proc_remote_check.pack(side=LEFT, pady=(5, 0), padx=(5, 5))
-        if self.proc_local_remote == "remote":
-            self.proc_remote_check.select()
-        self.tk_check_buttons.append(self.proc_remote_check)
-
-        self.process_output_frame = Frame(self.process_frame, bg=self.bg)
-        self.process_output_frame.pack(pady=(5, 10))
-        self.process_output_browse_button = Button(
-            self.process_output_frame, text="Browse", command=self.choose_process_output_dir
-        )
-        self.process_output_browse_button.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
-        )
-        self.process_output_browse_button.pack(side=RIGHT, padx=self.padx)
-        self.tk_buttons.append(self.process_output_browse_button)
-
-        self.output_dir_entry = Entry(
-            self.process_output_frame,
-            width=50,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
-        )
-        self.output_dir_entry.insert(0, self.process_output_dir)
-        self.output_dir_entry.pack(side=RIGHT, padx=self.padx, pady=self.pady)
-        self.entries.append(self.output_dir_entry)
-
-        self.output_file_label = Label(
-            self.process_frame, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="Output file name:"
-        )
-        self.output_file_label.pack(padx=self.padx, pady=self.pady)
-        self.output_file_entry = Entry(
-            self.process_frame,
-            width=50,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
-        )
-        self.output_file_entry.pack()
-        self.entries.append(self.output_file_entry)
-
-        self.process_check_frame = Frame(self.process_frame, bg=self.bg)
-        self.process_check_frame.pack(pady=(15, 5))
-        self.process_save_dir = IntVar()
-        self.process_save_dir_check = Checkbutton(
-            self.process_check_frame,
-            selectcolor=self.check_bg,
-            fg=self.textcolor,
-            text="Save file configuration",
-            bg=self.bg,
-            pady=self.pady,
-            highlightthickness=0,
-            variable=self.process_save_dir,
-        )
-        self.process_save_dir_check.select()
-
-        self.process_button_frame = Frame(self.process_frame, bg=self.bg)
-        self.process_button_frame.pack()
-        self.process_button = Button(
-            self.process_button_frame,
-            fg=self.textcolor,
-            text="Process",
-            padx=self.padx,
-            pady=self.pady,
-            width=int(self.button_width * 1.3),
-            bg="light gray",
-            command=self.process_cmd,
-        )
-        self.process_button.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
-        )
-        self.process_button.pack(padx=(15, 15), side=LEFT)
-        self.tk_buttons.append(self.process_button)
-
-        self.process_close_button = Button(
-            self.process_button_frame,
-            fg=self.buttontextcolor,
-            highlightbackground=self.highlightbackgroundcolor,
-            text="Close",
-            padx=self.padx,
-            pady=self.pady,
-            width=int(self.button_width * 1.3),
-            bg=self.buttonbackgroundcolor,
-            command=self.close_process,
-        )
-        self.process_close_button.pack(padx=(15, 15), side=LEFT)
-        self.tk_buttons.append(self.process_close_button)
-
-    # Closes process frame
-    def close_process(self):
-        self.process_top.destroy()
+        ProcessManager(self.master)
 
     def enable_audio(self):
         self.audio_signals = True
@@ -1196,283 +976,10 @@ class Controller:
 
     # Show failsafes settings frame
     def show_settings_frame(self):
-        self.settings_top = Toplevel(self.master)
-        self.settings_top.wm_title("Failsafe Settings")
-        self.settings_frame = Frame(self.settings_top, bg=self.bg, pady=2 * self.pady, padx=15)
-        self.settings_frame.pack()
+        FailsafesManager(self.master)
 
-        self.failsafe_title_frame = Frame(self.settings_frame, bg=self.bg)
-        self.failsafe_title_frame.pack(pady=(10, 0), fill=X, expand=True)
-        self.failsafe_label0 = Label(
-            self.failsafe_title_frame,
-            fg=self.textcolor,
-            text="Failsafes:                                                                      ",
-            bg=self.bg,
-        )
-        self.failsafe_label0.pack(side=LEFT)
-
-        self.failsafe_frame = Frame(self.settings_frame, bg=self.bg, pady=self.pady)
-        self.failsafe_frame.pack(fill=BOTH, expand=True, padx=(10, 10))
-
-        self.wr_failsafe_check_frame = Frame(self.failsafe_frame, bg=self.bg)
-        self.wr_failsafe_check_frame.pack(pady=self.pady, padx=(20, 5), fill=X, expand=True)
-        self.wrfailsafe_check = Checkbutton(
-            self.wr_failsafe_check_frame,
-            fg=self.textcolor,
-            text="Prompt if no white reference has been taken.",
-            bg=self.bg,
-            pady=self.pady,
-            highlightthickness=0,
-            variable=self.wrfailsafe,
-            selectcolor=self.check_bg,
-        )
-        self.wrfailsafe_check.pack(side=LEFT)
-        if self.wrfailsafe.get():
-            self.wrfailsafe_check.select()
-
-        self.wr_timeout_frame = Frame(self.failsafe_frame, bg=self.bg)
-        self.wr_timeout_frame.pack(pady=self.pady, padx=(20, 5), fill=X, expand=True)
-        self.wr_timeout_label = Label(self.wr_timeout_frame, fg=self.textcolor, text="Timeout (minutes):", bg=self.bg)
-        self.wr_timeout_label.pack(side=LEFT, padx=(20, 0))
-        self.wr_timeout_entry = Entry(
-            self.wr_timeout_frame,
-            bd=self.bd,
-            width=10,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
-        )
-        self.wr_timeout_entry.pack(side=LEFT, padx=(0, 20))
-        self.wr_timeout_entry.insert(0, "8")
-
-        self.optfailsafe_check_frame = Frame(self.failsafe_frame, bg=self.bg)
-        self.optfailsafe_check_frame.pack(pady=self.pady, padx=(20, 5), fill=X, expand=True)
-        self.optfailsafe_check = Checkbutton(
-            self.optfailsafe_check_frame,
-            fg=self.textcolor,
-            text="Prompt if the instrument has not been optimized.",
-            bg=self.bg,
-            pady=self.pady,
-            highlightthickness=0,
-            selectcolor=self.check_bg,
-            variable=self.optfailsafe,
-        )
-        self.optfailsafe_check.pack(side=LEFT)
-        if self.optfailsafe.get():
-            self.optfailsafe_check.select()
-
-        self.opt_timeout_frame = Frame(self.failsafe_frame, bg=self.bg)
-        self.opt_timeout_frame.pack(pady=self.pady, fill=X, expand=True, padx=(20, 5))
-        self.opt_timeout_label = Label(self.opt_timeout_frame, fg=self.textcolor, text="Timeout (minutes):", bg=self.bg)
-        self.opt_timeout_label.pack(side=LEFT, padx=(20, 0))
-        self.opt_timeout_entry = Entry(
-            self.opt_timeout_frame,
-            bd=self.bd,
-            width=10,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
-        )
-        self.opt_timeout_entry.pack(side=LEFT, padx=(0, 20))
-        self.opt_timeout_entry.insert(0, "60")
-        self.filler_label = Label(self.opt_timeout_frame, bg=self.bg, fg=self.textcolor, text="              ")
-        self.filler_label.pack(side=LEFT)
-
-        self.angles_failsafe_frame = Frame(self.failsafe_frame, bg=self.bg)
-        self.angles_failsafe_frame.pack(pady=self.pady, padx=(20, 5), fill=X, expand=True)
-        self.angles_failsafe_check = Checkbutton(
-            self.angles_failsafe_frame,
-            fg=self.textcolor,
-            text="Check validity of emission and incidence angles.",
-            bg=self.bg,
-            pady=self.pady,
-            highlightthickness=0,
-            selectcolor=self.check_bg,
-            variable=self.angles_failsafe,
-        )
-        # self.angles_failsafe_check.pack(pady=(6,5),side=LEFT,padx=(0,20))
-        if self.angles_failsafe.get():
-            self.angles_failsafe_check.select()
-
-        self.label_failsafe_frame = Frame(self.failsafe_frame, bg=self.bg)
-        self.label_failsafe_frame.pack(pady=self.pady, padx=(20, 5), fill=X, expand=True)
-        self.label_failsafe_check = Checkbutton(
-            self.label_failsafe_frame,
-            fg=self.textcolor,
-            text="Require a label for each spectrum.",
-            bg=self.bg,
-            pady=self.pady,
-            highlightthickness=0,
-            selectcolor=self.check_bg,
-            variable=self.labelfailsafe,
-        )
-        self.label_failsafe_check.pack(pady=(6, 5), side=LEFT, padx=(0, 20))
-        if self.labelfailsafe.get():
-            self.label_failsafe_check.select()
-
-        self.wr_angles_failsafe_frame = Frame(self.failsafe_frame, bg=self.bg)
-        self.wr_angles_failsafe_frame.pack(pady=self.pady, padx=(20, 5), fill=X, expand=True)
-        self.wr_angles_failsafe_check = Checkbutton(
-            self.wr_angles_failsafe_frame,
-            selectcolor=self.check_bg,
-            fg=self.textcolor,
-            text="Require a new white reference at each viewing geometry             ",
-            bg=self.bg,
-            pady=self.pady,
-            highlightthickness=0,
-            variable=self.wr_angles_failsafe,
-        )
-        self.wr_angles_failsafe_check.pack(pady=(6, 5), side=LEFT)
-        if self.wr_angles_failsafe.get():
-            self.wr_angles_failsafe_check.select()
-
-        self.wrap_frame = Frame(self.failsafe_frame, bg=self.bg)
-        self.wrap_frame.pack(pady=self.pady, padx=(20, 5), fill=X, expand=True)
-        self.anglechangefailsafe_check = Checkbutton(
-            self.wrap_frame,
-            selectcolor=self.check_bg,
-            fg=self.textcolor,
-            text="Remind me to check the goniometer if the viewing geometry changes.",
-            bg=self.bg,
-            pady=self.pady,
-            highlightthickness=0,
-            variable=self.anglechangefailsafe,
-        )
-        # self.anglechangefailsafe_check.pack(pady=(6,5),side=LEFT)#side=LEFT, pady=self.pady)
-        # if self.anglechangefailsafe.get():
-        #   self.anglechangefailsafe_check.select()
-
-        self.failsafes_ok_button = Button(self.failsafe_frame, text="Ok", command=self.settings_top.destroy)
-        self.failsafes_ok_button.config(
-            fg=self.buttontextcolor,
-            highlightbackground=self.highlightbackgroundcolor,
-            bg=self.buttonbackgroundcolor,
-            width=15,
-        )
-        self.failsafes_ok_button.pack(pady=self.pady)
-        self.settings_top.resizable(False, False)
-
-    # ********************** Plot frame ******************************
     def show_plot_frame(self):
-        self.plot_top = Toplevel(self.master)
-        self.plot_top.wm_title("Plot")
-        self.plot_frame = Frame(self.plot_top, bg=self.bg, pady=2 * self.pady, padx=15)
-        self.plot_frame.pack()
-
-        self.plot_title_label = Label(
-            self.plot_frame, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="Plot title:"
-        )
-        self.plot_title_label.pack(padx=self.padx, pady=(15, 5))
-        self.plot_title_entry = Entry(
-            self.plot_frame,
-            width=50,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
-        )
-        self.plot_title_entry.insert(0, self.plot_title)
-        self.plot_title_entry.pack(pady=(5, 20))
-        self.plot_local_remote_frame = Frame(self.plot_frame, bg=self.bg)
-        self.plot_local_remote_frame.pack()
-
-        self.plot_input_dir_label = Label(
-            self.plot_local_remote_frame,
-            padx=self.padx,
-            pady=self.pady,
-            bg=self.bg,
-            fg=self.textcolor,
-            text="Path to .csv file:",
-        )
-        self.plot_input_dir_label.pack(side=LEFT, padx=self.padx, pady=self.pady)
-
-        self.plot_local_check = Checkbutton(
-            self.plot_local_remote_frame,
-            fg=self.textcolor,
-            text=" Local",
-            selectcolor=self.check_bg,
-            bg=self.bg,
-            pady=self.pady,
-            variable=self.plot_local,
-            highlightthickness=0,
-            highlightbackground=self.bg,
-            command=self.local_plot_cmd,
-        )
-        self.plot_local_check.pack(side=LEFT, pady=(5, 5), padx=(5, 5))
-
-        self.plot_remote_check = Checkbutton(
-            self.plot_local_remote_frame,
-            fg=self.textcolor,
-            text=" Remote",
-            bg=self.bg,
-            pady=self.pady,
-            highlightthickness=0,
-            variable=self.plot_remote,
-            command=self.remote_plot_cmd,
-            selectcolor=self.check_bg,
-        )
-        self.plot_remote_check.pack(side=LEFT, pady=(5, 5), padx=(5, 5))
-
-        # controls whether the file being plotted is looked for locally or on the spectrometer computer
-        if self.plot_local_remote == "remote":
-            self.plot_remote_check.select()
-            self.plot_local_check.deselect()
-        if self.plot_local_remote == "local":
-            self.plot_local_check.select()
-            self.plot_remote_check.deselect()
-
-        self.plot_file_frame = Frame(self.plot_frame, bg=self.bg)
-        self.plot_file_frame.pack(pady=(5, 10))
-        self.plot_file_browse_button = Button(self.plot_file_frame, text="Browse", command=self.choose_plot_file)
-        self.plot_file_browse_button.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
-        )
-        self.plot_file_browse_button.pack(side=RIGHT, padx=self.padx)
-
-        self.plot_input_dir_entry = Entry(
-            self.plot_file_frame,
-            width=50,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
-        )
-        self.plot_input_dir_entry.insert(0, self.plot_input_file)
-        self.plot_input_dir_entry.pack(side=RIGHT)
-
-        self.plot_button_frame = Frame(self.plot_frame, bg=self.bg)
-        self.plot_button_frame.pack()
-
-        self.plot_button = Button(
-            self.plot_button_frame,
-            fg=self.textcolor,
-            text="Plot",
-            padx=self.padx,
-            pady=self.pady,
-            width=int(self.button_width * 1.3),
-            bg="light gray",
-            command=self.plot,
-        )
-        self.plot_button.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
-        )
-        self.plot_button.pack(side=LEFT, pady=(20, 20), padx=(15, 15))
-
-        self.process_close_button = Button(
-            self.plot_button_frame,
-            fg=self.buttontextcolor,
-            highlightbackground=self.highlightbackgroundcolor,
-            text="Close",
-            padx=self.padx,
-            pady=self.pady,
-            width=int(self.button_width * 1.3),
-            bg=self.buttonbackgroundcolor,
-            command=self.close_plot,
-        )
-        self.process_close_button.pack(pady=(20, 20), padx=(15, 15), side=LEFT)
-
-    def close_plot(self):
-        self.plot_top.destroy()
+        PlotManager(self.master)
 
     def bind(
         self,
@@ -1493,59 +1000,8 @@ class Controller:
             self.log("Raspberry pi not connected. Working offline. Restart to use automation features.")
 
     def on_closing(self):
-
-        # self.goniometer_view.quit()
         self.master.destroy()
         utils.exit_func()
-
-    # Toggle back and forth between saving your processed data remotely or locally
-    def local_process_cmd(self):
-        if self.proc_local.get() and not self.proc_remote.get():
-            return
-        elif self.proc_remote.get() and not self.proc_local.get():
-            return
-        elif not self.proc_remote.get():
-            self.proc_remote_check.select()
-        else:
-            self.proc_remote_check.deselect()
-            self.proc_local_remote = "local"
-            self.output_dir_entry.delete(0, "end")
-
-    # Toggle back and forth between saving your processed data remotely or locally
-    def remote_process_cmd(self):
-        if self.proc_local.get() and not self.proc_remote.get():
-            return
-        elif self.proc_remote.get() and not self.proc_local.get():
-            return
-        elif not self.proc_local.get():
-            self.proc_local_check.select()
-
-        else:
-            self.proc_local_check.deselect()
-            self.proc_local_remote = "remote"
-            self.output_dir_entry.delete(0, "end")
-
-    # Toggle back and forth between plotting your data from a remote or local file
-    def local_plot_cmd(self):
-        if self.plot_local.get() and not self.plot_remote.get():
-            return
-        elif self.plot_remote.get() and not self.plot_local.get():
-            return
-        elif not self.plot_remote.get():
-            self.plot_remote_check.select()
-        else:
-            self.plot_remote_check.deselect()
-
-    # Toggle back and forth between plotting your data from a remote or local file
-    def remote_plot_cmd(self):
-        if self.plot_local.get() and not self.plot_remote.get():
-            return
-        elif self.plot_remote.get() and not self.plot_local.get():
-            return
-        elif not self.plot_local.get():
-            self.plot_local_check.select()
-        else:
-            self.plot_local_check.deselect()
 
     def load_script(self):
         self.script_running = True
@@ -1602,28 +1058,6 @@ class Controller:
         pxw = self.master.winfo_screenwidth()
         inw = self.master.winfo_screenmmwidth() * MM_TO_IN
         return pxw / inw
-
-    def opt_old(self, override=False):
-
-        try:
-            new_spec_config_count = int(self.instrument_config_entry.get())
-            if new_spec_config_count < 1 or new_spec_config_count > 32767:
-                raise (Exception)
-        except:
-            dialog = ErrorDialog(
-                self, label="Error: Invalid number of spectra to average.\nEnter a value from 1 to 32767"
-            )
-            return
-
-        ready = self.setup_RS3_config(
-            {self.opt: [True]}
-        )  # Since we want to make sure optimization times are logged in the current folder, we do all the setup checks
-        # before optimizing even though no data gets saved.
-
-        if ready:  # If we don't still need to set save config or configure instrument before optimizing
-
-            self.spec_commander.optimize()
-            OptHandler(self)
 
     # when operating in manual mode, check validity of viewing geom when the user clicks buttons. If valid, update
     # graphic and self.i and self.e before moving on to other checks. Return any warnings.
@@ -1684,7 +1118,7 @@ class Controller:
         if (
             new_spec_save_dir != self.spec_save_path
             or new_spec_basename != self.spec_basename
-            or self.spec_num == None
+            or self.spec_num is None
             or new_spec_num != self.spec_num
         ):
             return "not_set"
@@ -1694,7 +1128,7 @@ class Controller:
     def check_mandatory_input(self):
         save_config_status = self.check_save_config()
         if save_config_status == "invalid":
-            dialog = ErrorDialog(self, label="Error: Please enter a valid save configuration.")
+            ErrorDialog(self, label="Error: Please enter a valid save configuration.")
             return False
 
         try:
@@ -1702,7 +1136,7 @@ class Controller:
             if new_spec_config_count < 1 or new_spec_config_count > 32767:
                 raise (Exception)
         except:
-            dialog = ErrorDialog(
+            ErrorDialog(
                 self, label="Error: Invalid number of spectra to average.\nEnter a value from 1 to 32767"
             )
             return False
@@ -1716,7 +1150,7 @@ class Controller:
                 valid_e = utils.validate_int_input(e, self.min_science_e, self.max_science_e)
                 valid_az = utils.validate_int_input(az, self.min_science_az, self.max_science_az)
                 if not valid_i or not valid_e or not valid_az:
-                    dialog = ErrorDialog(
+                    ErrorDialog(
                         self,
                         label="Error: Invalid viewing geometry:\n\nincidence = "
                         + str(i)
@@ -1729,7 +1163,7 @@ class Controller:
                     )
                     return False
                 elif not self.validate_distance(i, e, az):
-                    dialog = ErrorDialog(
+                    ErrorDialog(
                         self,
                         label="Error: Due to geometric constraints on the goniometer,\nincidence must be at least "
                         + str(self.required_angular_separation)
@@ -1754,15 +1188,16 @@ class Controller:
         azimuth = self.azimuth_entries[0].get()
 
         if self.manual_automatic.get() == 0:
+            # pylint: disable = comparison-with-callable
             warnings = self.check_viewing_geom_for_manual_operation()
             label += warnings
 
             if self.optfailsafe.get() and func != self.opt:
                 try:
                     opt_limit = int(float(self.opt_timeout_entry.get())) * 60
-                except:
+                except ValueError:
                     opt_limit = sys.maxsize
-                if self.opt_time == None:
+                if self.opt_time is None:
                     label += "The instrument has not been optimized.\n\n"
                 elif now - self.opt_time > opt_limit:
                     minutes = str(int((now - self.opt_time) / 60))
@@ -1777,8 +1212,8 @@ class Controller:
                         )
                     else:
                         label += "The instrument has not been optimized for " + seconds + " seconds.\n\n"
-                if self.opt_time != None:
-                    if self.angles_change_time == None:
+                if self.opt_time is not None:
+                    if self.angles_change_time is None:
                         pass
                     elif self.opt_time < self.angles_change_time:
                         valid_i = utils.validate_int_input(incidence, self.min_science_i, self.max_science_i)
@@ -1791,15 +1226,15 @@ class Controller:
 
                 try:
                     wr_limit = int(float(self.wr_timeout_entry.get())) * 60
-                except:
+                except ValueError:
                     wr_limit = sys.maxsize
-                if self.wr_time == None:
+                if self.wr_time is None:
                     label += "No white reference has been taken.\n\n"
-                elif self.opt_time != None and self.opt_time > self.wr_time:
+                elif self.opt_time is not None and self.opt_time > self.wr_time:
                     label += "No white reference has been taken since the instrument was optimized.\n\n"
                 elif int(self.instrument_config_entry.get()) != int(self.spec_config_count):
                     label += "No white reference has been taken while averaging this number of spectra.\n\n"
-                elif self.spec_config_count == None:
+                elif self.spec_config_count is None:
                     label += "No white reference has been taken while averaging this number of spectra.\n\n"
                 elif now - self.wr_time > wr_limit:
                     minutes = str(int((now - self.wr_time) / 60))
@@ -1816,7 +1251,7 @@ class Controller:
                         label += " No white reference has been taken for " + seconds + " seconds.\n\n"
             if self.wr_angles_failsafe.get() and func != self.wr:
 
-                if self.angles_change_time != None and self.wr_time != None and func != self.opt:
+                if self.angles_change_time is not None and self.wr_time is not None and func != self.opt:
                     if self.angles_change_time > self.wr_time + 1:
                         valid_i = utils.validate_int_input(incidence, self.min_science_i, self.max_science_i)
                         valid_e = utils.validate_int_input(emission, self.min_science_e, self.max_science_e)
@@ -1864,7 +1299,7 @@ class Controller:
             }
             label = "Warning!\n\n" + label
             label += "\nDo you want to continue?"
-            dialog = Dialog(self, title, label, buttons)
+            Dialog(self, title, label, buttons)
             return False
         else:  # if there were no errors
             return True
@@ -1891,19 +1326,18 @@ class Controller:
 
         # Requested instrument config is guaranteed to be valid because of input checks above.
         new_spec_config_count = int(self.instrument_config_entry.get())
-        if self.spec_config_count == None or str(new_spec_config_count) != str(self.spec_config_count):
+        if self.spec_config_count is None or str(new_spec_config_count) != str(self.spec_config_count):
             self.complete_queue_item()
             self.queue.insert(0, nextaction)
             self.queue.insert(0, {self.configure_instrument: []})
             self.configure_instrument()
             return False
 
-        if True:  # self.spec_save_config.get():
-            file = open(self.local_config_loc + "spec_save.txt", "w")
-            file.write(self.spec_save_dir_entry.get() + "\n")
-            file.write(self.spec_basename_entry.get() + "\n")
-            file.write(self.spec_startnum_entry.get() + "\n")
-            self.process_input_dir = self.spec_save_dir_entry.get()
+        file = open(self.local_config_loc + "spec_save.txt", "w")
+        file.write(self.spec_save_dir_entry.get() + "\n")
+        file.write(self.spec_basename_entry.get() + "\n")
+        file.write(self.spec_startnum_entry.get() + "\n")
+        self.process_input_dir = self.spec_save_dir_entry.get()
         return True
 
     # acquire is called every time opt, wr, or take spectrum buttons are pushed from manual mode
@@ -1911,6 +1345,7 @@ class Controller:
     # Action will be either wr, take_spectrum, or opt (manual mode) OR it might just be 'acquire' (automatic mode)
     # For any of these things, we need to validate input.
     def acquire(self, override=False, setup_complete=False, action=None, garbage=False):
+        # pylint: disable = comparison-with-callable
         if not setup_complete:
             # Make sure basenum entry has the right number of digits. It is already guaranteed to have no more digits
             # than allowed and to only have numbers.
@@ -1918,7 +1353,7 @@ class Controller:
             num_zeros = self.config_info.num_len - len(start_num)
             for _ in range(num_zeros):
                 start_num = "0" + start_num
-            self.set_text(self.spec_startnum_entry, start_num)
+            utils.set_text(self.spec_startnum_entry, start_num)
 
             # Set all entries to active. Viewing geometry information will be pulled from these one at a time. Entries
             # are removed from the active list after the geom info is read.
@@ -1929,7 +1364,7 @@ class Controller:
 
         range_warnings = ""
         if (
-            action == None
+            action is None
         ):  # If this was called by the user clicking acquire. otherwise, it will be take_spectrum or wr?
             action = self.acquire
             self.queue.insert(0, {self.acquire: []})
@@ -1958,7 +1393,7 @@ class Controller:
             valid_input = False
             if action == self.take_spectrum:
                 valid_input = self.check_optional_input(self.take_spectrum, [True, False, garbage], range_warnings)
-            elif action == self.acquire or action == self.wr:
+            elif action in (self.acquire, self.wr):
                 valid_input = self.check_optional_input(action, [True, False], range_warnings)
             elif action == self.opt:
                 valid_input = self.check_optional_input(self.opt, [True, False], range_warnings)
@@ -2005,7 +1440,7 @@ class Controller:
                     self.science_e,
                     self.science_az,
                 )
-                handler = SpectrumHandler(self)
+                SpectrumHandler(self)
             else:
                 self.spec_commander.take_spectrum(
                     self.spec_save_path,
@@ -2016,11 +1451,11 @@ class Controller:
                     self.science_e,
                     self.science_az,
                 )
-                handler = SpectrumHandler(self, title="Collecting garbage...", label="Collecting garbage spectrum...")
+                SpectrumHandler(self, title="Collecting garbage...", label="Collecting garbage spectrum...")
 
         elif action == self.wr:
             self.spec_commander.white_reference()
-            handler = WhiteReferenceHandler(self)
+            WhiteReferenceHandler(self)
 
         elif action == self.opt:
             self.spec_commander.optimize()
@@ -2078,21 +1513,19 @@ class Controller:
         else:  # in manual mode, it's ok if the specified geometry is invalid.
             try:
                 next_science_i = int(self.incidence_entries[0].get())
-            except:
+            except ValueError:
                 next_science_i = None
 
             try:
                 next_science_e = int(self.emission_entries[0].get())
-            except:
+            except ValueError:
                 next_science_e = None
 
             try:
                 next_science_az = int(self.azimuth_entries[0].get())
-            except:
+            except ValueError:
                 next_science_az = None
 
-            #         if self.science_i==None or self.science_e==None or self.science_az==None:
-        #             self.angles_change_time=time.time()
         if self.science_i != next_science_i or self.science_e != next_science_e or self.science_az != next_science_az:
             self.angles_change_time = time.time()
 
@@ -2124,7 +1557,7 @@ class Controller:
             if (
                 self.manual_automatic.get() == 0
             ):  # Manual mode. Might not know motor position, just use visualization position.
-                current = (self.goniometer_view.motor_i, self.goniometer_view.motor_e, self.goniometer_view.motor_az)
+                current = (self.goniometer_view.position["motor_i"], self.goniometer_view.position["motor_e"], self.goniometer_view.position["motor_az"])
             else:
                 current = (self.science_i, self.science_e, self.science_az)
             movements = self.get_movements(next_science_i, next_science_e, next_science_az, current)
@@ -2153,54 +1586,8 @@ class Controller:
                     args = dictionary[func]
                     func(*args)
 
-    def set_text(self, widget, text):
-        state = widget.cget("state")
-        widget.configure(state="normal")
-        widget.delete(0, "end")
-        widget.insert(0, text)
-        widget.configure(state=state)
-
-    def safe_az_sweep(self, i, e, start_az, end_az):
-        az_array = np.arange(start_az, end_az, 1)
-        if len(az_array) == 0:
-            az_array = np.arange(start_az, end_az, -1)
-        az_array = np.append(az_array, end_az)
-
-        for az in az_array:
-            tup = (i, e, az)
-            pos, dist = self.get_closest_approach(i, e, az)
-
-            if dist < self.required_angular_separation:
-                return False
-        return True
-
-    def safe_e_sweep(self, i, az, start_e, end_e):
-        e_array = np.arange(start_e, end_e, 1)
-        if len(e_array) == 0:
-            e_array = np.arange(start_e, end_e, -1)
-        e_array = np.append(e_array, end_e)
-
-        for e in e_array:
-            pos, dist = self.get_closest_approach(i, e, az)
-            if dist < self.required_angular_separation:
-                return False
-        return True
-
-    def safe_i_sweep(self, e, az, start_i, end_i):
-        i_array = np.arange(start_i, end_i, 1)
-        if len(i_array) == 0:
-            i_array = np.arange(start_i, end_i, -1)
-        i_array = np.append(i_array, end_i)
-
-        for i in i_array:
-            pos, dist = self.get_closest_approach(i, e, az)
-
-            if dist < self.required_angular_separation:
-                return False
-        return True
-
     def get_movements(self, next_science_i, next_science_e, next_science_az, current_motor=None):
-        if current_motor == None:
+        if current_motor is None:
             current_motor = (self.science_i, self.science_e, self.science_az)
 
         current_motor_i = int(current_motor[0])
@@ -2455,7 +1842,7 @@ class Controller:
 
         err_str = "Error: " + incidence_err_str + emission_err_str
         if err_str != "Error: ":
-            dialog = ErrorDialog(self, title="Error", label=err_str)
+            ErrorDialog(self, title="Error", label=err_str)
             return False
         warning_string = incidence_warn_str + emission_warn_str
 
@@ -2583,7 +1970,7 @@ class Controller:
 
     def configure_instrument(self):
         self.spec_commander.configure_instrument(self.instrument_config_entry.get())
-        handler = InstrumentConfigHandler(self)
+        InstrumentConfigHandler(self)
 
     # Set thes ave configuration for raw spectral data. First, use a remotedirectoryworker to check whether the
     # directory exists and is writeable. If it doesn't exist, give an option to create the directory.
@@ -2595,11 +1982,11 @@ class Controller:
             if status == "mkdirsuccess":
                 self.set_save_config()
             elif status == "mkdirfailedfileexists":
-                dialog = ErrorDialog(
+                ErrorDialog(
                     self, title="Error", label="Could not create directory:\n\n" + dir + "\n\nFile exists."
                 )
             elif status == "mkdirfailed":
-                dialog = ErrorDialog(self, title="Error", label="Could not create directory:\n\n" + dir)
+                ErrorDialog(self, title="Error", label="Could not create directory:\n\n" + dir)
 
         status = self.remote_directory_worker.get_dirs(self.spec_save_dir_entry.get())
 
@@ -2609,7 +1996,7 @@ class Controller:
                 inner_mkdir(self.spec_save_dir_entry.get())
             else:  # Otherwise, ask the user first.
                 buttons = {"yes": {inner_mkdir: [self.spec_save_dir_entry.get()]}, "no": {self.reset: []}}
-                dialog = ErrorDialog(
+                ErrorDialog(
                     self,
                     title="Directory does not exist",
                     label=self.spec_save_dir_entry.get() + "\n\ndoes not exist. Do you want to create this directory?",
@@ -2618,7 +2005,7 @@ class Controller:
             return
 
         elif status == "listdirfailedpermission":
-            dialog = ErrorDialog(self, label="Error: Permission denied for\n" + self.spec_save_dir_entry.get())
+            ErrorDialog(self, label="Error: Permission denied for\n" + self.spec_save_dir_entry.get())
             return
 
         elif status == "timeout":
@@ -2657,12 +2044,12 @@ class Controller:
                 break
             elif "notwriteable" in self.spec_listener.queue:
                 self.spec_listener.queue.remove("notwriteable")
-                dialog = ErrorDialog(self, label="Error: Permission denied.\nCannot write to specified directory.")
+                ErrorDialog(self, label="Error: Permission denied.\nCannot write to specified directory.")
                 return
             time.sleep(utils.INTERVAL)
             t = t - utils.INTERVAL
         if t <= 0:
-            dialog = ErrorDialog(self, label="Error: Operation timed out.")
+            ErrorDialog(self, label="Error: Operation timed out.")
             return
 
         spec_num = self.spec_startnum_entry.get()
@@ -2672,7 +2059,7 @@ class Controller:
         self.spec_commander.set_save_path(
             self.spec_save_dir_entry.get(), self.spec_basename_entry.get(), self.spec_startnum_entry.get()
         )
-        handler = SaveConfigHandler(self)
+        SaveConfigHandler(self)
 
     # when the focus is on the console entry box, the user can scroll through past commands.
     # these are stored in user_cmds with the index of the most recent command at 0
@@ -2724,7 +2111,7 @@ class Controller:
         self.log(message)
         self.queue = []
         self.script_running = False
-        if self.wait_dialog != None:
+        if self.wait_dialog is not None:
             self.wait_dialog.interrupt(message)
             self.wait_dialog.top.wm_geometry("376x140")
 
@@ -2742,7 +2129,7 @@ class Controller:
                 os.makedirs(dir)
                 next_action()
             except Exception as e:
-                dialog = ErrorDialog(self, title="Cannot create directory", label="Cannot create directory:\n\n" + dir)
+                ErrorDialog(self, title="Cannot create directory", label="Cannot create directory:\n\n" + dir)
             return False
 
         exists = os.path.exists(dir)
@@ -2768,7 +2155,7 @@ class Controller:
                 return True
 
             except:
-                dialog = ErrorDialog(
+                ErrorDialog(
                     self, title="Error: Cannot write", label="Error: Cannot write to specified directory.\n\n" + dir
                 )
                 return False
@@ -2777,7 +2164,7 @@ class Controller:
                 try_mk_dir(dir, next_action)
             else:  # Otherwise, ask the user.
                 buttons = {"yes": {try_mk_dir: [dir, next_action]}, "no": {}}
-                dialog = ErrorDialog(
+                ErrorDialog(
                     self,
                     title="Directory does not exist",
                     label=dir + "\n\ndoes not exist. Do you want to create this directory?",
@@ -2792,17 +2179,17 @@ class Controller:
             if status == "mkdirsuccess":
                 next_action()
             elif status == "mkdirfailedfileexists":
-                dialog = ErrorDialog(
+                ErrorDialog(
                     self, title="Error", label="Could not create directory:\n\n" + dir + "\n\nFile exists."
                 )
             elif status == "mkdirfailed":
-                dialog = ErrorDialog(self, title="Error", label="Could not create directory:\n\n" + dir)
+                ErrorDialog(self, title="Error", label="Could not create directory:\n\n" + dir)
 
         status = self.remote_directory_worker.get_dirs(self.spec_save_dir_entry.get())
 
         if status == "listdirfailed":
             buttons = {"yes": {inner_mkdir: [dir, next_action]}, "no": {}}
-            dialog = ErrorDialog(
+            ErrorDialog(
                 self,
                 title="Directory does not exist",
                 label=dir + "\ndoes not exist. Do you want to create this directory?",
@@ -2810,7 +2197,7 @@ class Controller:
             )
             return False
         elif status == "listdirfailedpermission":
-            dialog = ErrorDialog(self, label="Error: Permission denied for\n" + dir)
+            ErrorDialog(self, label="Error: Permission denied for\n" + dir)
             return False
 
         elif status == "timeout":
@@ -2839,12 +2226,12 @@ class Controller:
                 return True
             elif "notwriteable" in self.spec_listener.queue:
                 self.spec_listener.queue.remove("notwriteable")
-                dialog = ErrorDialog(self, label="Error: Permission denied.\nCannot write to specified directory.")
+                ErrorDialog(self, label="Error: Permission denied.\nCannot write to specified directory.")
                 return False
             time.sleep(utils.INTERVAL)
             t = t - utils.INTERVAL
         if t <= 0:
-            dialog = ErrorDialog(self, label="Error: Operation timed out.")
+            ErrorDialog(self, label="Error: Operation timed out.")
             return False
 
     def check_local_file(self, directory, file, next_action):
@@ -2853,7 +2240,7 @@ class Controller:
                 os.remove(file)
                 next_action()
             except:
-                dialog = ErrorDialog(
+                ErrorDialog(
                     self, title="Error overwriting file", label="Error: Could not delete file.\n\n" + file
                 )
 
@@ -2864,14 +2251,14 @@ class Controller:
             if directory[-1] != "\\":
                 directory += "\\"
 
-        self.full_process_output_path = directory + file
-        if os.path.exists(self.full_process_output_path):
-            buttons = {"yes": {remove_retry: [self.full_process_output_path, next_action]}, "no": {}}
+        full_process_output_path = directory + file
+        if os.path.exists(full_process_output_path):
+            buttons = {"yes": {remove_retry: [full_process_output_path, next_action]}, "no": {}}
             dialog = Dialog(
                 self,
                 title="Error: File Exists",
                 label="Error: Specified output file already exists.\n\n"
-                + self.full_process_output_path
+                + full_process_output_path
                 + "\n\nDo you want to overwrite this data?",
                 buttons=buttons,
             )
@@ -2881,82 +2268,24 @@ class Controller:
             return True
 
     def process_cmd(self):
-
-        output_file = self.output_file_entry.get()
-
-        if output_file == "":
-            dialog = ErrorDialog(self, label="Error: Enter an output file name")
+        try:
+            input_directory, output_directory, output_file = self.process_manager.setup_process()
+        except ProcessFileError:
             return
 
-        if output_file[-4:] != ".csv":
-            output_file = output_file + ".csv"
-            self.output_file_entry.insert("end", ".csv")
-
-        self.full_process_output_path = output_file
-
-        input_directory = self.input_dir_entry.get()
-        if input_directory[-1] == "\\":
-            input_directory = input_directory[:-1]
-
-        if self.proc_local.get() == 1:
-            self.plot_local_remote = "local"
-
-            check = self.check_local_file(self.output_dir_entry.get(), output_file, self.process_cmd)
-            if not check:
-                return  # If the file exists, controller.check_local_file_exists gives the user the option to overwrite,
-                # in which case process_cmd gets called again.
-            check = self.check_local_folder(self.output_dir_entry.get(), self.process_cmd)
-            if not check:
-                return  # Same deal for the folder (except existing is good).
-
-            self.spec_commander.process(input_directory, "spec_share_loc", "proc_temp.csv")
-
-        else:
-            self.plot_local_remote = "remote"
-            output_directory = self.output_dir_entry.get()
-            check = self.check_remote_folder(output_directory, self.process_cmd)
-            if not check:
-                return
-
-            self.spec_commander.process(input_directory, output_directory, output_file)
-
-        if self.process_save_dir.get():
-            file = open(self.local_config_loc + "process_directories.txt", "w")
-            file.write(self.plot_local_remote + "\n")
-            file.write(self.input_dir_entry.get() + "\n")
-            file.write(self.output_dir_entry.get() + "\n")
-            file.write(output_file + "\n")
-            file.close()
-
+        self.spec_commander.process(input_directory, output_directory, output_file)
         self.queue.insert(0, {self.process_cmd: []})
         self.queue.insert(1, {self.finish_process: [output_file]})
-        process_handler = ProcessHandler(self)
+        ProcessHandler(self)
 
-    def finish_process(self, output_file):
+    def finish_process(self):
         self.complete_queue_item()
         # We're going to transfer the data file and log file to the final destination. To transfer the log file, first
         # decide on a name to call it. This will be based on the dat file name. E.g. foo.csv would have foo_log.txt
         # associated with it.
-        final_data_destination = self.output_file_entry.get()
-        if "." not in final_data_destination:
-            final_data_destination = final_data_destination + ".csv"
-        data_base = ".".join(final_data_destination.split(".")[0:-1])
-        log_base = ""
+        final_data_destination, final_log_destination = self.process_manager.finish_processing()
 
-        if self.opsys == "Linux" or self.opsys == "Mac":
-            final_data_destination = self.output_dir_entry.get() + "/" + final_data_destination
-            log_base = self.output_dir_entry.get() + "/" + data_base + "_log"
-        else:
-            final_data_destination = self.output_dir_entry.get() + "\\" + final_data_destination
-            log_base = self.output_dir_entry.get() + "\\" + data_base + "_log"
-
-        final_log_destination = log_base
-        i = 1
-        while os.path.isfile(final_log_destination + ".txt"):
-            final_log_destination = log_base + "_" + str(i)
-            i += 1
-        final_log_destination += ".txt"
-
+        # TODO: figure out what goes on here with TCP transfer.
         for item in self.spec_listener.queue:
             if "spec_data" in item:
                 spec_data = item["spec_data"]
@@ -2971,643 +2300,21 @@ class Controller:
                 with open(final_log_destination, "w+") as f:
                     f.write(log_data)
 
-    def lift_widget(self, widget):
-        widget.focus_set()
-        widget.lift()
-
     def thread_lift_widget(self, widget):
-        thread = Thread(target=self.lift_widget, args=(widget,))
+        thread = Thread(target=utils.lift_widget, args=(widget,))
         thread.start()
 
-    def open_analysis_tools(self, tab):
-
-        # tab.set_exclude_artifacts(True)
-        def calculate():
-            self.view_notebook.select(tab.top)
-            artifact_warning = False
-
-            if self.analyze_var.get() == "slope":
-                left, right, slopes, artifact_warning = tab.calculate_slopes(
-                    self.left_slope_entry.get(), self.right_slope_entry.get()
-                )
-                update_entries(left, right)
-                populate_listbox(slopes)
-                update_plot_menu(["e", "i", "g", "e,i", "theta"])
-
-            elif self.analyze_var.get() == "band depth":
-                left, right, depths, artifact_warning = tab.calculate_band_depths(
-                    self.left_slope_entry.get(),
-                    self.right_slope_entry.get(),
-                    self.neg_depth.get(),
-                    self.use_delta.get(),
-                )
-                update_entries(left, right)
-                populate_listbox(depths)
-                update_plot_menu(["e", "i", "g", "e,i", "theta"])
-
-            elif self.analyze_var.get() == "band center":
-                left, right, centers, artifact_warning = tab.calculate_band_centers(
-                    self.left_slope_entry.get(),
-                    self.right_slope_entry.get(),
-                    self.use_max_for_centers.get(),
-                    self.use_delta.get(),
-                )
-                update_entries(left, right)
-                populate_listbox(centers)
-                update_plot_menu(["e", "i", "g", "e,i", "theta"])
-
-            elif self.analyze_var.get() == "reflectance":
-                left, right, reflectance, artifact_warning = tab.calculate_avg_reflectance(
-                    self.left_slope_entry.get(), self.right_slope_entry.get()
-                )
-                update_entries(left, right)
-                populate_listbox(reflectance)
-                update_plot_menu(["e", "i", "g", "e,i", "theta"])
-
-            elif self.analyze_var.get() == "reciprocity":
-                left, right, reciprocity, artifact_warning = tab.calculate_reciprocity(
-                    self.left_slope_entry.get(), self.right_slope_entry.get()
-                )
-                update_entries(left, right)
-                populate_listbox(reciprocity)
-                update_plot_menu(["e", "i", "g", "e,i"])
-
-            elif self.analyze_var.get() == "difference":
-                left, right, error, artifact_warning = tab.calculate_error(
-                    self.left_slope_entry.get(), self.right_slope_entry.get(), self.abs_val.get()
-                )
-                # Tab validates left and right values. If they are no good, put in min and max wavelengths available.
-                update_entries(left, right)
-                populate_listbox(error)
-                update_plot_menu(["\u03bb", "e,i"])
-
-            if artifact_warning:
-                dialog = ErrorDialog(
-                    self, "Warning", "Warning: Excluding data potentially\ninfluenced by artifacts from 1000-1400 nm."
-                )
-
-            self.analysis_dialog.min_height = 1000
-            self.analysis_dialog.update()
-
-        def update_plot_menu(plot_options):
-            self.plot_slope_var.set(plot_options[0])
-            self.plot_slope_menu["menu"].delete(0, "end")
-
-            # Insert list of new options (tk._setit hooks them up to var)
-            max_len = len(plot_options[0])
-            for option in plot_options:
-                max_len = np.max([max_len, len(option)])
-                self.plot_slope_menu["menu"].add_command(label=option, command=tk._setit(self.plot_slope_var, option))
-            self.plot_slope_menu.configure(width=max_len)
-
-        def update_entries(left, right):
-            self.left_slope_entry.delete(0, "end")
-            self.left_slope_entry.insert(0, str(left))
-            self.right_slope_entry.delete(0, "end")
-            self.right_slope_entry.insert(0, str(right))
-
-        def populate_listbox(results):
-            if len(results) > 0:
-                self.slope_results_frame.pack(fill=BOTH, expand=True, pady=(10, 10))
-                try:
-                    self.slopes_listbox.delete(0, "end")
-                except:
-                    self.slopes_listbox = utils.ScrollableListbox(
-                        self.slope_results_frame,
-                        self.bg,
-                        self.entry_background,
-                        self.listboxhighlightcolor,
-                        selectmode=EXTENDED,
-                    )
-                    self.slopes_listbox.configure(height=8)
-                for result in results:
-                    self.slopes_listbox.insert("end", result)
-                self.slopes_listbox.pack(fill=BOTH, expand=True)
-                self.plot_slope_button.configure(state=NORMAL)
-
-        def plot():
-            if self.analyze_var.get() == "slope":
-                tab.plot_slopes(self.plot_slope_var.get())
-            elif self.analyze_var.get() == "band depth":
-                tab.plot_band_depths(self.plot_slope_var.get())
-            elif self.analyze_var.get() == "band center":
-                tab.plot_band_centers(self.plot_slope_var.get())
-            elif self.analyze_var.get() == "reflectance":
-                tab.plot_avg_reflectance(self.plot_slope_var.get())
-            elif self.analyze_var.get() == "reciprocity":
-                tab.plot_reciprocity(self.plot_slope_var.get())
-            elif self.analyze_var.get() == "difference":
-                new = tab.plot_error(self.plot_slope_var.get())
-
-            if self.plot_slope_var.get() == "\u03bb":
-                x1 = float(self.left_slope_entry.get())
-                x2 = float(self.right_slope_entry.get())
-                new.adjust_x(x1, x2)
-
-            self.thread_lift_widget(self.analysis_dialog.top)
-
-        def normalize():
-            select_tab()
-
-            try:
-                self.slopes_listbox.delete(0, "end")
-                self.plot_slope_button.configure(state="disabled")
-            except:
-                pass
-            tab.normalize(self.normalize_entry.get())
-            thread = Thread(target=self.lift_widget, args=(self.analysis_dialog.top,))
-            thread.start()
-
-        def offset():
-            tab.offset(self.offset_sample_var.get(), self.offset_entry.get())
-            thread = Thread(target=self.lift_widget, args=(self.analysis_dialog.top,))
-            thread.start()
-
-        def apply_x():
-            self.view_notebook.select(tab.top)
-
-            try:
-                x1 = float(self.left_zoom_entry.get())
-                x2 = float(self.right_zoom_entry.get())
-                tab.adjust_x(x1, x2)
-                self.lift_widget(self.analysis_dialog.top)
-            except:
-                self.lift_widget(self.analysis_dialog.top)
-                ErrorDialog(
-                    self,
-                    title="Invalid Zoom Range",
-                    label="Error! Invalid x limits: " + self.left_zoom_entry.get() + ", " + self.right_zoom_entry.get(),
-                )
-
-        def apply_y():
-            self.view_notebook.select(tab.top)
-            try:
-                y1 = float(self.left_zoom_entry2.get())
-                y2 = float(self.right_zoom_entry2.get())
-                tab.adjust_y(y1, y2)
-                self.lift_widget(self.analysis_dialog.top)
-            except:
-                self.lift_widget(self.analysis_dialog.top)
-                ErrorDialog(
-                    self,
-                    title="Invalid Zoom Range",
-                    label="Error! Invalid y limits: "
-                    + self.left_zoom_entry2.get()
-                    + ", "
-                    + self.right_zoom_entry2.get(),
-                )
-
-        def uncheck_exclude_artifacts():
-            self.exclude_artifacts.set(0)
-            self.exclude_artifacts_check.deselect()
-            self.lift_widget(self.analysis_dialog.top)
-
-        def disable_plot(analyze_var="None"):
-            try:
-                self.slopes_listbox.delete(0, "end")
-            except:
-                pass
-            self.plot_slope_button.configure(state="disabled")
-
-            if analyze_var == "difference":
-                self.neg_depth_check.pack_forget()
-                self.use_max_for_centers_check.pack_forget()
-                self.use_delta_check.pack_forget()
-                self.abs_val_check.pack()
-                self.extra_analysis_check_frame.pack()
-
-            elif analyze_var == "band center":
-                self.neg_depth_check.pack_forget()
-                self.abs_val_check.pack_forget()
-                self.use_delta_check.pack_forget()
-                self.use_max_for_centers_check.pack()
-                self.use_delta_check.pack()
-                self.extra_analysis_check_frame.pack()
-
-            elif analyze_var == "band depth":
-                self.abs_val_check.pack_forget()
-                self.use_max_for_centers_check.pack_forget()
-                self.use_delta_check.pack_forget()
-                self.neg_depth_check.pack()
-                self.use_delta_check.pack()
-                self.extra_analysis_check_frame.pack()
-
-            else:
-                self.abs_val_check.pack_forget()
-                self.neg_depth_check.pack_forget()
-                self.use_max_for_centers_check.pack_forget()
-                self.use_delta_check.pack_forget()
-
-                self.extra_analysis_check_frame.grid_propagate(0)
-                self.extra_analysis_check_frame.configure(height=1)  # for some reason 0 doesn't work.
-                self.extra_analysis_check_frame.pack()
-                self.outer_slope_frame.pack()
-
-            self.lift_widget(self.analysis_dialog.top)
-
-        def calculate_photometric_variability():
-
-            photo_var = tab.calculate_photometric_variability(
-                self.right_photo_var_entry.get(), self.left_photo_var_entry.get()
-            )
-            try:
-                self.photo_var_listbox.delete(0, "end")
-            except:
-                self.photo_var_listbox = utils.ScrollableListbox(
-                    self.photo_var_results_frame,
-                    self.bg,
-                    self.entry_background,
-                    self.listboxhighlightcolor,
-                    selectmode=EXTENDED,
-                )
-            for var in photo_var:
-                self.photo_var_listbox.insert("end", var)
-            self.photo_var_listbox.pack(fill=BOTH, expand=True)
-
-        def select_tab():
-            self.view_notebook.select(tab.top)
-            self.lift_widget(self.analysis_dialog.top)
-
-        def lift():
-            self.thread_lift_widget(self.analysis_dialog.top)
-
-        tab.freeze()  # You have to finish dealing with this before, say, opening another analysis box.
-        buttons = {
-            "reset": {select_tab: [], tab.reset: [], uncheck_exclude_artifacts: [], disable_plot: [], lift: []},
-            "close": {},
-        }
-
-        # If the user already has analysis tools or a plot editing dialog open, close the extra to avoid confusion.
+    # This gets called when the user clicks 'Edit plot' from the right-click menu on a plot.
+    # Pops up a scrollable listbox with sample options.
+    def ask_plot_samples(self, tab, existing_sample_indices, sample_options, existing_geoms, current_title):
         self.close_plot_option_windows()
+        EditPlotManager(self, tab, existing_sample_indices, sample_options, existing_geoms, current_title)
 
-        self.analysis_dialog = VerticalScrolledDialog(self, "Analyze Data", "", buttons=buttons, button_width=13)
-        #         self.analysis_dialog.top.attributes('-topmost', True)
+    def open_analysis_tools(self, tab):
+        self.close_plot_option_windows()
+        AnalysisToolsManager(self, tab)
 
-        self.outer_normalize_frame = Frame(
-            self.analysis_dialog.interior, bg=self.bg, padx=self.padx, pady=15, highlightthickness=1
-        )
-        self.outer_normalize_frame.pack(expand=True, fill=BOTH)
-        self.slope_title_label = Label(self.outer_normalize_frame, text="Normalize:", bg=self.bg, fg=self.textcolor)
-        self.slope_title_label.pack()
-        self.normalize_frame = Frame(self.outer_normalize_frame, bg=self.bg, padx=self.padx, pady=15)
-        self.normalize_frame.pack()
-
-        self.normalize_label = Label(self.normalize_frame, text="Wavelength (nm):", bg=self.bg, fg=self.textcolor)
-        self.normalize_entry = Entry(
-            self.normalize_frame,
-            width=7,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
-        )
-        self.normalize_button = Button(
-            self.normalize_frame,
-            text="Apply",
-            command=normalize,
-            width=6,
-            fg=self.buttontextcolor,
-            bg=self.buttonbackgroundcolor,
-            bd=self.bd,
-        )
-        self.normalize_button.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
-        )
-        self.normalize_button.pack(side=RIGHT, padx=(10, 10))
-        self.normalize_entry.pack(side=RIGHT, padx=self.padx)
-        self.normalize_label.pack(side=RIGHT, padx=self.padx)
-
-        self.outer_offset_frame = Frame(
-            self.analysis_dialog.interior, bg=self.bg, padx=self.padx, pady=15, highlightthickness=1
-        )
-        self.outer_offset_frame.pack(expand=True, fill=BOTH)
-        self.slope_title_label = Label(
-            self.outer_offset_frame, text="Add offset to sample:", bg=self.bg, fg=self.textcolor
-        )
-        self.slope_title_label.pack(pady=(0, 15))
-        self.offset_sample_frame = Frame(self.outer_offset_frame, bg=self.bg, padx=self.padx, pady=self.pady)
-        self.offset_sample_frame.pack()
-        self.offset_sample_label = Label(self.offset_sample_frame, text="Sample: ", bg=self.bg, fg=self.textcolor)
-        self.offset_sample_label.pack(side=LEFT)
-        self.offset_sample_var = StringVar()
-        sample_names = []
-        repeats = False
-        max_len = 0
-        for sample in tab.samples:
-            if sample.name in sample_names:
-                repeats = True
-            else:
-                sample_names.append(sample.name)
-                max_len = np.max([max_len, len(sample.name)])
-        if repeats:
-            sample_names = []
-            for sample in tab.samples:
-                sample_names.append(sample.title + ": " + sample.name)
-                max_len = np.max([max_len, len(sample_names[-1])])
-        self.offset_sample_var.set(sample_names[0])
-        self.offset_menu = OptionMenu(self.offset_sample_frame, self.offset_sample_var, *sample_names)
-        self.offset_menu.configure(width=max_len, highlightbackground=self.highlightbackgroundcolor)
-        self.offset_menu.pack(side=LEFT)
-        self.offset_frame = Frame(self.outer_offset_frame, bg=self.bg, padx=self.padx, pady=15)
-        self.offset_frame.pack()
-        self.offset_label = Label(self.offset_frame, text="Offset:", bg=self.bg, fg=self.textcolor)
-        self.offset_entry = Entry(
-            self.offset_frame,
-            width=7,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
-        )
-        self.offset_button = Button(
-            self.offset_frame,
-            text="Apply",
-            command=offset,
-            width=6,
-            fg=self.buttontextcolor,
-            bg=self.buttonbackgroundcolor,
-            bd=self.bd,
-        )
-        self.offset_button.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
-        )
-        self.offset_button.pack(side=RIGHT, padx=(10, 10))
-        self.offset_entry.pack(side=RIGHT, padx=self.padx)
-        self.offset_label.pack(side=RIGHT, padx=self.padx)
-
-        self.outer_outer_zoom_frame = Frame(
-            self.analysis_dialog.interior, bg=self.bg, padx=self.padx, pady=15, highlightthickness=1
-        )
-        self.outer_outer_zoom_frame.pack(expand=True, fill=BOTH)
-
-        self.zoom_title_frame = Frame(self.outer_outer_zoom_frame, bg=self.bg)
-        self.zoom_title_frame.pack(pady=(5, 10))
-        self.zoom_title_label = Label(
-            self.zoom_title_frame, text="Adjust plot x and y limits:", bg=self.bg, fg=self.textcolor
-        )
-        self.zoom_title_label.pack(side=LEFT, pady=(0, 4))
-
-        self.outer_zoom_frame = Frame(self.outer_outer_zoom_frame, bg=self.bg, padx=self.padx)
-        self.outer_zoom_frame.pack(expand=True, fill=BOTH, pady=(0, 10))
-        self.zoom_frame = Frame(self.outer_zoom_frame, bg=self.bg, padx=self.padx)
-        self.zoom_frame.pack()
-
-        self.zoom_label = Label(self.zoom_frame, text="x1:", bg=self.bg, fg=self.textcolor)
-        self.left_zoom_entry = Entry(
-            self.zoom_frame,
-            width=7,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
-        )
-        self.zoom_label2 = Label(self.zoom_frame, text="x2:", bg=self.bg, fg=self.textcolor)
-        self.right_zoom_entry = Entry(
-            self.zoom_frame,
-            width=7,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
-        )
-        self.zoom_button = Button(
-            self.zoom_frame,
-            text="Apply",
-            command=apply_x,
-            width=7,
-            fg=self.buttontextcolor,
-            bg=self.buttonbackgroundcolor,
-            bd=self.bd,
-        )
-        self.zoom_button.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
-        )
-        self.zoom_button.pack(side=RIGHT, padx=(10, 10))
-        self.right_zoom_entry.pack(side=RIGHT, padx=self.padx)
-        self.zoom_label2.pack(side=RIGHT, padx=self.padx)
-        self.left_zoom_entry.pack(side=RIGHT, padx=self.padx)
-        self.zoom_label.pack(side=RIGHT, padx=self.padx)
-
-        self.outer_zoom_frame2 = Frame(self.outer_outer_zoom_frame, bg=self.bg, padx=self.padx)
-        self.outer_zoom_frame2.pack(expand=True, fill=BOTH, pady=(0, 10))
-        self.zoom_frame2 = Frame(self.outer_zoom_frame2, bg=self.bg, padx=self.padx)
-        self.zoom_frame2.pack()
-        self.zoom_label3 = Label(self.zoom_frame2, text="y1:", bg=self.bg, fg=self.textcolor)
-        self.left_zoom_entry2 = Entry(
-            self.zoom_frame2,
-            width=7,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
-        )
-        self.zoom_label4 = Label(self.zoom_frame2, text="y2:", bg=self.bg, fg=self.textcolor)
-        self.right_zoom_entry2 = Entry(
-            self.zoom_frame2,
-            width=7,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
-        )
-        self.zoom_button2 = Button(
-            self.zoom_frame2,
-            text="Apply",
-            command=apply_y,
-            width=7,
-            fg=self.buttontextcolor,
-            bg=self.buttonbackgroundcolor,
-            bd=self.bd,
-        )
-        self.zoom_button2.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
-        )
-
-        self.zoom_button2.pack(side=RIGHT, padx=(10, 10))
-        self.right_zoom_entry2.pack(side=RIGHT, padx=self.padx)
-        self.zoom_label4.pack(side=RIGHT, padx=self.padx)
-        self.left_zoom_entry2.pack(side=RIGHT, padx=self.padx)
-        self.zoom_label3.pack(side=RIGHT, padx=self.padx)
-
-        self.outer_outer_slope_frame = Frame(
-            self.analysis_dialog.interior, bg=self.bg, padx=self.padx, pady=15, highlightthickness=1
-        )
-        self.outer_outer_slope_frame.pack(expand=True, fill=BOTH)
-
-        self.outer_slope_frame = Frame(self.outer_outer_slope_frame, bg=self.bg, padx=self.padx)
-        self.outer_slope_frame.pack(expand=True, fill=BOTH, pady=(0, 10))
-        self.slope_title_frame = Frame(self.outer_slope_frame, bg=self.bg)
-        self.slope_title_frame.pack(pady=(5, 5))
-        self.slope_title_label = Label(self.slope_title_frame, text="Analyze ", bg=self.bg, fg=self.textcolor)
-        self.slope_title_label.pack(side=LEFT, pady=(0, 4))
-        self.analyze_var = StringVar()
-        self.analyze_var.set("slope")
-        self.analyze_menu = OptionMenu(
-            self.slope_title_frame,
-            self.analyze_var,
-            "slope",
-            "band depth",
-            "band center",
-            "reflectance",
-            "reciprocity",
-            "difference",
-            command=disable_plot,
-        )
-        self.analyze_menu.configure(width=10, highlightbackground=self.highlightbackgroundcolor)
-        self.analyze_menu.pack(side=LEFT)
-
-        # We'll put checkboxes for additional options into this frame at the time the user selects a given option (e.g.
-        # select 'difference' from menu, add option to calculate differences based on absolute value
-        self.extra_analysis_check_frame = Frame(self.outer_slope_frame, bg=self.bg, padx=self.padx)
-        self.extra_analysis_check_frame.pack()
-        self.abs_val = IntVar()
-        # Note that we are not packing this checkbutton yet.
-        self.abs_val_check = Checkbutton(
-            self.extra_analysis_check_frame,
-            selectcolor=self.check_bg,
-            fg=self.textcolor,
-            text=" Use absolute values for average differences",
-            bg=self.bg,
-            pady=self.pady,
-            highlightthickness=0,
-            variable=self.abs_val,
-        )
-
-        self.use_max_for_centers = IntVar()
-        self.use_max_for_centers_check = Checkbutton(
-            self.extra_analysis_check_frame,
-            selectcolor=self.check_bg,
-            fg=self.textcolor,
-            text=" If band max is more prominent than\nband min, use to find center.",
-            bg=self.bg,
-            pady=self.pady,
-            highlightthickness=0,
-            variable=self.use_max_for_centers,
-        )
-        self.use_max_for_centers_check.select()
-
-        self.use_delta = IntVar()
-        self.use_delta_check = Checkbutton(
-            self.extra_analysis_check_frame,
-            selectcolor=self.check_bg,
-            fg=self.textcolor,
-            text=" Center at max \u0394" + "R from continuum  \nrather than spectral min/max. ",
-            bg=self.bg,
-            pady=self.pady,
-            highlightthickness=0,
-            variable=self.use_delta,
-        )
-        self.use_delta_check.select()
-
-        self.neg_depth = IntVar()
-        self.neg_depth_check = Checkbutton(
-            self.extra_analysis_check_frame,
-            selectcolor=self.check_bg,
-            fg=self.textcolor,
-            text=" If band max is more prominent than \nband min, report negative depth.",
-            bg=self.bg,
-            pady=self.pady,
-            highlightthickness=0,
-            variable=self.neg_depth,
-        )
-        self.neg_depth_check.select()
-
-        self.slope_frame = Frame(self.outer_slope_frame, bg=self.bg, padx=self.padx, highlightthickness=0)
-        self.slope_frame.pack(pady=(15, 0))
-
-        self.slope_label = Label(self.slope_frame, text="x1:", bg=self.bg, fg=self.textcolor)
-        self.left_slope_entry = Entry(
-            self.slope_frame,
-            width=7,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
-        )
-        self.slope_label_2 = Label(self.slope_frame, text="x2:", bg=self.bg, fg=self.textcolor)
-        self.right_slope_entry = Entry(
-            self.slope_frame,
-            width=7,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
-        )
-        self.slope_button = Button(
-            self.slope_frame,
-            text="Calculate",
-            command=calculate,
-            width=7,
-            fg=self.buttontextcolor,
-            bg=self.buttonbackgroundcolor,
-            bd=self.bd,
-        )
-        self.slope_button.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
-        )
-
-        self.slope_button.pack(side=RIGHT, padx=(10, 10))
-        self.right_slope_entry.pack(side=RIGHT, padx=self.padx)
-        self.slope_label_2.pack(side=RIGHT, padx=self.padx)
-        self.left_slope_entry.pack(side=RIGHT, padx=self.padx)
-        self.slope_label.pack(side=RIGHT, padx=self.padx)
-        self.slope_results_frame = Frame(self.outer_slope_frame, bg=self.bg)
-        self.slope_results_frame.pack(
-            fill=BOTH, expand=True
-        )  # We'll put a listbox with slope info in here later after calculating.
-
-        self.outer_plot_slope_frame = Frame(self.outer_outer_slope_frame, bg=self.bg, padx=self.padx, pady=10)
-        self.outer_plot_slope_frame.pack(expand=True, fill=BOTH)
-        self.plot_slope_frame = Frame(self.outer_plot_slope_frame, bg=self.bg, padx=self.padx)
-        self.plot_slope_frame.pack(side=RIGHT)
-        self.plot_slope_label = Label(
-            self.plot_slope_frame, text="Plot as a function of", bg=self.bg, fg=self.textcolor
-        )
-        self.plot_slope_var = StringVar()
-        self.plot_slope_var.set("e")
-        self.plot_slope_menu = OptionMenu(self.plot_slope_frame, self.plot_slope_var, "e", "i", "g", "e,i", "theta")
-        self.plot_slope_menu.configure(width=2, highlightbackground=self.highlightbackgroundcolor)
-        self.plot_slope_button = Button(
-            self.plot_slope_frame,
-            text="Plot",
-            command=plot,
-            width=7,
-            fg=self.buttontextcolor,
-            bg=self.buttonbackgroundcolor,
-            bd=self.bd,
-        )
-        self.plot_slope_button.config(
-            fg=self.buttontextcolor,
-            highlightbackground=self.highlightbackgroundcolor,
-            bg=self.buttonbackgroundcolor,
-            state=DISABLED,
-        )
-        self.plot_slope_button.pack(side=RIGHT, padx=(10, 10))
-        self.plot_slope_menu.pack(side=RIGHT, padx=self.padx)
-        self.plot_slope_label.pack(side=RIGHT, padx=self.padx)
-
-        self.exclude_artifacts_frame = Frame(
-            self.analysis_dialog.interior, bg=self.bg, padx=self.padx, pady=15, highlightthickness=1
-        )
-        self.exclude_artifacts_frame.pack(fill=BOTH, expand=True)
-        self.exclude_artifacts = IntVar()
-        self.exclude_artifacts_check = Checkbutton(
-            self.exclude_artifacts_frame,
-            selectcolor=self.check_bg,
-            fg=self.textcolor,
-            text=" Exclude data susceptible to artifacts\n (high g, 1000-1400 nm)  ",
-            bg=self.bg,
-            pady=self.pady,
-            highlightthickness=0,
-            variable=self.exclude_artifacts,
-            command=lambda x="foo",: tab.set_exclude_artifacts(self.exclude_artifacts.get()),
-        )
-        self.exclude_artifacts_check.pack()
-        if tab.exclude_artifacts:
-            self.exclude_artifacts_check.select()
-
-        self.analysis_dialog.interior.configure(highlightthickness=1, highlightcolor="white")
-
+    # If the user already has analysis tools or a plot editing dialog open, close the extra to avoid confusion.
     def close_plot_option_windows(self):
         try:
             self.analysis_dialog.top.destroy()
@@ -3625,199 +2332,6 @@ class Controller:
             self.plot_settings_dialog.top.destroy()
         except:
             pass
-
-    # This gets called when the user clicks 'Edit plot' from the right-click menu on a plot.
-    # Pops up a scrollable listbox with sample options.
-    def ask_plot_samples(self, tab, existing_sample_indices, sample_options, existing_geoms, current_title):
-        def select_tab():
-            self.view_notebook.select(tab.top)
-
-        buttons = {
-            "ok": {
-                select_tab: [],
-                # The lambda sends a list of the currently selected samples back to the tab along with the new title
-                # and selected incidence/emission angles
-                lambda: tab.set_samples(
-                    list(map(lambda y: sample_options[y], self.plot_samples_listbox.curselection())),
-                    self.new_plot_title_entry.get(),
-                    *check_angle_lists(self.i_entry.get(), self.e_entry.get(), self.az_entry.get()),
-                    self.exclude_specular.get(),
-                    self.spec_tolerance_entry.get(),
-                ): [],
-            }
-        }
-
-        def check_angle_lists(incidences, emissions, azimuths):
-            def check_list(angle_list):
-                invalid_list = []
-                angle_list = angle_list.split(",")
-                if "None" in angle_list or "none" in angle_list:
-                    while "None" in angle_list:
-                        angle_list.remove("None")
-                    while "none" in angle_list:
-                        angle_list.remove("none")
-                    angle_list.append(None)
-                if angle_list == [""]:
-                    angle_list = []
-                for n, angle in enumerate(angle_list):
-                    if angle != None:
-                        try:
-                            angle_list[n] = int(angle)
-                        except:
-                            invalid_list.append(angle)
-
-                return angle_list, invalid_list
-
-            incidences, invalid_incidences = check_list(incidences)
-            emissions, invalid_emissions = check_list(emissions)
-            azimuths, invalid_azimuths = check_list(azimuths)
-            if invalid_incidences != [] or invalid_emissions != [] or invalid_azimuths != []:
-                error_string = "Warning! Not all angles entered are valid.\n"
-                if invalid_incidences != []:
-                    error_string += "\nInvalid incidences: " + str(invalid_incidences)
-                if invalid_emissions != []:
-                    error_string += "\nInvalid emissions: " + str(invalid_emissions)
-                if invalid_azimuths != []:
-                    error_string += "\nInvalid azimuths: " + str(invalid_azimuths)
-                ErrorDialog(self, "Warning!", error_string)
-
-            return incidences, emissions, azimuths
-
-        self.close_plot_option_windows()
-
-        self.edit_plot_dialog = Dialog(self, "Edit Plot", "\nPlot title:", buttons=buttons)
-        self.new_plot_title_entry = Entry(
-            self.edit_plot_dialog.top,
-            width=20,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
-        )
-        self.new_plot_title_entry.insert(0, current_title)
-        self.new_plot_title_entry.pack()
-
-        sample_label = Label(
-            self.edit_plot_dialog.top, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="\nSamples:"
-        )
-        sample_label.pack(pady=(0, 10))
-        self.plot_samples_listbox = utils.ScrollableListbox(
-            self.edit_plot_dialog.top,
-            self.bg,
-            self.entry_background,
-            self.listboxhighlightcolor,
-            selectmode=EXTENDED,
-        )
-
-        self.geom_label = Label(
-            self.edit_plot_dialog.top,
-            padx=self.padx,
-            pady=self.pady,
-            bg=self.bg,
-            fg=self.textcolor,
-            text="\nEnter incidence and emission angles to plot,\nor leave blank to plot all:\n",
-        )
-        self.geom_label.pack()
-        self.geom_frame = Frame(self.edit_plot_dialog.top)
-        self.geom_frame.pack(padx=(20, 20), pady=(0, 10))
-        self.i_label = Label(self.geom_frame, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="i: ")
-        self.i_label.pack(side=LEFT)
-        self.i_entry = Entry(
-            self.geom_frame,
-            width=8,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
-        )
-        for i, incidence in enumerate(existing_geoms["i"]):
-            if i == 0:
-                self.i_entry.insert(0, str(incidence))
-            else:
-                self.i_entry.insert("end", "," + str(incidence))
-
-        self.i_entry.pack(side=LEFT)
-
-        self.e_label = Label(
-            self.geom_frame, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="    e: "
-        )
-        self.e_label.pack(side=LEFT)
-        self.e_entry = Entry(
-            self.geom_frame,
-            width=8,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
-        )
-        for i, emission in enumerate(existing_geoms["e"]):
-            if i == 0:
-                self.e_entry.insert(0, str(emission))
-            else:
-                self.e_entry.insert("end", "," + str(emission))
-        self.e_entry.pack(side=LEFT)
-
-        self.az_label = Label(
-            self.geom_frame, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="    az: "
-        )
-        self.az_label.pack(side=LEFT)
-        self.az_entry = Entry(
-            self.geom_frame,
-            width=8,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
-        )
-        for i, azimuth in enumerate(existing_geoms["az"]):
-            if i == 0:
-                self.az_entry.insert(0, str(azimuth))
-            else:
-                self.az_entry.insert("end", "," + str(azimuth))
-        self.az_entry.pack(side=LEFT)
-        print("packed")
-
-        self.exclude_specular_frame = Frame(self.edit_plot_dialog.top, bg=self.bg, padx=self.padx, pady=self.pady)
-        self.exclude_specular_frame.pack()
-        self.exclude_specular = IntVar()
-        self.exclude_specular_check = Checkbutton(
-            self.exclude_specular_frame,
-            selectcolor=self.check_bg,
-            fg=self.textcolor,
-            text="  Exclude specular angles (+/-",
-            bg=self.bg,
-            pady=self.pady,
-            highlightthickness=0,
-            variable=self.exclude_specular,
-        )
-        self.exclude_specular_check.pack(side=LEFT)
-
-        self.spec_tolerance_entry = Entry(
-            self.exclude_specular_frame,
-            width=4,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
-        )
-
-        self.spec_tolerance_entry.pack(side=LEFT)
-        self.spec_tolerance_label = Label(
-            self.exclude_specular_frame, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="\u00B0)"
-        )
-        self.spec_tolerance_label.pack(side=LEFT)
-
-        if tab.exclude_specular:
-            self.exclude_specular_check.select()
-            self.spec_tolerance_entry.insert(0, tab.specularity_tolerance)
-
-        sample_files = []
-        for option in sample_options:
-            self.plot_samples_listbox.insert(END, option)
-
-        for i in existing_sample_indices:
-            self.plot_samples_listbox.select_set(i)
-        self.plot_samples_listbox.config(height=8)
 
     def reset_plot_data(self):
         self.plotter = Plotter(
@@ -3838,84 +2352,30 @@ class Controller:
 
         if self.plot_remote.get():
             self.queue.insert(0, {self.plot: []})
-            self.queue.insert(1, {self.actually_plot: [self.spec_share_loc + "plot_temp.csv"]})
+            # TODO: figure out how data gets transferred and where it gets stored
+            self.queue.insert(1, {self.plot_manager.plot: ["temp loc" + "plot_temp.csv"]})
             self.spec_commander.transfer_data(filename, "spec_share_loc", "plot_temp.csv")
-            data_handler = DataHandler(
+            DataHandler(
                 self,
                 source=filename,
-                temp_destination=self.spec_share_loc + "plot_temp.csv",
-                final_destination=self.spec_share_loc + "plot_temp.csv",
+                #TODO: figure out how data gets transferred and where it gets placed
+                temp_destination="temp loc" + "plot_temp.csv",
+                final_destination="temp loc" + "plot_temp.csv",
             )
         else:
             if os.path.exists(filename):
-                self.actually_plot(filename)
+                self.plot_manager.plot(filename)
             else:
-
-                dialog = ErrorDialog(
+                ErrorDialog(
                     self,
                     title="Error: File not found",
                     label="Error: File not found.\n\n" + filename + "\n\ndoes not exist.",
                 )
                 return False
 
-    def actually_plot(self, filename):
-        if len(self.queue) > 0:
-            print("There is a queue here if and only if we are transferring data from a remote location.")
-            self.complete_queue_item()
-        title = self.plot_title_entry.get()
-        caption = ""  # self.plot_caption_entry.get()
-
-        try:
-            self.plot_input_file = self.plot_input_dir_entry.get()
-            self.plot_title = self.plot_title_entry.get()
-            if self.plot_remote.get():
-                self.plot_local_remote = "remote"
-            elif self.plot_local.get():
-                self.plot_local_remote = "local"
-
-            with open(self.local_config_loc + "plot_config.txt", "w") as plot_config:
-                plot_config.write(self.plot_local_remote + "\n")
-                plot_config.write(self.plot_input_file + "\n")
-                plot_config.write(self.plot_title + "\n")
-
-            self.plot_top.destroy()
-
-            if self.plotter.controller.plot_local_remote == "remote":
-                self.plotter.plot_spectra(title, filename, caption, exclude_wr=False, draw=False)
-                self.plotter.tabs[-1].ask_which_samples()
-            else:
-                self.plotter.plot_spectra(title, filename, caption, exclude_wr=False, draw=True)
-                self.plotter.tabs[-1].ask_which_samples()
-
-            self.goniometer_view.flip()
-
-            last = len(self.view_notebook.tabs()) - 1
-
-            self.view_notebook.select(last)
-            if (
-                self.plotter.save_dir == None
-            ):  # If the user hasn't specified a folder where they want to save plots yet, set the default folder to be
-                # the same one they got the data from. Otherwise, leave it as is.
-                if self.opsys == "Windows":
-                    self.plotter.save_dir = "\\".join(filename.split("\\")[0:-1])
-                else:
-                    self.plotter.save_dir = "/".join(filename.split("/")[0:-1])
-
-        except Exception as e:
-            print(e)
-
-            dialog = Dialog(
-                self,
-                "Plotting Error",
-                "Error: Plotting failed.\n\nDoes file exist? Is data formatted correctly?\nIf plotting a remote file,"
-                " is the server accessible?",
-                {"ok": {}},
-            )
-            raise e
 
     def choose_spec_save_dir(self):
-
-        self.remote_file_explorer = RemoteFileExplorer(
+        RemoteFileExplorer(
             self,
             label="Select a directory to save raw spectral data.\nThis must be to a drive mounted on the spectrometer"
             " control computer.\n E.g. R:\\RiceData\\MarsGroup\\YourName\\spectral_data",
@@ -3923,7 +2383,7 @@ class Controller:
         )
 
     def choose_process_input_dir(self):
-        r = RemoteFileExplorer(
+        RemoteFileExplorer(
             self,
             label="Select the directory containing the data you want to process.\nThis must be on a drive mounted on"
             " the spectrometer control computer.\n E.g. R:\\RiceData\\MarsGroup\\YourName\\spectral_data",
@@ -3931,7 +2391,7 @@ class Controller:
         )
 
     def choose_process_output_dir(self):
-        r = RemoteFileExplorer(
+        RemoteFileExplorer(
             self,
             label="Select the directory where you want to save your processed data.\nThis must be to a drive mounted"
             " on the spectrometer control computer.\n E.g. R:\\RiceData\\MarsGroup\\YourName\\spectral_data",
@@ -3972,7 +2432,7 @@ class Controller:
         for pos in self.available_sample_positions:
             if pos in self.taken_sample_positions:
                 pass
-            elif pos_set == False:
+            elif not pos_set:
                 self.sample_pos_vars[-1].set(pos)
                 pos_set = True
             else:
@@ -4050,7 +2510,7 @@ class Controller:
         self.control_frame.min_height -= 50  # Reduce the required size for the control frame to display all elements.
         self.control_frame.update()  # Configure scrollbar.
 
-    def set_taken_sample_positions(self, arg1=None, arg2=None, arg3=None):
+    def set_taken_sample_positions(self):
         self.taken_sample_positions = []
         for var in self.sample_pos_vars:
             self.taken_sample_positions.append(var.get())
@@ -4191,11 +2651,11 @@ class Controller:
         self.add_geometry_button.pack(pady=(15, 10))
 
     def configure_pi(self, i: Optional[float] = None, e: Optional[float] = None, pos: Optional[int] = None):
-        if i == None:
+        if i is None:
             i = self.science_i
-        if e == None:
+        if e is None:
             e = self.science_e
-        if pos == None:
+        if pos is None:
             pos = self.sample_tray_index
         self.pi_commander.configure(str(i), str(e), pos)
         ConfigHandler(self)
@@ -4214,7 +2674,7 @@ class Controller:
                 self.clear_queue: [],
             },
         }
-        dialog = ConfigDialog(
+        ConfigDialog(
             self,
             title="Setup Required",
             label="Setup required: Unknown goniometer state.\n\nPlease enter the current incidence, emission, and tray"
@@ -4307,7 +2767,7 @@ class Controller:
     def set_overwrite_all(self, val):
         self.overwrite_all = val
 
-    def validate_input_dir(self, *args):
+    def validate_input_dir(self):
         pos = self.input_dir_entry.index(INSERT)
         input_dir = utils.rm_reserved_chars(self.input_dir_entry.get())
         if len(input_dir) < len(self.input_dir_entry.get()):
@@ -4325,15 +2785,15 @@ class Controller:
         self.output_dir_entry.insert(0, output_dir)
         self.output_dir_entry.icursor(pos)
 
-    def validate_output_filename(self, *args):
-        pos = self.output_filename_entry.index(INSERT)
-        filename = utils.rm_reserved_chars(self.spec_output_filename_entry.get())
-        filename = filename.strip("/").strip("\\")
-        self.output_filename_entry.delete(0, "end")
-        self.output_filename_entry.insert(0, filename)
-        self.output_filename_entry.icursor(pos)
+    # def validate_output_filename(self):
+    #     pos = self.output_filename_entry.index(INSERT)
+    #     filename = utils.rm_reserved_chars(self.spec_output_filename_entry.get())
+    #     filename = filename.strip("/").strip("\\")
+    #     self.output_filename_entry.delete(0, "end")
+    #     self.output_filename_entry.insert(0, filename)
+    #     self.output_filename_entry.icursor(pos)
 
-    def validate_spec_save_dir(self, *args):
+    def validate_spec_save_dir(self):
         pos = self.spec_save_dir_entry.index(INSERT)
         spec_save_dir = utils.rm_reserved_chars(self.spec_save_dir_entry.get())
         if len(spec_save_dir) < len(self.spec_save_dir_entry.get()):
@@ -4342,7 +2802,7 @@ class Controller:
         self.spec_save_dir_entry.insert(0, spec_save_dir)
         self.spec_save_dir_entry.icursor(pos)
 
-    def validate_basename(self, *args):
+    def validate_basename(self):
         pos = self.spec_basename_entry.index(INSERT)
         basename = utils.rm_reserved_chars(self.spec_basename_entry.get())
         basename = basename.strip("/").strip("\\")
@@ -4350,7 +2810,7 @@ class Controller:
         self.spec_basename_entry.insert(0, basename)
         self.spec_basename_entry.icursor(pos)
 
-    def validate_startnum(self, *args):
+    def validate_startnum(self):
         pos = self.spec_startnum_entry.index(INSERT)
         num = utils.numbers_only(self.spec_startnum_entry.get())
         if len(num) > self.config_info.num_len:
@@ -4361,15 +2821,10 @@ class Controller:
         self.spec_startnum_entry.insert(0, num)
         self.spec_startnum_entry.icursor(pos)
 
-    def validate_sample_name(self, name):
-        # print(entry)
-        # pos=entry.index(INSERT)
-        # name=entry.get()
+    @staticmethod
+    def validate_sample_name(name):
         name = name.replace("(", "").replace(")", "").replace("i=", "i").replace("e=", "e").replace(":", "")
         return name
-        # entry.delete(0,'end')
-        # entry.insert(0,name)
-        # entry.icursor(pos)
 
     # motor_az input from -90 to 270
     # science az from 0 to 179.
@@ -4398,15 +2853,14 @@ class Controller:
     #            https://en.wikipedia.org/wiki/Great-circle_navigation
     #            http://astrophysicsformulas.com/astronomy-formulas-astrophysics-
     #            formulas/angular-distance-between-two-points-on-a-sphere
-    def get_closest_approach(self, i, e, az, print_me=False):
+
+    def get_closest_approach(self, i, e, az):
+        #TODO: fix this so that it identifies whether a measurement will be any good.
         #         need to subtract component that is in same direction
         #         or add component in opposite direction
         #         for az=0: full component in same or opposite
         #         az=90: no component in same or opposite
         #         component in same plane is cos(az) or, if az > 90, cos(180-az)
-
-
-
 
         def get_initial_bearing(e):
             lat2 = 90 - np.abs(e)
@@ -4424,13 +2878,12 @@ class Controller:
             i = int(i)
             e = int(e)
             az = int(az)
-        except:
+        except ValueError:
             return False
 
         closest_pos, closest_dist = self.get_closest_approach(i, e, az, print_me=False)
         if closest_dist < self.required_angular_separation:
             if print_me:
-                print("COLLISION")
                 print(i)
                 print(e)
                 print(az)
@@ -4460,13 +2913,12 @@ class Controller:
     def resize(
         self, window=None
     ):  # Resize the console and goniometer view frames to be proportional sizes, and redraw the goniometer.
-        if window == None:
+        if window is None:
             window = utils.PretendEvent(self.master, self.master.winfo_width(), self.master.winfo_height())
         if window.widget == self.master:
             reserve_width = 500
             try:
                 width = self.console_frame.winfo_width()
-                # g_height=self.goniometer_view.double_embed.winfo_height()
 
                 console_height = int(window.height / 3) + 10
                 if console_height < 200:
@@ -4516,87 +2968,6 @@ class Controller:
             t = t - utils.INTERVAL
             time.sleep(utils.INTERVAL)
         return False
-
-    def choose_process_output_dir(self):
-        init_dir = self.output_dir_entry.get()
-        if self.proc_remote.get():
-            process_file_explorer = RemoteFileExplorer(
-                self,
-                target=self.output_dir_entry,
-                title="Select a directory",
-                label="Select an output directory for processed data.",
-                directories_only=True,
-            )
-        else:
-            self.process_top.lift()
-            if os.path.isdir(init_dir):
-                dir = askdirectory(initialdir=init_dir, title="Select an output directory")
-            else:
-                dir = askdirectory(initialdir=os.getcwd(), title="Select an output directory")
-            if dir != ():
-                self.output_dir_entry.delete(0, "end")
-                self.output_dir_entry.insert(0, dir)
-        self.process_top.lift()
-
-    def choose_plot_file(self):
-        init_file = self.plot_input_dir_entry.get()
-        relative_file = init_file.split("/")[-1].split("\\")[-1]
-        init_dir = init_file.strip(relative_file)
-        if self.plot_remote.get():
-            plot_file_explorer = RemoteFileExplorer(
-                self,
-                target=self.plot_input_dir_entry,
-                title="Select a file",
-                label="Select a file to plot",
-                directories_only=False,
-            )
-        else:
-            if os.path.isdir(init_dir):
-                file = askopenfilename(initialdir=init_dir, title="Select a file to plot")
-            else:
-                file = askopenfilename(initialdir=os.getcwd(), title="Select a file to plot")
-            if file != ():
-                self.plot_input_dir_entry.delete(0, "end")
-                self.plot_input_dir_entry.insert(0, file)
-        self.plot_top.lift()
-
-    def log(self, info_string, write_to_file=False):
-        write_to_file = False  # Used to write to a local log file, but now we only write to a log file in the raw
-        # spectral data directory.
-        self.master.update()
-        space = self.console_log.winfo_width()
-        space = str(int(space / 8.5))
-        if int(space) < 20:
-            space = str(20)
-        datestring = ""
-        datestringlist = str(datetime.datetime.now()).split(".")[:-1]
-        for d in datestringlist:
-            datestring = datestring + d
-
-        while info_string[0] == "\n":
-            info_string = info_string[1:]
-
-        if write_to_file:
-            info_string_copy = str(info_string)
-
-        if "\n" in info_string:
-            lines = info_string.split("\n")
-
-            lines[0] = ("{1:" + space + "}{0}").format(datestring, lines[0])
-            for i in range(len(lines)):
-                if i == 0:
-                    continue
-                else:
-                    lines[i] = ("{1:" + space + "}{0}").format("", lines[i])
-            info_string = "\n".join(lines)
-        else:
-            info_string = ("{1:" + space + "}{0}").format(datestring, info_string)
-
-        if info_string[-2:-1] != "\n":
-            info_string += "\n"
-
-        self.console_log.insert(END, info_string + "\n")
-        self.console_log.see(END)
 
     def freeze(self):
         for button in self.tk_buttons:
@@ -4673,24 +3044,7 @@ class Controller:
             for pos_menu in self.pos_menus:
                 pos_menu.configure(state="disabled")
 
-    def light_close(self):
-        self.pi_commander.move_light(self.active_incidence_entries[0].get())
-        handler = CloseHandler(self)
-        self.goniometer_view.set_incidence(int(self.active_incidence_entries[0].get()))
+    def log(self, text: str):
+        self.console.log(text)
 
-    def detector_close(self):
-        self.pi_commander.move_detector(self.active_emission_entries[0].get())
-        handler = CloseHandler(self)
-        self.goniometer_view.set_emission(int(self.active_emission_entries[0].get()))
-
-    def plot_right_click(self, event):
-        return
-        dist_to_edge = self.dist_to_edge(event)
-        if dist_to_edge == None:  # not on a tab
-            return
-
-        else:
-            index = self.view_notebook.index("@%d,%d" % (event.x, event.y))
-            if index != 0:
-                self.view_notebook.forget(index)
-                self.view_notebook.event_generate("<<NotebookTabClosed>>")
+    #TODO: Consider moving to a safe geometry on shutdown.

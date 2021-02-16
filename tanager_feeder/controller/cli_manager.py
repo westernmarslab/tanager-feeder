@@ -1,7 +1,9 @@
+import time
 from tkinter import END
 
 from tanager_feeder import utils
 
+# pylint: disable = bare-except, broad-except
 
 class CliManager:
     def __init__(self, controller):
@@ -36,8 +38,8 @@ class CliManager:
                 if "AUTOMATIC" in cmd:
                     # e.g. goniometer.configure(AUTOMATIC,-30,50,wr)
                     params = cmd[0:-1].split("goniometer.configure(AUTOMATIC")[1].split(",")[1:]
-                    for i in range(len(params)):
-                        params[i] = params[i].strip(" ")
+                    for i, param in enumerate(params):
+                        params[i] = param.strip(" ")
                 elif "MANUAL" in cmd:
                     params = cmd[0:-1].split("goniometer.configure(MANUAL")[1].split(",")[1:]
                     params.append(1)
@@ -81,8 +83,6 @@ class CliManager:
                     self.controller.emission_entries[0].delete(0, "end")
                     self.controller.emission_entries[0].insert(0, params[1])
                     self.controller.azimuth_entries[0].insert(0, params[2])
-
-                    print("CONFIGURING PI??")
                     self.controller.configure_pi(params[0], params[1], params[2], params[3], params[4])
 
                 else:
@@ -94,7 +94,7 @@ class CliManager:
                     self.controller.queue = []
                     self.controller.script_running = False
 
-            except Exception as e:
+            except:
                 self.controller.fail_script_command("Error: could not parse command " + cmd)
         elif cmd == "collect_garbage()":
             if not self.controller.script_running:
@@ -396,9 +396,9 @@ class CliManager:
             for i, param in enumerate(params):
                 params[i] = param.strip(" ")  # Need to do this before looking for setup only
                 if "directory" in param:
-                    dir = get_val(param)
+                    save_dir = get_val(param)
                     self.controller.spec_save_dir_entry.delete(0, "end")
-                    self.controller.spec_save_dir_entry.insert(0, dir)
+                    self.controller.spec_save_dir_entry.insert(0, save_dir)
                 elif "basename" in param:
                     basename = get_val(param)
                     self.controller.spec_basename_entry.delete(0, "end")
@@ -671,20 +671,12 @@ class CliManager:
                 )
                 if valid_i:
                     next_science_i = int(next_science_i)
-                    valid_geom = self.controller.validate_distance(
-                        next_science_i, self.controller.science_e, self.controller.science_az
-                    )
 
                     if not self.controller.script_running:
                         self.controller.queue = []
 
-                    if self.controller.motor_az >= 180 or self.controller.motor_az < 0:
-                        next_motor_i = -1 * next_science_i
-                    else:
-                        next_motor_i = next_science_i
-
-                    self.controller.queue.insert(0, {self.controller.set_incidence: [next_motor_i]})
-                    self.controller.set_incidence(next_motor_i)
+                    self.controller.queue.insert(0, {self.controller.set_incidence: [next_science_i]})
+                    self.controller.set_incidence(next_science_i)
                 else:
                     self.controller.log("Error: " + next_science_i + " is an invalid incidence angle.")
                     self.controller.queue = []
@@ -704,8 +696,6 @@ class CliManager:
                 next_science_i, next_science_e, next_science_az = self.controller.motor_pos_to_science_pos(
                     self.controller.motor_i, self.controller.motor_e, int(az)
                 )
-                valid_geom = self.controller.validate_distance(next_science_i, next_science_e, next_science_az)
-
                 if not self.controller.script_running:
                     self.controller.queue = []
                 self.controller.queue.insert(0, {self.controller.set_azimuth: [az]})
@@ -745,7 +735,7 @@ class CliManager:
             current_motor = (self.controller.motor_i, self.controller.motor_e, self.controller.motor_az)
             movements = self.controller.get_movements(i, e, az, current_motor=current_motor)
 
-            if movements == None:
+            if movements is None:
                 print("NO PATH FOUND")
                 self.controller.log(
                     "Error: Cannot find a path from current geometry to i= "
@@ -816,10 +806,9 @@ class CliManager:
                 if len(self.controller.queue) > 0:
                     self.controller.next_in_queue()
                     return
-                else:
-                    self.controller.script_running = False
-                    self.controller.queue = []
-                    return
+
+                self.controller.script_running = False
+                return
 
             i = int(params[0])
             e = int(params[1])
@@ -832,12 +821,7 @@ class CliManager:
             )
             movements = self.controller.get_movements(i, e, az, current_motor=current_motor)
 
-            current_science_i = self.controller.goniometer_view.science_i
-            current_science_e = self.controller.goniometer_view.science_e
-            current_science_az = self.controller.goniometer_view.science_az
-
-            if movements == None:
-                print("NO PATH FOUND")
+            if movements is None:
                 self.controller.log(
                     "Error: Cannot find a path from current geometry to i= "
                     + str(i)
@@ -847,7 +831,7 @@ class CliManager:
                     + str(az)
                 )
 
-            if movements != None:
+            if movements is not None:
                 temp_queue = []
 
                 for movement in movements:
@@ -880,8 +864,7 @@ class CliManager:
             if not valid:
                 self.controller.log("Error: invalid geometry")
                 return
-            else:
-                angle = int(angle)
+            angle = int(angle)
 
             self.controller.goniometer_view.set_goniometer_tilt(0)
 
@@ -908,8 +891,7 @@ class CliManager:
             if not valid:
                 self.controller.log("Error: invalid geometry")
                 return
-            else:
-                angle = int(angle)
+            angle = int(angle)
             self.controller.goniometer_view.rotate_tray(angle)
             self.controller.goniometer_view.draw_3D_goniometer(
                 self.controller.goniometer_view.width, self.controller.goniometer_view.height
@@ -919,7 +901,7 @@ class CliManager:
         elif cmd == "end file":
             self.controller.script_running = False
             self.controller.queue = []
-            if self.controller.wait_dialog != None:
+            if self.controller.wait_dialog is not None:
                 self.controller.wait_dialog.interrupt("Success!")  # If there is a wait dialog up, make it say success.
                 # There may never have been one that was made though.
                 self.controller.wait_dialog.top.wm_geometry("376x140")
