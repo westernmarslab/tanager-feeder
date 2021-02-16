@@ -5,6 +5,7 @@ from tanager_feeder import utils
 
 # pylint: disable = bare-except, broad-except
 
+
 class CliManager:
     def __init__(self, controller):
         self.controller = controller

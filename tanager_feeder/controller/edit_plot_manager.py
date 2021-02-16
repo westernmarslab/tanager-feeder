@@ -5,7 +5,7 @@ from tanager_feeder.dialogs.error_dialog import ErrorDialog
 from tanager_feeder import utils
 
 
-class AnalysisToolsManager():
+class EditPlotManager:
     def __init__(self, controller, tab, existing_sample_indices, sample_options, existing_geoms, current_title):
         self.view_notebook = controller.view_notebook
         self.tab = tab

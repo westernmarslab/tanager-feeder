@@ -1,4 +1,19 @@
-from tkinter import Entry, Button, Label, Checkbutton, Frame, BOTH, EXTENDED, NORMAL, RIGHT, StringVar, LEFT, DISABLED, OptionMenu, IntVar
+from tkinter import (
+    Entry,
+    Button,
+    Label,
+    Checkbutton,
+    Frame,
+    BOTH,
+    EXTENDED,
+    NORMAL,
+    RIGHT,
+    StringVar,
+    LEFT,
+    DISABLED,
+    OptionMenu,
+    IntVar,
+)
 import tkinter
 from threading import Thread
 
@@ -9,13 +24,19 @@ from tanager_feeder.dialogs.vertical_scrolled_dialog import VerticalScrolledDial
 from tanager_feeder import utils
 
 
-class AnalysisToolsManager():
+class AnalysisToolsManager:
     def __init__(self, view_notebook, tab):
         self.tab = tab
         self.view_notebook = controller.view_notebook
         tab.freeze()  # You have to finish dealing with this before, say, opening another analysis box.
         buttons = {
-            "reset": {self.select_tab: [], self.tab.reset: [], self.uncheck_exclude_artifacts: [], self.disable_plot: [], self.lift: []},
+            "reset": {
+                self.select_tab: [],
+                self.tab.reset: [],
+                self.uncheck_exclude_artifacts: [],
+                self.disable_plot: [],
+                self.lift: [],
+            },
             "close": {},
         }
 
@@ -555,10 +576,7 @@ class AnalysisToolsManager():
             ErrorDialog(
                 self,
                 title="Invalid Zoom Range",
-                label="Error! Invalid y limits: "
-                      + self.left_zoom_entry2.get()
-                      + ", "
-                      + self.right_zoom_entry2.get(),
+                label="Error! Invalid y limits: " + self.left_zoom_entry2.get() + ", " + self.right_zoom_entry2.get(),
             )
 
     def uncheck_exclude_artifacts(self):
@@ -630,7 +648,6 @@ class AnalysisToolsManager():
     def select_tab(self):
         self.view_notebook.select(self.tab.top)
         self.lift_widget(self.analysis_dialog.top)
-
 
     def lift(self):
         self.thread_lift_widget(self.analysis_dialog.top)

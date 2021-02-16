@@ -1,15 +1,13 @@
-import datetime
 import os
 import time
 from threading import Thread
 from tkinter.filedialog import askopenfilename
-from tkinter.filedialog import askdirectory
+
 import tkinter as tk
 from tkinter import (
     Button,
     Frame,
     Entry,
-    END,
     RIGHT,
     LEFT,
     Tk,
@@ -28,13 +26,18 @@ from tkinter import (
 from typing import Optional
 
 import numpy as np
-import sys
 
 # pylint: disable = attribute-defined-outside-init
 # TODO: get rid of attributes defined outside init.
 
 from tanager_feeder.controller.cli_manager import CliManager
-from tanager_feeder.command_handlers.close_handler import CloseHandler
+from tanager_feeder.controller.console import Console
+from tanager_feeder.controller.analysis_tools_manager import AnalysisToolsManager
+from tanager_feeder.controller.edit_plot_manager import EditPlotManager
+from tanager_feeder.controller.failsafes_manager import FailsafesManager
+from tanager_feeder.controller.plot_manager import PlotManager
+from tanager_feeder.controller.process_manager import ProcessManager, ProcessFileError
+
 from tanager_feeder.command_handlers.config_handler import ConfigHandler
 from tanager_feeder.command_handlers.data_handler import DataHandler
 from tanager_feeder.command_handlers.get_position_handler import GetPositionHandler
@@ -53,7 +56,6 @@ from tanager_feeder.dialogs.remote_file_explorer import RemoteFileExplorer
 from tanager_feeder.dialogs.config_dialog import ConfigDialog
 from tanager_feeder.dialogs.error_dialog import ErrorDialog
 from tanager_feeder.dialogs.dialog import Dialog
-from tanager_feeder.dialogs.vertical_scrolled_dialog import VerticalScrolledDialog
 
 from tanager_feeder.goniometer_view.goniometer_view import GoniometerView
 
@@ -70,6 +72,7 @@ class Controller:
     def __init__(self, connection_tracker, config_info):
         self.connection_tracker = connection_tracker
         self.config_info = config_info
+        self.tk_format = utils.TkFormat()
 
         try:
             self.spec_listener = SpecListener(connection_tracker, config_info)
@@ -94,7 +97,8 @@ class Controller:
             Dialog(
                 None,
                 "Error: Multiple connections",
-                "Only one usage of the Tanager Feeder socket address is permitted. Close other programs and try again.",
+                "Only one usage of the Tanager Feeder socket address is permitted."
+                "\nClose other programs and try again.",
                 buttons={"ok": {utils.exit_func: []}},
             )
 
@@ -144,18 +148,14 @@ class Controller:
         self.az_interval = None
 
         self.required_angular_separation = 10
-        self.reversed_goniometer = False
-        self.text_only = False  # for running scripts.
 
         # cmds the user has entered into the console. Allows scrolling back
         # and forth through commands by using up and down arrows.
-        self.user_cmds = []
-        self.user_cmd_index = 0
-        # self.cmd_complete=False
-        self.script_failed = False
-        self.num_samples = 5
 
+        self.script_failed = False
         self.script_running = False
+        self.text_only = False  # for running scripts.
+
         self.white_referencing = False
         self.overwrite_all = False  # User can say yes to all for overwriting files.
 
@@ -167,9 +167,7 @@ class Controller:
         self.spec_num = None
         self.spec_config_count = None
         self.take_spectrum_with_bad_i_or_e = False
-        self.wr_time = None
-        self.opt_time = None
-        self.angles_change_time = None
+
         self.current_label = ""
 
         self.incidence_entries = []
@@ -193,9 +191,8 @@ class Controller:
         self.sample_labels = []  # Labels next to those entries
         self.pos_menus = []  # Option menus for each sample telling which position to put it in
         self.sample_pos_vars = []  # Variables associated with each menu telling its current value
-        self.sample_frames = (
-            []
-        )  # Frames holding all of these things. New one gets created each time a sample is added to the GUI.
+        self.sample_frames = []  # Frames holding all of these things.
+        # New one gets created each time a sample is added to the GUI.
 
         self.sample_tray_index = None  # The location of the physical sample tray. This will be an integer -1 to 4
         # corresponding to wr (-1) or an index in the available_sample_positions (0-4). This is a confusing system
@@ -211,28 +208,8 @@ class Controller:
         ]  # All available positions. Does not change.
         self.taken_sample_positions = []  # Filled positions. Changes as samples are added and removed.
 
-        # Yay formatting. Might not work for Macs.
-        self.bg = "#333333"
-        self.textcolor = "light gray"
-        self.buttontextcolor = "white"
-        self.bd = 2
-        self.padx = 3
-        self.pady = 3
-        self.border_color = "light gray"
-        self.button_width = 15
-        self.buttonbackgroundcolor = "#888888"
-        self.highlightbackgroundcolor = "#222222"
-        self.entry_background = "light gray"
-        if self.opsys == "Windows":
-            self.listboxhighlightcolor = "darkgray"
-        else:
-            self.listboxhighlightcolor = "white"
-        self.selectbackground = "#555555"
-        self.selectforeground = "white"
-        self.check_bg = "#444444"
-
         self.master = Tk()
-        self.master.configure(background=self.bg)
+        self.master.configure(background=self.tk_format.bg)
 
         self.master.title("Control")
         self.master.minsize(1050, 400)
@@ -292,7 +269,7 @@ class Controller:
         self.tk_check_buttons = []
         self.option_menus = []
 
-        self.view_frame = Frame(self.master, width=1800, height=1200, bg=self.bg)
+        self.view_frame = Frame(self.master, width=1800, height=1200, bg=self.tk_format.bg)
         self.view_frame.pack(side=RIGHT, fill=BOTH, expand=True)
         self.view_notebook_holder = Frame(self.view_frame, width=1800, height=1200)
         self.view_notebook_holder.pack(fill=BOTH, expand=True)
@@ -303,45 +280,12 @@ class Controller:
         self.view_notebook.bind("<<NotebookTabChanged>>", lambda event: self.goniometer_view.tab_switch(event))
         # self.view_notebook.bind("<Button-3>", lambda event: self.plot_right_click(event))
 
-        # The plotter, surprisingly, plots things.
+        # The plotter manages all the plots.
         self.plotter = Plotter(
             self,
             self.get_dpi(),
             [self.global_config_loc + "color_config.mplstyle", self.global_config_loc + "size_config.mplstyle"],
         )
-
-        # The commander is in charge of sending all the commands for the spec compy to read
-        # If the user has saved spectra with this program before, load in their previously used directories.
-        self.process_input_dir = ""
-        self.process_output_dir = ""
-        try:
-            with open(self.local_config_loc + "process_directories.txt", "r") as process_config:
-                self.proc_local_remote = process_config.readline().strip("\n")
-                self.process_input_dir = process_config.readline().strip("\n")
-                self.process_output_dir = process_config.readline().strip("\n")
-        except:
-            with open(self.local_config_loc + "process_directories.txt", "w+") as f:
-                f.write("remote")
-                f.write("C:\\Users\n")
-                f.write("C:\\Users\n")
-                self.proc_local_remote = "remote"
-                self.proc_input_dir = "C:\\Users"
-                self.proc_output_dir = "C:\\Users"
-
-        try:
-            with open(self.local_config_loc + "plot_config.txt", "r") as plot_config:
-                self.plot_local_remote = plot_config.readline().strip("\n")
-                self.plot_input_file = plot_config.readline().strip("\n")
-                self.plot_title = plot_config.readline().strip("\n")
-        except:
-            with open(self.local_config_loc + "plot_config.txt", "w+") as f:
-                f.write("remote")
-                f.write("C:\\Users\n")
-                f.write("C:\\Users\n")
-
-            self.plot_local_remote = "remote"
-            self.plot_title = ""
-            self.plot_input_file = "C:\\Users"
 
         try:
             with open(self.local_config_loc + "spec_save.txt", "r") as spec_save_config:
@@ -371,26 +315,31 @@ class Controller:
                 self.script_loc = os.getcwd()
         self.notebook_frames = []
 
-        self.control_frame = VerticalScrolledFrame(self, self.notebook_frame, bg=self.bg)
+        self.control_frame = VerticalScrolledFrame(self, self.notebook_frame, bg=self.tk_format.bg)
         self.control_frame.pack(fill=BOTH, expand=True)
 
-        self.save_config_frame = Frame(self.control_frame.interior, bg=self.bg, highlightthickness=1)
+        self.save_config_frame = Frame(self.control_frame.interior, bg=self.tk_format.bg, highlightthickness=1)
         self.save_config_frame.pack(fill=BOTH, expand=True)
         self.spec_save_label = Label(
             self.save_config_frame,
-            padx=self.padx,
-            pady=self.pady,
-            bg=self.bg,
-            fg=self.textcolor,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
             text="Raw spectral data save configuration:",
         )
         self.spec_save_label.pack(pady=(15, 5))
         self.spec_save_path_label = Label(
-            self.save_config_frame, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="Directory:"
+            self.save_config_frame,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
+            text="Directory:",
         )
-        self.spec_save_path_label.pack(padx=self.padx)
+        self.spec_save_path_label.pack(padx=self.tk_format.padx)
 
-        self.spec_save_dir_frame = Frame(self.save_config_frame, bg=self.bg)
+        self.spec_save_dir_frame = Frame(self.save_config_frame, bg=self.tk_format.bg)
         self.spec_save_dir_frame.pack()
 
         self.spec_save_dir_browse_button = Button(
@@ -398,7 +347,9 @@ class Controller:
         )
         self.tk_buttons.append(self.spec_save_dir_browse_button)
         self.spec_save_dir_browse_button.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
+            fg=self.tk_format.buttontextcolor,
+            highlightbackground=self.tk_format.highlightbackgroundcolor,
+            bg=self.tk_format.buttonbackgroundcolor,
         )
         self.spec_save_dir_browse_button.pack(side=RIGHT, padx=(3, 15), pady=(5, 10))
 
@@ -407,97 +358,114 @@ class Controller:
         self.spec_save_dir_entry = Entry(
             self.spec_save_dir_frame,
             width=50,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bd=self.tk_format.bd,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
             textvariable=self.spec_save_dir_var,
         )
         self.entries.append(self.spec_save_dir_entry)
         self.spec_save_dir_entry.insert(0, self.spec_save_path)
         self.spec_save_dir_entry.pack(padx=(15, 5), pady=(5, 10), side=RIGHT)
-        self.spec_save_frame = Frame(self.save_config_frame, bg=self.bg)
+        self.spec_save_frame = Frame(self.save_config_frame, bg=self.tk_format.bg)
         self.spec_save_frame.pack()
 
         self.spec_basename_label = Label(
-            self.spec_save_frame, pady=self.pady, bg=self.bg, fg=self.textcolor, text="Base name:"
+            self.spec_save_frame,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
+            text="Base name:",
         )
-        self.spec_basename_label.pack(side=LEFT, pady=self.pady)
+        self.spec_basename_label.pack(side=LEFT, pady=self.tk_format.pady)
 
         self.spec_basename_var = StringVar()
         self.spec_basename_var.trace("w", self.validate_basename)
         self.spec_basename_entry = Entry(
             self.spec_save_frame,
             width=10,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bd=self.tk_format.bd,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
             textvariable=self.spec_basename_var,
         )
         self.entries.append(self.spec_basename_entry)
-        self.spec_basename_entry.pack(side=LEFT, padx=(5, 5), pady=self.pady)
+        self.spec_basename_entry.pack(side=LEFT, padx=(5, 5), pady=self.tk_format.pady)
         self.spec_basename_entry.insert(0, self.spec_basename)
 
         self.spec_startnum_label = Label(
-            self.spec_save_frame, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="Number:"
+            self.spec_save_frame,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
+            text="Number:",
         )
-        self.spec_startnum_label.pack(side=LEFT, pady=self.pady)
+        self.spec_startnum_label.pack(side=LEFT, pady=self.tk_format.pady)
 
         self.startnum_var = StringVar()
         self.startnum_var.trace("w", self.validate_startnum)
         self.spec_startnum_entry = Entry(
             self.spec_save_frame,
             width=10,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bd=self.tk_format.bd,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
             textvariable=self.startnum_var,
         )
         self.entries.append(self.spec_startnum_entry)
         self.spec_startnum_entry.insert(0, self.spec_startnum)
-        self.spec_startnum_entry.pack(side=RIGHT, pady=self.pady)
+        self.spec_startnum_entry.pack(side=RIGHT, pady=self.tk_format.pady)
 
-        self.instrument_config_frame = Frame(self.control_frame.interior, bg=self.bg, highlightthickness=1)
+        self.instrument_config_frame = Frame(self.control_frame.interior, bg=self.tk_format.bg, highlightthickness=1)
         self.spec_settings_label = Label(
             self.instrument_config_frame,
-            padx=self.padx,
-            pady=self.pady,
-            bg=self.bg,
-            fg=self.textcolor,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
             text="Instrument Configuration:",
         )
-        self.spec_settings_label.pack(padx=self.padx, pady=(10, 10))
+        self.spec_settings_label.pack(padx=self.tk_format.padx, pady=(10, 10))
         self.instrument_config_frame.pack(fill=BOTH, expand=True)
-        self.i_config_label_entry_frame = Frame(self.instrument_config_frame, bg=self.bg)
+        self.i_config_label_entry_frame = Frame(self.instrument_config_frame, bg=self.tk_format.bg)
         self.i_config_label_entry_frame.pack()
         self.instrument_config_label = Label(
-            self.i_config_label_entry_frame, fg=self.textcolor, text="Number of spectra to average:", bg=self.bg
+            self.i_config_label_entry_frame,
+            fg=self.tk_format.textcolor,
+            text="Number of spectra to average:",
+            bg=self.tk_format.bg,
         )
         self.instrument_config_label.pack(side=LEFT, padx=(20, 0))
 
         self.instrument_config_entry = Entry(
             self.i_config_label_entry_frame,
             width=10,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bd=self.tk_format.bd,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         self.entries.append(self.instrument_config_entry)
         self.instrument_config_entry.insert(0, 200)
         self.instrument_config_entry.pack(side=LEFT)
 
-        self.viewing_geom_options_frame = Frame(self.control_frame.interior, bg=self.bg)
+        self.viewing_geom_options_frame = Frame(self.control_frame.interior, bg=self.tk_format.bg)
 
-        self.viewing_geom_options_frame_left = Frame(self.viewing_geom_options_frame, bg=self.bg, highlightthickness=1)
+        self.viewing_geom_options_frame_left = Frame(
+            self.viewing_geom_options_frame, bg=self.tk_format.bg, highlightthickness=1
+        )
         self.viewing_geom_options_frame_left.pack(side=LEFT, fill=BOTH, expand=True)
 
-        self.single_mult_frame = Frame(self.viewing_geom_options_frame, bg=self.bg, highlightthickness=1)
+        self.single_mult_frame = Frame(self.viewing_geom_options_frame, bg=self.tk_format.bg, highlightthickness=1)
         self.single_mult_frame.pack(side=RIGHT, fill=BOTH, expand=True)
         self.angle_control_label = Label(
-            self.single_mult_frame, text="Geometry specification:      ", bg=self.bg, fg=self.textcolor
+            self.single_mult_frame,
+            text="Geometry specification:      ",
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
         )
         self.angle_control_label.pack(padx=(5, 5), pady=(10, 5))
 
@@ -505,12 +473,12 @@ class Controller:
         self.individual_radio = Radiobutton(
             self.single_mult_frame,
             text="Individual         ",
-            bg=self.bg,
-            fg=self.textcolor,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
             highlightthickness=0,
             variable=self.individual_range,
             value=0,
-            selectcolor=self.check_bg,
+            selectcolor=self.tk_format.check_bg,
             command=self.set_individual_range,
         )
         self.radiobuttons.append(self.individual_radio)
@@ -519,382 +487,438 @@ class Controller:
         self.range_radio = Radiobutton(
             self.single_mult_frame,
             text="Range with interval\n(Automatic only)",
-            bg=self.bg,
-            fg=self.textcolor,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
             highlightthickness=0,
             variable=self.individual_range,
             value=1,
-            selectcolor=self.check_bg,
+            selectcolor=self.tk_format.check_bg,
             command=self.set_individual_range,
         )
         self.radiobuttons.append(self.range_radio)
         self.range_radio.configure(state=DISABLED)
         self.range_radio.pack()
 
-        self.gon_control_label_frame = Frame(self.viewing_geom_options_frame_left, bg=self.bg)
+        self.gon_control_label_frame = Frame(self.viewing_geom_options_frame_left, bg=self.tk_format.bg)
         self.gon_control_label_frame.pack()
         self.gon_control_label = Label(
-            self.gon_control_label_frame, text="\nGoniometer control:         ", bg=self.bg, fg=self.textcolor
+            self.gon_control_label_frame,
+            text="\nGoniometer control:         ",
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
         )
         self.gon_control_label.pack(side=LEFT, padx=(10, 5))
 
-        self.manual_radio_frame = Frame(self.viewing_geom_options_frame_left, bg=self.bg)
+        self.manual_radio_frame = Frame(self.viewing_geom_options_frame_left, bg=self.tk_format.bg)
         self.manual_radio_frame.pack()
         self.manual_automatic = IntVar()
         self.manual_radio = Radiobutton(
             self.manual_radio_frame,
             text="Manual            ",
-            bg=self.bg,
-            fg=self.textcolor,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
             highlightthickness=0,
             variable=self.manual_automatic,
             value=0,
-            selectcolor=self.check_bg,
+            selectcolor=self.tk_format.check_bg,
             command=self.set_manual_automatic,
         )
         self.radiobuttons.append(self.manual_radio)
         self.manual_radio.pack(side=LEFT, padx=(10, 10), pady=(5, 5))
 
-        self.automation_radio_frame = Frame(self.viewing_geom_options_frame_left, bg=self.bg)
+        self.automation_radio_frame = Frame(self.viewing_geom_options_frame_left, bg=self.tk_format.bg)
         self.automation_radio_frame.pack()
         self.automation_radio = Radiobutton(
             self.automation_radio_frame,
             text="Automatic         ",
-            bg=self.bg,
-            fg=self.textcolor,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
             highlightthickness=0,
             variable=self.manual_automatic,
             value=1,
-            selectcolor=self.check_bg,
+            selectcolor=self.tk_format.check_bg,
             command=self.set_manual_automatic,
         )
         self.radiobuttons.append(self.automation_radio)
         self.automation_radio.pack(side=LEFT, padx=(10, 10))
-        self.filler_label = Label(self.viewing_geom_options_frame_left, text="", bg=self.bg)
+        self.filler_label = Label(self.viewing_geom_options_frame_left, text="", bg=self.tk_format.bg)
         self.filler_label.pack()
 
-        self.viewing_geom_frame = Frame(self.control_frame.interior, bg=self.bg, highlightthickness=1)
+        self.viewing_geom_frame = Frame(self.control_frame.interior, bg=self.tk_format.bg, highlightthickness=1)
         self.viewing_geom_frame.pack(fill=BOTH, expand=True)
 
         self.viewing_geom_options_label = Label(
-            self.viewing_geom_frame, text="Viewing geometry:", fg=self.textcolor, bg=self.bg
+            self.viewing_geom_frame, text="Viewing geometry:", fg=self.tk_format.textcolor, bg=self.tk_format.bg
         )
         self.viewing_geom_options_label.pack(pady=(10, 10))
 
-        self.individual_angles_frame = Frame(self.viewing_geom_frame, bg=self.bg, highlightbackground=self.border_color)
+        self.individual_angles_frame = Frame(
+            self.viewing_geom_frame, bg=self.tk_format.bg, highlightbackground=self.tk_format.border_color
+        )
         self.individual_angles_frame.pack()
         self.add_geometry()
 
         self.range_frame = Frame(
             self.viewing_geom_frame,
-            padx=self.padx,
-            pady=self.pady,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
             bd=2,
-            highlightbackground=self.border_color,
-            highlightcolor=self.border_color,
+            highlightbackground=self.tk_format.border_color,
+            highlightcolor=self.tk_format.border_color,
             highlightthickness=0,
-            bg=self.bg,
+            bg=self.tk_format.bg,
         )
         # self.range_frame.pack()
-        self.light_frame = Frame(self.range_frame, bg=self.bg)
+        self.light_frame = Frame(self.range_frame, bg=self.tk_format.bg)
         self.light_frame.pack(side=LEFT, padx=(5, 5))
         self.light_label = Label(
-            self.light_frame, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="Incidence angles:"
+            self.light_frame,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
+            text="Incidence angles:",
         )
         self.light_label.pack()
 
-        light_labels_frame = Frame(self.light_frame, bg=self.bg, padx=self.padx, pady=self.pady)
+        light_labels_frame = Frame(
+            self.light_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=self.tk_format.pady
+        )
         light_labels_frame.pack(side=LEFT)
 
         light_start_label = Label(
-            light_labels_frame, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="First:"
+            light_labels_frame,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
+            text="First:",
         )
         light_start_label.pack(pady=(0, 8), padx=(40, 0))
         light_end_label = Label(
-            light_labels_frame, bg=self.bg, padx=self.padx, pady=self.pady, fg=self.textcolor, text="Last:"
+            light_labels_frame,
+            bg=self.tk_format.bg,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            fg=self.tk_format.textcolor,
+            text="Last:",
         )
         light_end_label.pack(pady=(0, 5), padx=(40, 0))
         light_increment_label = Label(
-            light_labels_frame, bg=self.bg, padx=self.padx, pady=self.pady, fg=self.textcolor, text="Increment:"
+            light_labels_frame,
+            bg=self.tk_format.bg,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            fg=self.tk_format.textcolor,
+            text="Increment:",
         )
         light_increment_label.pack(pady=(0, 5), padx=(0, 0))
 
-        light_entries_frame = Frame(self.light_frame, bg=self.bg, padx=self.padx, pady=self.pady)
+        light_entries_frame = Frame(
+            self.light_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=self.tk_format.pady
+        )
         light_entries_frame.pack(side=RIGHT)
 
         self.light_start_entry = Entry(
             light_entries_frame,
             width=5,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bd=self.tk_format.bd,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         self.entries.append(self.light_start_entry)
-        self.light_start_entry.pack(padx=self.padx, pady=self.pady)
+        self.light_start_entry.pack(padx=self.tk_format.padx, pady=self.tk_format.pady)
         self.light_end_entry = Entry(
             light_entries_frame,
             width=5,
             highlightbackground="white",
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bd=self.tk_format.bd,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         self.entries.append(self.light_end_entry)
-        self.light_end_entry.pack(padx=self.padx, pady=self.pady)
+        self.light_end_entry.pack(padx=self.tk_format.padx, pady=self.tk_format.pady)
         self.light_increment_entry = Entry(
             light_entries_frame,
             width=5,
             highlightbackground="white",
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bd=self.tk_format.bd,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         self.entries.append(self.light_increment_entry)
-        self.light_increment_entry.pack(padx=self.padx, pady=self.pady)
+        self.light_increment_entry.pack(padx=self.tk_format.padx, pady=self.tk_format.pady)
 
-        detector_frame = Frame(self.range_frame, bg=self.bg)
+        detector_frame = Frame(self.range_frame, bg=self.tk_format.bg)
         detector_frame.pack(side=LEFT)
 
         detector_label = Label(
-            detector_frame, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="Emission angles:"
+            detector_frame,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
+            text="Emission angles:",
         )
         detector_label.pack()
 
-        detector_labels_frame = Frame(detector_frame, bg=self.bg, padx=self.padx, pady=self.pady)
+        detector_labels_frame = Frame(
+            detector_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=self.tk_format.pady
+        )
         detector_labels_frame.pack(side=LEFT, padx=(5, 5))
 
         detector_start_label = Label(
-            detector_labels_frame, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="First:"
+            detector_labels_frame,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
+            text="First:",
         )
         detector_start_label.pack(pady=(0, 8), padx=(40, 0))
         detector_end_label = Label(
-            detector_labels_frame, bg=self.bg, padx=self.padx, pady=self.pady, fg=self.textcolor, text="Last:"
+            detector_labels_frame,
+            bg=self.tk_format.bg,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            fg=self.tk_format.textcolor,
+            text="Last:",
         )
         detector_end_label.pack(pady=(0, 5), padx=(40, 0))
 
         detector_increment_label = Label(
-            detector_labels_frame, bg=self.bg, padx=self.padx, pady=self.pady, fg=self.textcolor, text="Increment:"
+            detector_labels_frame,
+            bg=self.tk_format.bg,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            fg=self.tk_format.textcolor,
+            text="Increment:",
         )
         detector_increment_label.pack(pady=(0, 5), padx=(0, 0))
 
-        detector_entries_frame = Frame(detector_frame, bg=self.bg, padx=self.padx, pady=self.pady)
+        detector_entries_frame = Frame(
+            detector_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=self.tk_format.pady
+        )
         detector_entries_frame.pack(side=RIGHT)
         self.detector_start_entry = Entry(
             detector_entries_frame,
-            bd=self.bd,
+            bd=self.tk_format.bd,
             width=5,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         self.entries.append(self.detector_start_entry)
-        self.detector_start_entry.pack(padx=self.padx, pady=self.pady)
+        self.detector_start_entry.pack(padx=self.tk_format.padx, pady=self.tk_format.pady)
 
         self.detector_end_entry = Entry(
             detector_entries_frame,
-            bd=self.bd,
+            bd=self.tk_format.bd,
             width=5,
             highlightbackground="white",
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         self.entries.append(self.detector_end_entry)
-        self.detector_end_entry.pack(padx=self.padx, pady=self.pady)
+        self.detector_end_entry.pack(padx=self.tk_format.padx, pady=self.tk_format.pady)
 
         self.detector_increment_entry = Entry(
             detector_entries_frame,
-            bd=self.bd,
+            bd=self.tk_format.bd,
             width=5,
             highlightbackground="white",
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         self.entries.append(self.detector_increment_entry)
-        self.detector_increment_entry.pack(padx=self.padx, pady=self.pady)
+        self.detector_increment_entry.pack(padx=self.tk_format.padx, pady=self.tk_format.pady)
 
-        self.azimuth_frame = Frame(self.range_frame, bg=self.bg)
+        self.azimuth_frame = Frame(self.range_frame, bg=self.tk_format.bg)
         self.azimuth_frame.pack(side=LEFT, padx=(5, 5))
         self.azimuth_label = Label(
-            self.azimuth_frame, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="Azimuth angles:"
+            self.azimuth_frame,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
+            text="Azimuth angles:",
         )
         self.azimuth_label.pack()
 
-        azimuth_labels_frame = Frame(self.azimuth_frame, bg=self.bg, padx=self.padx, pady=self.pady)
+        azimuth_labels_frame = Frame(
+            self.azimuth_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=self.tk_format.pady
+        )
         azimuth_labels_frame.pack(side=LEFT)
 
         azimuth_start_label = Label(
-            azimuth_labels_frame, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="First:"
+            azimuth_labels_frame,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
+            text="First:",
         )
         azimuth_start_label.pack(pady=(0, 8), padx=(40, 0))
         azimuth_end_label = Label(
-            azimuth_labels_frame, bg=self.bg, padx=self.padx, pady=self.pady, fg=self.textcolor, text="Last:"
+            azimuth_labels_frame,
+            bg=self.tk_format.bg,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            fg=self.tk_format.textcolor,
+            text="Last:",
         )
         azimuth_end_label.pack(pady=(0, 5), padx=(40, 0))
 
         azimuth_increment_label = Label(
-            azimuth_labels_frame, bg=self.bg, padx=self.padx, pady=self.pady, fg=self.textcolor, text="Increment:"
+            azimuth_labels_frame,
+            bg=self.tk_format.bg,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            fg=self.tk_format.textcolor,
+            text="Increment:",
         )
         azimuth_increment_label.pack(pady=(0, 5), padx=(0, 0))
 
-        azimuth_entries_frame = Frame(self.azimuth_frame, bg=self.bg, padx=self.padx, pady=self.pady)
+        azimuth_entries_frame = Frame(
+            self.azimuth_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=self.tk_format.pady
+        )
         azimuth_entries_frame.pack(side=RIGHT)
 
         self.azimuth_start_entry = Entry(
             azimuth_entries_frame,
             width=5,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bd=self.tk_format.bd,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         self.entries.append(self.azimuth_start_entry)
-        self.azimuth_start_entry.pack(padx=self.padx, pady=self.pady)
+        self.azimuth_start_entry.pack(padx=self.tk_format.padx, pady=self.tk_format.pady)
 
         self.azimuth_end_entry = Entry(
             azimuth_entries_frame,
             width=5,
             highlightbackground="white",
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bd=self.tk_format.bd,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         self.entries.append(self.azimuth_end_entry)
-        self.azimuth_end_entry.pack(padx=self.padx, pady=self.pady)
+        self.azimuth_end_entry.pack(padx=self.tk_format.padx, pady=self.tk_format.pady)
         self.azimuth_increment_entry = Entry(
             azimuth_entries_frame,
             width=5,
             highlightbackground="white",
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bd=self.tk_format.bd,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         self.entries.append(self.azimuth_increment_entry)
-        self.azimuth_increment_entry.pack(padx=self.padx, pady=self.pady)
+        self.azimuth_increment_entry.pack(padx=self.tk_format.padx, pady=self.tk_format.pady)
 
-        self.samples_frame = Frame(self.control_frame.interior, bg=self.bg, highlightthickness=1)
+        self.samples_frame = Frame(self.control_frame.interior, bg=self.tk_format.bg, highlightthickness=1)
         self.samples_frame.pack(fill=BOTH, expand=True)
 
         self.samples_label = Label(
-            self.samples_frame, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="Samples:"
+            self.samples_frame,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
+            text="Samples:",
         )
         self.samples_label.pack(pady=(10, 10))
 
         self.add_sample()
 
-        self.gen_frame = Frame(self.control_frame.interior, bg=self.bg, highlightthickness=1, pady=10)
+        self.gen_frame = Frame(self.control_frame.interior, bg=self.tk_format.bg, highlightthickness=1, pady=10)
         self.gen_frame.pack(fill=BOTH, expand=True)
 
-        self.action_button_frame = Frame(self.gen_frame, bg=self.bg)
+        self.action_button_frame = Frame(self.gen_frame, bg=self.tk_format.bg)
         self.action_button_frame.pack()
 
         self.opt_button = Button(
             self.action_button_frame,
-            fg=self.textcolor,
+            fg=self.tk_format.textcolor,
             text="Optimize",
-            padx=self.padx,
-            pady=self.pady,
-            width=self.button_width,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            width=self.tk_format.button_width,
             bg="light gray",
             command=self.opt_button_cmd,
             height=2,
         )
         self.tk_buttons.append(self.opt_button)
         self.opt_button.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
+            fg=self.tk_format.buttontextcolor,
+            highlightbackground=self.tk_format.highlightbackgroundcolor,
+            bg=self.tk_format.buttonbackgroundcolor,
         )
-        self.opt_button.pack(padx=self.padx, pady=self.pady, side=LEFT)
+        self.opt_button.pack(padx=self.tk_format.padx, pady=self.tk_format.pady, side=LEFT)
         self.wr_button = Button(
             self.action_button_frame,
-            fg=self.textcolor,
+            fg=self.tk_format.textcolor,
             text="White Reference",
-            padx=self.padx,
-            pady=self.pady,
-            width=self.button_width,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            width=self.tk_format.button_width,
             bg="light gray",
             command=self.wr_button_cmd,
             height=2,
         )
         self.tk_buttons.append(self.wr_button)
-        self.wr_button.pack(padx=self.padx, pady=self.pady, side=LEFT)
+        self.wr_button.pack(padx=self.tk_format.padx, pady=self.tk_format.pady, side=LEFT)
         self.wr_button.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
+            fg=self.tk_format.buttontextcolor,
+            highlightbackground=self.tk_format.highlightbackgroundcolor,
+            bg=self.tk_format.buttonbackgroundcolor,
         )
 
         self.spec_button = Button(
             self.action_button_frame,
-            fg=self.textcolor,
+            fg=self.tk_format.textcolor,
             text="Take Spectrum",
-            padx=self.padx,
-            pady=self.pady,
-            width=self.button_width,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            width=self.tk_format.button_width,
             height=2,
             bg="light gray",
             command=self.spec_button_cmd,
         )
         self.tk_buttons.append(self.spec_button)
-        self.spec_button.pack(padx=self.padx, pady=self.pady, side=LEFT)
+        self.spec_button.pack(padx=self.tk_format.padx, pady=self.tk_format.pady, side=LEFT)
         self.spec_button.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
+            fg=self.tk_format.buttontextcolor,
+            highlightbackground=self.tk_format.highlightbackgroundcolor,
+            bg=self.tk_format.buttonbackgroundcolor,
         )
 
         self.acquire_button = Button(
             self.action_button_frame,
-            fg=self.textcolor,
+            fg=self.tk_format.textcolor,
             text="Acquire Data",
-            padx=self.padx,
-            pady=self.pady,
-            width=self.button_width,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            width=self.tk_format.button_width,
             height=2,
             bg="light gray",
             command=self.acquire,
         )
         self.tk_buttons.append(self.acquire_button)
         self.acquire_button.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
+            fg=self.tk_format.buttontextcolor,
+            highlightbackground=self.tk_format.highlightbackgroundcolor,
+            bg=self.tk_format.buttonbackgroundcolor,
         )
 
-        self.console = Console(self.master, self.view_frame)
-        self.console_entry = self.console.console_entry
-        self.console_log = self.console.console_log
-
-        # check before taking spectra whether conditions have been met regarding when the last white reference was, etc
-        self.wrfailsafe = IntVar()
-        self.wrfailsafe.set(1)
-        self.optfailsafe = IntVar()
-        self.optfailsafe.set(1)
-        self.angles_failsafe = IntVar()
-        self.angles_failsafe.set(1)
-        self.labelfailsafe = IntVar()
-        self.labelfailsafe.set(1)
-        self.wr_angles_failsafe = IntVar()
-        self.wr_angles_failsafe.set(1)
-        self.anglechangefailsafe = IntVar()
-        self.anglechangefailsafe.set(1)
-
-        self.plot_remote = IntVar()
-        self.plot_local = IntVar()
-        if self.plot_local_remote == "remote":
-            self.plot_remote.set(1)
-            self.plot_local.set(0)
-        else:
-            self.plot_local.set(1)
-            self.plot_remote.set(0)
-
-        self.proc_remote = IntVar()
-        self.proc_local = IntVar()
-        if self.proc_local_remote == "remote":
-            self.proc_remote.set(1)
-            self.proc_local.set(0)
-        else:
-            self.proc_local.set(1)
-            self.proc_remote.set(0)
+        self.console = Console(self)
 
         if not self.connection_tracker.pi_offline:
             self.set_manual_automatic(force=1)
@@ -976,10 +1000,24 @@ class Controller:
 
     # Show failsafes settings frame
     def show_settings_frame(self):
-        FailsafesManager(self.master)
+        FailsafesManager(self)
 
     def show_plot_frame(self):
-        PlotManager(self.master)
+        PlotManager(self)
+
+    def plot_remote(self, filename):
+        # TODO: Review this code and test.
+        self.queue.insert(0, {self.plot_remote: []})
+        # TODO: figure out how data gets transferred and where it gets stored
+        self.queue.insert(1, {self.plot_manager.plot: ["temp loc" + "plot_temp.csv"]})
+        self.spec_commander.transfer_data(filename, "spec_share_loc", "plot_temp.csv")
+        DataHandler(
+            self,
+            source=filename,
+            # TODO: figure out how data gets transferred and where it gets placed
+            temp_destination="temp loc" + "plot_temp.csv",
+            final_destination="temp loc" + "plot_temp.csv",
+        )
 
     def bind(
         self,
@@ -1043,10 +1081,9 @@ class Controller:
             self.log("Exiting")
             self.queue = []
         else:
-            print(cmd)
             self.unfreeze()
-            self.console_entry.delete(0, "end")
-            self.console_entry.insert(0, cmd)
+            self.console.console_entry.delete(0, "end")
+            self.console.console_entry.insert(0, cmd)
             self.freeze()
             success = self.execute_cmd("event!")
             if success == False:
@@ -1136,9 +1173,7 @@ class Controller:
             if new_spec_config_count < 1 or new_spec_config_count > 32767:
                 raise (Exception)
         except:
-            ErrorDialog(
-                self, label="Error: Invalid number of spectra to average.\nEnter a value from 1 to 32767"
-            )
+            ErrorDialog(self, label="Error: Invalid number of spectra to average.\nEnter a value from 1 to 32767")
             return False
 
         if self.manual_automatic.get() == 1:  # 0 is manual, 1 is automatic
@@ -1174,135 +1209,6 @@ class Controller:
                     return False
 
         return True
-
-    # If the user has failsafes activated, check that requirements are met. Always require a valid number of spectra.
-    # Different requirements are checked depending on what the function func is that will be called next (opt, wr, take
-    # spectrum, acquire)
-    def check_optional_input(self, func, args=None, warnings=""):
-        if args is None:
-            args = []
-        label = warnings
-        now = int(time.time())
-        incidence = self.incidence_entries[0].get()
-        emission = self.emission_entries[0].get()
-        azimuth = self.azimuth_entries[0].get()
-
-        if self.manual_automatic.get() == 0:
-            # pylint: disable = comparison-with-callable
-            warnings = self.check_viewing_geom_for_manual_operation()
-            label += warnings
-
-            if self.optfailsafe.get() and func != self.opt:
-                try:
-                    opt_limit = int(float(self.opt_timeout_entry.get())) * 60
-                except ValueError:
-                    opt_limit = sys.maxsize
-                if self.opt_time is None:
-                    label += "The instrument has not been optimized.\n\n"
-                elif now - self.opt_time > opt_limit:
-                    minutes = str(int((now - self.opt_time) / 60))
-                    seconds = str((now - self.opt_time) % 60)
-                    if int(minutes) > 0:
-                        label += (
-                            "The instrument has not been optimized for "
-                            + minutes
-                            + " minutes "
-                            + seconds
-                            + " seconds.\n\n"
-                        )
-                    else:
-                        label += "The instrument has not been optimized for " + seconds + " seconds.\n\n"
-                if self.opt_time is not None:
-                    if self.angles_change_time is None:
-                        pass
-                    elif self.opt_time < self.angles_change_time:
-                        valid_i = utils.validate_int_input(incidence, self.min_science_i, self.max_science_i)
-                        valid_e = utils.validate_int_input(emission, self.min_science_e, self.max_science_e)
-                        valid_az = utils.validate_int_input(azimuth, self.min_science_az, self.max_science_az)
-                        if valid_i and valid_e and valid_az:
-                            label += "The instrument has not been optimized at this geometry.\n\n"
-
-            if self.wrfailsafe.get() and func != self.wr and func != self.opt:
-
-                try:
-                    wr_limit = int(float(self.wr_timeout_entry.get())) * 60
-                except ValueError:
-                    wr_limit = sys.maxsize
-                if self.wr_time is None:
-                    label += "No white reference has been taken.\n\n"
-                elif self.opt_time is not None and self.opt_time > self.wr_time:
-                    label += "No white reference has been taken since the instrument was optimized.\n\n"
-                elif int(self.instrument_config_entry.get()) != int(self.spec_config_count):
-                    label += "No white reference has been taken while averaging this number of spectra.\n\n"
-                elif self.spec_config_count is None:
-                    label += "No white reference has been taken while averaging this number of spectra.\n\n"
-                elif now - self.wr_time > wr_limit:
-                    minutes = str(int((now - self.wr_time) / 60))
-                    seconds = str((now - self.wr_time) % 60)
-                    if int(minutes) > 0:
-                        label += (
-                            " No white reference has been taken for "
-                            + minutes
-                            + " minutes "
-                            + seconds
-                            + " seconds.\n\n"
-                        )
-                    else:
-                        label += " No white reference has been taken for " + seconds + " seconds.\n\n"
-            if self.wr_angles_failsafe.get() and func != self.wr:
-
-                if self.angles_change_time is not None and self.wr_time is not None and func != self.opt:
-                    if self.angles_change_time > self.wr_time + 1:
-                        valid_i = utils.validate_int_input(incidence, self.min_science_i, self.max_science_i)
-                        valid_e = utils.validate_int_input(emission, self.min_science_e, self.max_science_e)
-                        valid_az = utils.validate_int_input(azimuth, self.min_science_az, self.max_science_az)
-                        if valid_i and valid_e:
-                            label += " No white reference has been taken at this viewing geometry.\n\n"
-                    # elif str(emission)!=str(self.e) or str(incidence)!=str(self.i):
-                    #     label+=' No white reference has been taken at this viewing geometry.\n\n'
-
-        if self.labelfailsafe.get() and func != self.opt and func != self.wr:
-            if self.sample_label_entries[self.current_sample_gui_index].get() == "":
-                label += "This sample has no label.\n\n"
-        for entry in self.sample_label_entries:
-            sample_label = entry.get()
-            newlabel = self.validate_sample_name(sample_label)
-            if newlabel != sample_label:
-                entry.delete(0, "end")
-                if newlabel == "":
-                    newlabel = "sample"
-
-                entry.insert(0, newlabel)
-                label += (
-                    "'"
-                    + sample_label
-                    + "' is an invalid sample label.\nSample will be labeled as '"
-                    + newlabel
-                    + "' instead.\n\n"
-                )
-                self.log(
-                    "Warning: '"
-                    + sample_label
-                    + "' is an invalid sample label. Removing reserved characters and expressions."
-                )
-
-        if label != "":  # if we came up with errors
-            title = "Warning!"
-
-            buttons = {
-                "yes": {
-                    # if the user says they want to continue anyway, run take spectrum again but this time with
-                    # override=True
-                    func: args
-                },
-                "no": {},
-            }
-            label = "Warning!\n\n" + label
-            label += "\nDo you want to continue?"
-            Dialog(self, title, label, buttons)
-            return False
-        else:  # if there were no errors
-            return True
 
     # Setup gets called after we already know that input is valid, but before we've set up the specrometer control
     # software. If we need to set RS3's save configuration or the instrument configuration (number of spectra to
@@ -1392,11 +1298,13 @@ class Controller:
             # every geom.
             valid_input = False
             if action == self.take_spectrum:
-                valid_input = self.check_optional_input(self.take_spectrum, [True, False, garbage], range_warnings)
+                valid_input = self.failsafes_manager.check_optional_input(
+                    self.take_spectrum, [True, False, garbage], range_warnings
+                )
             elif action in (self.acquire, self.wr):
-                valid_input = self.check_optional_input(action, [True, False], range_warnings)
+                valid_input = self.failsafes_manager.check_optional_input(action, [True, False], range_warnings)
             elif action == self.opt:
-                valid_input = self.check_optional_input(self.opt, [True, False], range_warnings)
+                valid_input = self.failsafes_manager.check_optional_input(self.opt, [True, False], range_warnings)
             if not valid_input:
                 return
                 # Make sure RS3 save config and instrument config are taken care of. This will add those actions to the
@@ -1557,7 +1465,11 @@ class Controller:
             if (
                 self.manual_automatic.get() == 0
             ):  # Manual mode. Might not know motor position, just use visualization position.
-                current = (self.goniometer_view.position["motor_i"], self.goniometer_view.position["motor_e"], self.goniometer_view.position["motor_az"])
+                current = (
+                    self.goniometer_view.position["motor_i"],
+                    self.goniometer_view.position["motor_e"],
+                    self.goniometer_view.position["motor_az"],
+                )
             else:
                 current = (self.science_i, self.science_e, self.science_az)
             movements = self.get_movements(next_science_i, next_science_e, next_science_az, current)
@@ -1982,9 +1894,7 @@ class Controller:
             if status == "mkdirsuccess":
                 self.set_save_config()
             elif status == "mkdirfailedfileexists":
-                ErrorDialog(
-                    self, title="Error", label="Could not create directory:\n\n" + dir + "\n\nFile exists."
-                )
+                ErrorDialog(self, title="Error", label="Could not create directory:\n\n" + dir + "\n\nFile exists.")
             elif status == "mkdirfailed":
                 ErrorDialog(self, title="Error", label="Could not create directory:\n\n" + dir)
 
@@ -2061,29 +1971,6 @@ class Controller:
         )
         SaveConfigHandler(self)
 
-    # when the focus is on the console entry box, the user can scroll through past commands.
-    # these are stored in user_cmds with the index of the most recent command at 0
-    # Every time the user enters a command, the user_cmd_index is changed to -1
-    def iterate_cmds(self, keypress_event):
-        if (
-            keypress_event.keycode == 111 or keypress_event.keycode == 38
-        ):  # up arrows on linux and windows, respectively
-
-            if len(self.user_cmds) > self.user_cmd_index + 1 and len(self.user_cmds) > 0:
-                self.user_cmd_index = self.user_cmd_index + 1
-                last = self.user_cmds[self.user_cmd_index]
-                self.console_entry.delete(0, "end")
-                self.console_entry.insert(0, last)
-
-        elif (
-            keypress_event.keycode == 116 or keypress_event.keycode == 40
-        ):  # down arrow on linux and windows, respectively
-            if self.user_cmd_index > 0:
-                self.user_cmd_index = self.user_cmd_index - 1
-                next = self.user_cmds[self.user_cmd_index]
-                self.console_entry.delete(0, "end")
-                self.console_entry.insert(0, next)
-
     def reset(self):
         self.clear_queue()
         self.overwrite_all = False
@@ -2095,15 +1982,9 @@ class Controller:
     def execute_cmd(self, event):
         if self.script_running:
             self.complete_queue_item()
-        # self.cmd_complete=False
 
         self.text_only = True
-        command = self.console_entry.get()
-        self.user_cmds.insert(0, command)
-        self.user_cmd_index = -1
-        if command != "end file":
-            self.console_log.insert(END, ">>> " + command + "\n")
-        self.console_entry.delete(0, "end")
+        command = self.console.next_cmd()
         thread = Thread(target=self.cli_manager.execute_cmd, kwargs={"cmd": command})
         thread.start()
 
@@ -2123,151 +2004,8 @@ class Controller:
         except:
             return
 
-    def check_local_folder(self, dir, next_action):
-        def try_mk_dir(dir, next_action):
-            try:
-                os.makedirs(dir)
-                next_action()
-            except Exception as e:
-                ErrorDialog(self, title="Cannot create directory", label="Cannot create directory:\n\n" + dir)
-            return False
-
-        exists = os.path.exists(dir)
-        if exists:
-            # If the file exists, try creating and deleting a new file there to make sure we have permission.
-            try:
-                if self.opsys == "Linux" or self.opsys == "Mac":
-                    if dir[-1] != "/":
-                        dir += "/"
-                else:
-                    if dir[-1] != "\\":
-                        dir += "\\"
-
-                existing = os.listdir(dir)
-                i = 0
-                delme = "delme" + str(i)
-                while delme in existing:
-                    i += 1
-                    delme = "delme" + str(i)
-
-                os.mkdir(dir + delme)
-                os.rmdir(dir + delme)
-                return True
-
-            except:
-                ErrorDialog(
-                    self, title="Error: Cannot write", label="Error: Cannot write to specified directory.\n\n" + dir
-                )
-                return False
-        else:
-            if self.script_running:  # If we're running a script, just try making the directory automatically.
-                try_mk_dir(dir, next_action)
-            else:  # Otherwise, ask the user.
-                buttons = {"yes": {try_mk_dir: [dir, next_action]}, "no": {}}
-                ErrorDialog(
-                    self,
-                    title="Directory does not exist",
-                    label=dir + "\n\ndoes not exist. Do you want to create this directory?",
-                    buttons=buttons,
-                )
-        return exists
-
-    # Checks if the given directory exists and is writeable. If not writeable, gives user option to create.
-    def check_remote_folder(self, dir, next_action):
-        def inner_mkdir(dir, next_action):
-            status = self.remote_directory_worker.mkdir(dir)
-            if status == "mkdirsuccess":
-                next_action()
-            elif status == "mkdirfailedfileexists":
-                ErrorDialog(
-                    self, title="Error", label="Could not create directory:\n\n" + dir + "\n\nFile exists."
-                )
-            elif status == "mkdirfailed":
-                ErrorDialog(self, title="Error", label="Could not create directory:\n\n" + dir)
-
-        status = self.remote_directory_worker.get_dirs(self.spec_save_dir_entry.get())
-
-        if status == "listdirfailed":
-            buttons = {"yes": {inner_mkdir: [dir, next_action]}, "no": {}}
-            ErrorDialog(
-                self,
-                title="Directory does not exist",
-                label=dir + "\ndoes not exist. Do you want to create this directory?",
-                buttons=buttons,
-            )
-            return False
-        elif status == "listdirfailedpermission":
-            ErrorDialog(self, label="Error: Permission denied for\n" + dir)
-            return False
-
-        elif status == "timeout":
-            if not self.text_only:
-                buttons = {
-                    "cancel": {},
-                    "retry": {self.spec_commander.remove_from_listener_queue: [["timeout"]], self.next_in_queue: []},
-                }
-                dialog = ErrorDialog(
-                    self,
-                    label="Error: Operation timed out.\n\nCheck that the automation script is running on the"
-                    " spectrometer\n computer and the spectrometer is connected.",
-                    buttons=buttons,
-                )
-                for button in dialog.tk_buttons:
-                    button.config(width=15)
-            else:
-                self.log("Error: Operation timed out.")
-            return False
-
-        self.spec_commander.check_writeable(dir)
-        t = 3 * utils.BUFFER
-        while t > 0:
-            if "yeswriteable" in self.spec_listener.queue:
-                self.spec_listener.queue.remove("yeswriteable")
-                return True
-            elif "notwriteable" in self.spec_listener.queue:
-                self.spec_listener.queue.remove("notwriteable")
-                ErrorDialog(self, label="Error: Permission denied.\nCannot write to specified directory.")
-                return False
-            time.sleep(utils.INTERVAL)
-            t = t - utils.INTERVAL
-        if t <= 0:
-            ErrorDialog(self, label="Error: Operation timed out.")
-            return False
-
-    def check_local_file(self, directory, file, next_action):
-        def remove_retry(file, next_action):
-            try:
-                os.remove(file)
-                next_action()
-            except:
-                ErrorDialog(
-                    self, title="Error overwriting file", label="Error: Could not delete file.\n\n" + file
-                )
-
-        if self.opsys == "Linux" or self.opsys == "Mac":
-            if directory[-1] != "/":
-                directory += "/"
-        else:
-            if directory[-1] != "\\":
-                directory += "\\"
-
-        full_process_output_path = directory + file
-        if os.path.exists(full_process_output_path):
-            buttons = {"yes": {remove_retry: [full_process_output_path, next_action]}, "no": {}}
-            dialog = Dialog(
-                self,
-                title="Error: File Exists",
-                label="Error: Specified output file already exists.\n\n"
-                + full_process_output_path
-                + "\n\nDo you want to overwrite this data?",
-                buttons=buttons,
-            )
-            dialog.top.wm_geometry("376x175")
-            return False
-        else:
-            return True
-
     def process_cmd(self):
+        self.process_manager = ProcessManager(self)
         try:
             input_directory, output_directory, output_file = self.process_manager.setup_process()
         except ProcessFileError:
@@ -2346,33 +2084,10 @@ class Controller:
                 self.view_notebook.forget(tab)
 
     def plot(self):
-        filename = self.plot_input_dir_entry.get()
-        if self.opsys == "Windows" or self.plot_remote.get():
-            filename = filename.replace("\\", "/")
-
-        if self.plot_remote.get():
-            self.queue.insert(0, {self.plot: []})
-            # TODO: figure out how data gets transferred and where it gets stored
-            self.queue.insert(1, {self.plot_manager.plot: ["temp loc" + "plot_temp.csv"]})
-            self.spec_commander.transfer_data(filename, "spec_share_loc", "plot_temp.csv")
-            DataHandler(
-                self,
-                source=filename,
-                #TODO: figure out how data gets transferred and where it gets placed
-                temp_destination="temp loc" + "plot_temp.csv",
-                final_destination="temp loc" + "plot_temp.csv",
-            )
-        else:
-            if os.path.exists(filename):
-                self.plot_manager.plot(filename)
-            else:
-                ErrorDialog(
-                    self,
-                    title="Error: File not found",
-                    label="Error: File not found.\n\n" + filename + "\n\ndoes not exist.",
-                )
-                return False
-
+        if len(self.queue) > 0:
+            print("There is a queue here if and only if we are transferring data from a remote location.")
+            self.complete_queue_item()
+        self.plot_manager.plot()
 
     def choose_spec_save_dir(self):
         RemoteFileExplorer(
@@ -2380,22 +2095,6 @@ class Controller:
             label="Select a directory to save raw spectral data.\nThis must be to a drive mounted on the spectrometer"
             " control computer.\n E.g. R:\\RiceData\\MarsGroup\\YourName\\spectral_data",
             target=self.spec_save_dir_entry,
-        )
-
-    def choose_process_input_dir(self):
-        RemoteFileExplorer(
-            self,
-            label="Select the directory containing the data you want to process.\nThis must be on a drive mounted on"
-            " the spectrometer control computer.\n E.g. R:\\RiceData\\MarsGroup\\YourName\\spectral_data",
-            target=self.input_dir_entry,
-        )
-
-    def choose_process_output_dir(self):
-        RemoteFileExplorer(
-            self,
-            label="Select the directory where you want to save your processed data.\nThis must be to a drive mounted"
-            " on the spectrometer control computer.\n E.g. R:\\RiceData\\MarsGroup\\YourName\\spectral_data",
-            target=self.output_dir_entry,
         )
 
     def add_sample(self):
@@ -2407,19 +2106,19 @@ class Controller:
                 text="Add new",
                 command=self.add_sample,
                 width=10,
-                fg=self.buttontextcolor,
-                bg=self.buttonbackgroundcolor,
-                bd=self.bd,
+                fg=self.tk_format.buttontextcolor,
+                bg=self.tk_format.buttonbackgroundcolor,
+                bd=self.tk_format.bd,
             )
             self.tk_buttons.append(self.add_sample_button)
             self.add_sample_button.config(
-                fg=self.buttontextcolor,
-                highlightbackground=self.highlightbackgroundcolor,
-                bg=self.buttonbackgroundcolor,
+                fg=self.tk_format.buttontextcolor,
+                highlightbackground=self.tk_format.highlightbackgroundcolor,
+                bg=self.tk_format.buttonbackgroundcolor,
                 state=DISABLED,
             )
 
-        self.sample_frames.append(Frame(self.samples_frame, bg=self.bg))
+        self.sample_frames.append(Frame(self.samples_frame, bg=self.tk_format.bg))
         self.sample_frames[-1].pack(pady=(5, 0))
 
         self.control_frame.min_height += 50
@@ -2445,12 +2144,19 @@ class Controller:
             menu_positions.append(self.sample_pos_vars[-1].get())
 
         self.pos_menus.append(OptionMenu(self.sample_frames[-1], self.sample_pos_vars[-1], *menu_positions))
-        self.pos_menus[-1].configure(width=8, highlightbackground=self.highlightbackgroundcolor)
+        self.pos_menus[-1].configure(width=8, highlightbackground=self.tk_format.highlightbackgroundcolor)
         self.pos_menus[-1].pack(side=LEFT)
         self.option_menus.append(self.pos_menus[-1])
 
         self.sample_labels.append(
-            Label(self.sample_frames[-1], bg=self.bg, fg=self.textcolor, text="Label:", padx=self.padx, pady=self.pady)
+            Label(
+                self.sample_frames[-1],
+                bg=self.tk_format.bg,
+                fg=self.tk_format.textcolor,
+                text="Label:",
+                padx=self.tk_format.padx,
+                pady=self.tk_format.pady,
+            )
         )
         self.sample_labels[-1].pack(side=LEFT, padx=(5, 0))
 
@@ -2458,10 +2164,10 @@ class Controller:
             Entry(
                 self.sample_frames[-1],
                 width=20,
-                bd=self.bd,
-                bg=self.entry_background,
-                selectbackground=self.selectbackground,
-                selectforeground=self.selectforeground,
+                bd=self.tk_format.bd,
+                bg=self.tk_format.entry_background,
+                selectbackground=self.tk_format.selectbackground,
+                selectforeground=self.tk_format.selectforeground,
             )
         )
 
@@ -2474,13 +2180,15 @@ class Controller:
                 text="Remove",
                 command=lambda x=len(self.sample_removal_buttons): self.remove_sample(x),
                 width=7,
-                fg=self.buttontextcolor,
-                bg=self.buttonbackgroundcolor,
-                bd=self.bd,
+                fg=self.tk_format.buttontextcolor,
+                bg=self.tk_format.buttonbackgroundcolor,
+                bd=self.tk_format.bd,
             )
         )
         self.sample_removal_buttons[-1].config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
+            fg=self.tk_format.buttontextcolor,
+            highlightbackground=self.tk_format.highlightbackgroundcolor,
+            bg=self.tk_format.buttonbackgroundcolor,
         )
         self.tk_buttons.append(self.sample_removal_buttons[-1])
         if len(self.sample_label_entries) > 1:
@@ -2562,67 +2270,88 @@ class Controller:
                 text="Add new",
                 command=self.add_geometry,
                 width=10,
-                fg=self.buttontextcolor,
-                bg=self.buttonbackgroundcolor,
-                bd=self.bd,
+                fg=self.tk_format.buttontextcolor,
+                bg=self.tk_format.buttonbackgroundcolor,
+                bd=self.tk_format.bd,
             )
             self.tk_buttons.append(self.add_geometry_button)
             self.add_geometry_button.config(
-                fg=self.buttontextcolor,
-                highlightbackground=self.highlightbackgroundcolor,
-                bg=self.buttonbackgroundcolor,
+                fg=self.tk_format.buttontextcolor,
+                highlightbackground=self.tk_format.highlightbackgroundcolor,
+                bg=self.tk_format.buttonbackgroundcolor,
                 state=DISABLED,
             )
 
-        self.geometry_frames.append(Frame(self.individual_angles_frame, bg=self.bg))
+        self.geometry_frames.append(Frame(self.individual_angles_frame, bg=self.tk_format.bg))
         self.geometry_frames[-1].pack(pady=(5, 0))
 
         self.incidence_labels.append(
-            Label(self.geometry_frames[-1], bg=self.bg, fg=self.textcolor, text="i:", padx=self.padx, pady=self.pady)
+            Label(
+                self.geometry_frames[-1],
+                bg=self.tk_format.bg,
+                fg=self.tk_format.textcolor,
+                text="i:",
+                padx=self.tk_format.padx,
+                pady=self.tk_format.pady,
+            )
         )
         self.incidence_labels[-1].pack(side=LEFT, padx=(5, 0))
         self.incidence_entries.append(
             Entry(
                 self.geometry_frames[-1],
                 width=10,
-                bd=self.bd,
-                bg=self.entry_background,
-                selectbackground=self.selectbackground,
-                selectforeground=self.selectforeground,
+                bd=self.tk_format.bd,
+                bg=self.tk_format.entry_background,
+                selectbackground=self.tk_format.selectbackground,
+                selectforeground=self.tk_format.selectforeground,
             )
         )
         self.entries.append(self.incidence_entries[-1])
         self.incidence_entries[-1].pack(side=LEFT, padx=(0, 10))
 
         self.emission_labels.append(
-            Label(self.geometry_frames[-1], padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="e:")
+            Label(
+                self.geometry_frames[-1],
+                padx=self.tk_format.padx,
+                pady=self.tk_format.pady,
+                bg=self.tk_format.bg,
+                fg=self.tk_format.textcolor,
+                text="e:",
+            )
         )
         self.emission_labels[-1].pack(side=LEFT)
         self.emission_entries.append(
             Entry(
                 self.geometry_frames[-1],
                 width=10,
-                bd=self.bd,
-                bg=self.entry_background,
-                selectbackground=self.selectbackground,
-                selectforeground=self.selectforeground,
+                bd=self.tk_format.bd,
+                bg=self.tk_format.entry_background,
+                selectbackground=self.tk_format.selectbackground,
+                selectforeground=self.tk_format.selectforeground,
             )
         )
         self.entries.append(self.emission_entries[-1])
         self.emission_entries[-1].pack(side=LEFT, padx=(0, 10))
 
         self.azimuth_labels.append(
-            Label(self.geometry_frames[-1], bg=self.bg, fg=self.textcolor, text="az:", padx=self.padx, pady=self.pady)
+            Label(
+                self.geometry_frames[-1],
+                bg=self.tk_format.bg,
+                fg=self.tk_format.textcolor,
+                text="az:",
+                padx=self.tk_format.padx,
+                pady=self.tk_format.pady,
+            )
         )
         self.azimuth_labels[-1].pack(side=LEFT, padx=(5, 0))
         self.azimuth_entries.append(
             Entry(
                 self.geometry_frames[-1],
                 width=10,
-                bd=self.bd,
-                bg=self.entry_background,
-                selectbackground=self.selectbackground,
-                selectforeground=self.selectforeground,
+                bd=self.tk_format.bd,
+                bg=self.tk_format.entry_background,
+                selectbackground=self.tk_format.selectbackground,
+                selectforeground=self.tk_format.selectforeground,
             )
         )
         self.entries.append(self.azimuth_entries[-1])
@@ -2634,13 +2363,15 @@ class Controller:
                 text="Remove",
                 command=lambda x=len(self.geometry_removal_buttons): self.remove_geometry(x),
                 width=7,
-                fg=self.buttontextcolor,
-                bg=self.buttonbackgroundcolor,
-                bd=self.bd,
+                fg=self.tk_format.buttontextcolor,
+                bg=self.tk_format.buttonbackgroundcolor,
+                bd=self.tk_format.bd,
             )
         )
         self.geometry_removal_buttons[-1].config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
+            fg=self.tk_format.buttontextcolor,
+            highlightbackground=self.tk_format.highlightbackgroundcolor,
+            bg=self.tk_format.buttonbackgroundcolor,
         )
         if len(self.incidence_entries) > 1:
             for button in self.geometry_removal_buttons:
@@ -2657,7 +2388,7 @@ class Controller:
             e = self.science_e
         if pos is None:
             pos = self.sample_tray_index
-        self.pi_commander.configure(str(i), str(e), pos)
+        self.pi_commander.configure(i, e, pos)
         ConfigHandler(self)
 
     def show_config_dialog(self):
@@ -2683,7 +2414,7 @@ class Controller:
             values={
                 "Incidence": [self.science_i, self.min_motor_i, self.max_motor_i],
                 "Emission": [self.science_e, self.min_motor_e, self.max_motor_e],
-                "Tray position": [self.sample_tray_index, 0, self.num_samples - 1],
+                "Tray position": [self.sample_tray_index, 0, len(self.available_sample_positions) - 1],
             },
             buttons=buttons,
         )
@@ -2708,9 +2439,9 @@ class Controller:
             for pos_menu in self.pos_menus:
                 pos_menu.configure(state=DISABLED)
 
-            self.opt_button.pack(padx=self.padx, pady=self.pady, side=LEFT)
-            self.wr_button.pack(padx=self.padx, pady=self.pady, side=LEFT)
-            self.spec_button.pack(padx=self.padx, pady=self.pady, side=LEFT)
+            self.opt_button.pack(padx=self.tk_format.padx, pady=self.tk_format.pady, side=LEFT)
+            self.wr_button.pack(padx=self.tk_format.padx, pady=self.tk_format.pady, side=LEFT)
+            self.spec_button.pack(padx=self.tk_format.padx, pady=self.tk_format.pady, side=LEFT)
 
             self.acquire_button.pack_forget()
             menu.entryconfigure(0, label="X Manual")
@@ -2719,7 +2450,7 @@ class Controller:
             self.geommenu.entryconfigure(1, state=DISABLED, label="  Range (Automatic only)")
         else:
             self.add_geometry_button.configure(state=NORMAL)
-            self.acquire_button.pack(padx=self.padx, pady=self.pady)
+            self.acquire_button.pack(padx=self.tk_format.padx, pady=self.tk_format.pady)
             self.spec_button.pack_forget()
             self.opt_button.pack_forget()
             self.wr_button.pack_forget()
@@ -2766,24 +2497,6 @@ class Controller:
 
     def set_overwrite_all(self, val):
         self.overwrite_all = val
-
-    def validate_input_dir(self):
-        pos = self.input_dir_entry.index(INSERT)
-        input_dir = utils.rm_reserved_chars(self.input_dir_entry.get())
-        if len(input_dir) < len(self.input_dir_entry.get()):
-            pos = pos - 1
-        self.input_dir_entry.delete(0, "end")
-        self.input_dir_entry.insert(0, input_dir)
-        self.input_dir_entry.icursor(pos)
-
-    def validate_output_dir(self):
-        pos = self.output_dir_entry.index(INSERT)
-        output_dir = utils.rm_reserved_chars(self.output_dir_entry.get())
-        if len(output_dir) < len(self.output_dir_entry.get()):
-            pos = pos - 1
-        self.output_dir_entry.delete(0, "end")
-        self.output_dir_entry.insert(0, output_dir)
-        self.output_dir_entry.icursor(pos)
 
     # def validate_output_filename(self):
     #     pos = self.output_filename_entry.index(INSERT)
@@ -2855,7 +2568,7 @@ class Controller:
     #            formulas/angular-distance-between-two-points-on-a-sphere
 
     def get_closest_approach(self, i, e, az):
-        #TODO: fix this so that it identifies whether a measurement will be any good.
+        # TODO: fix this so that it identifies whether a measurement will be any good.
         #         need to subtract component that is in same direction
         #         or add component in opposite direction
         #         for az=0: full component in same or opposite
@@ -2881,7 +2594,7 @@ class Controller:
         except ValueError:
             return False
 
-        closest_pos, closest_dist = self.get_closest_approach(i, e, az, print_me=False)
+        closest_pos, closest_dist = self.get_closest_approach(i, e, az)
         if closest_dist < self.required_angular_separation:
             if print_me:
                 print(i)
@@ -3002,10 +2715,10 @@ class Controller:
         self.filemenu.entryconfig(0, state=DISABLED)
         self.filemenu.entryconfig(1, state=DISABLED)
 
-        self.console_entry.configure(state="disabled")
+        self.console.console_entry.configure(state="disabled")
 
     def unfreeze(self):
-        self.console_entry.configure(state="normal")
+        self.console.console_entry.configure(state="normal")
         self.menubar.entryconfig("Settings", state="normal")
         self.filemenu.entryconfig(0, state=NORMAL)
         self.filemenu.entryconfig(1, state=NORMAL)
@@ -3047,4 +2760,4 @@ class Controller:
     def log(self, text: str):
         self.console.log(text)
 
-    #TODO: Consider moving to a safe geometry on shutdown.
+    # TODO: Consider moving to a safe geometry on shutdown.

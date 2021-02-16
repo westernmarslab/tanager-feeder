@@ -157,6 +157,29 @@ class SampleFrame:
         self.position = "Sample 1"
 
 
+class TkFormat:
+    def __init__(self):
+        # Yay formatting. Might not work for Macs.
+        self.bg = "#333333"
+        self.textcolor = "light gray"
+        self.buttontextcolor = "white"
+        self.bd = 2
+        self.padx = 3
+        self.pady = 3
+        self.border_color = "light gray"
+        self.button_width = 15
+        self.buttonbackgroundcolor = "#888888"
+        self.highlightbackgroundcolor = "#222222"
+        self.entry_background = "light gray"
+        if self.opsys == "Windows":
+            self.listboxhighlightcolor = "darkgray"
+        else:
+            self.listboxhighlightcolor = "white"
+        self.selectbackground = "#555555"
+        self.selectforeground = "white"
+        self.check_bg = "#444444"
+
+
 # http://tkinter.unpythonic.net/wiki/VerticalScrolledFrame
 class VerticalScrolledFrame(Frame):
 

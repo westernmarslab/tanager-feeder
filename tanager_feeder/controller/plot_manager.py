@@ -1,66 +1,112 @@
 import os
-from tkinter import Entry, Button, Label, Checkbutton, Toplevel, Frame, LEFT, RIGHT
+from tkinter import Entry, Button, Label, Checkbutton, Toplevel, Frame, LEFT, RIGHT, IntVar
 from tkinter.filedialog import askopenfilename
 
+from tanager_feeder.dialogs.dialog import Dialog
+from tanager_feeder.dialogs.error_dialog import ErrorDialog
+from tanager_feeder.dialogs.remote_file_explorer import RemoteFileExplorer
+from tanager_feeder import utils
 
-class PlotManager():
-    def __init__(self, master):
-        self.plot_top = Toplevel(master)
+
+class PlotManager:
+    def __init__(self, controller):
+        self.controller = controller
+        self.plotter = self.controller.plotter
+        self.config_info = controller.config_info
+        self.tk_format = utils.TkFormat()
+
+        try:
+            with open(self.config_info.local_config_loc + "plot_config.txt", "r") as plot_config:
+                self.plot_local_remote = plot_config.readline().strip("\n")
+                self.plot_input_file = plot_config.readline().strip("\n")
+                self.plot_title = plot_config.readline().strip("\n")
+        except OSError:
+            with open(self.config_info.local_config_loc + "plot_config.txt", "w+") as f:
+                f.write("remote")
+                f.write("C:\\Users\n")
+                f.write("C:\\Users\n")
+
+            self.plot_local_remote = "remote"
+            self.plot_title = ""
+            self.plot_input_file = "C:\\Users"
+
+        self.plot_remote = IntVar()
+        self.plot_local = IntVar()
+        if self.plot_local_remote == "remote":
+            self.plot_remote.set(1)
+            self.plot_local.set(0)
+        else:
+            self.plot_local.set(1)
+            self.plot_remote.set(0)
+
+        self.plot_local_check = None
+        self.plot_remote_check = None
+        self.plot_title_entry = None
+        self.plot_input_dir_entry = None
+        self.plot_top = None
+
+    def show(self):
+        self.plot_top = Toplevel(self.controller.master)
         self.plot_top.wm_title("Plot")
-        self.plot_frame = Frame(self.plot_top, bg=self.bg, pady=2 * self.pady, padx=15)
-        self.plot_frame.pack()
+        plot_frame = Frame(self.plot_top, bg=self.tk_format.bg, pady=2 * self.tk_format.pady, padx=15)
+        plot_frame.pack()
 
-        self.plot_title_label = Label(
-            self.plot_frame, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="Plot title:"
+        plot_title_label = Label(
+            plot_frame,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
+            text="Plot title:",
         )
-        self.plot_title_label.pack(padx=self.padx, pady=(15, 5))
+        plot_title_label.pack(padx=self.tk_format.padx, pady=(15, 5))
         self.plot_title_entry = Entry(
-            self.plot_frame,
+            plot_frame,
             width=50,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bd=self.tk_format.bd,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         self.plot_title_entry.insert(0, self.plot_title)
         self.plot_title_entry.pack(pady=(5, 20))
-        self.plot_local_remote_frame = Frame(self.plot_frame, bg=self.bg)
-        self.plot_local_remote_frame.pack()
+        plot_local_remote_frame = Frame(plot_frame, bg=self.tk_format.bg)
+        plot_local_remote_frame.pack()
 
-        self.plot_input_dir_label = Label(
-            self.plot_local_remote_frame,
-            padx=self.padx,
-            pady=self.pady,
-            bg=self.bg,
-            fg=self.textcolor,
+        plot_input_dir_label = Label(
+            plot_local_remote_frame,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
             text="Path to .csv file:",
         )
-        self.plot_input_dir_label.pack(side=LEFT, padx=self.padx, pady=self.pady)
+        plot_input_dir_label.pack(side=LEFT, padx=self.tk_format.padx, pady=self.tk_format.pady)
 
         self.plot_local_check = Checkbutton(
-            self.plot_local_remote_frame,
-            fg=self.textcolor,
+            plot_local_remote_frame,
+            fg=self.tk_format.textcolor,
             text=" Local",
-            selectcolor=self.check_bg,
-            bg=self.bg,
-            pady=self.pady,
+            selectcolor=self.tk_format.check_bg,
+            bg=self.tk_format.bg,
+            pady=self.tk_format.pady,
             variable=self.plot_local,
             highlightthickness=0,
-            highlightbackground=self.bg,
+            highlightbackground=self.tk_format.bg,
             command=self.local_plot_cmd,
         )
         self.plot_local_check.pack(side=LEFT, pady=(5, 5), padx=(5, 5))
 
         self.plot_remote_check = Checkbutton(
-            self.plot_local_remote_frame,
-            fg=self.textcolor,
+            plot_local_remote_frame,
+            fg=self.tk_format.textcolor,
             text=" Remote",
-            bg=self.bg,
-            pady=self.pady,
+            bg=self.tk_format.bg,
+            pady=self.tk_format.pady,
             highlightthickness=0,
             variable=self.plot_remote,
             command=self.remote_plot_cmd,
-            selectcolor=self.check_bg,
+            selectcolor=self.tk_format.check_bg,
         )
         self.plot_remote_check.pack(side=LEFT, pady=(5, 5), padx=(5, 5))
 
@@ -72,56 +118,59 @@ class PlotManager():
             self.plot_local_check.select()
             self.plot_remote_check.deselect()
 
-        self.plot_file_frame = Frame(self.plot_frame, bg=self.bg)
-        self.plot_file_frame.pack(pady=(5, 10))
-        self.plot_file_browse_button = Button(self.plot_file_frame, text="Browse", command=self.choose_plot_file)
-        self.plot_file_browse_button.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
+        plot_file_frame = Frame(plot_frame, bg=self.tk_format.bg)
+        plot_file_frame.pack(pady=(5, 10))
+        plot_file_browse_button = Button(plot_file_frame, text="Browse", command=self.choose_plot_file)
+        plot_file_browse_button.config(
+            fg=self.tk_format.buttontextcolor,
+            highlightbackground=self.tk_format.highlightbackgroundcolor,
+            bg=self.tk_format.buttonbackgroundcolor,
         )
-        self.plot_file_browse_button.pack(side=RIGHT, padx=self.padx)
+        plot_file_browse_button.pack(side=RIGHT, padx=self.tk_format.padx)
 
         self.plot_input_dir_entry = Entry(
-            self.plot_file_frame,
+            plot_file_frame,
             width=50,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bd=self.tk_format.bd,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         self.plot_input_dir_entry.insert(0, self.plot_input_file)
         self.plot_input_dir_entry.pack(side=RIGHT)
 
-        self.plot_button_frame = Frame(self.plot_frame, bg=self.bg)
-        self.plot_button_frame.pack()
+        plot_button_frame = Frame(plot_frame, bg=self.tk_format.bg)
+        plot_button_frame.pack()
 
-        self.plot_button = Button(
-            self.plot_button_frame,
-            fg=self.textcolor,
+        plot_button = Button(
+            plot_button_frame,
+            fg=self.tk_format.textcolor,
             text="Plot",
-            padx=self.padx,
-            pady=self.pady,
-            width=int(self.button_width * 1.3),
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            width=int(self.tk_format.button_width * 1.3),
             bg="light gray",
             command=self.plot,
         )
-        self.plot_button.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
+        plot_button.config(
+            fg=self.tk_format.buttontextcolor,
+            highlightbackground=self.tk_format.highlightbackgroundcolor,
+            bg=self.tk_format.buttonbackgroundcolor,
         )
-        self.plot_button.pack(side=LEFT, pady=(20, 20), padx=(15, 15))
+        plot_button.pack(side=LEFT, pady=(20, 20), padx=(15, 15))
 
-        self.process_close_button = Button(
-            self.plot_button_frame,
-            fg=self.buttontextcolor,
-            highlightbackground=self.highlightbackgroundcolor,
+        process_close_button = Button(
+            plot_button_frame,
+            fg=self.tk_format.buttontextcolor,
+            highlightbackground=self.tk_format.highlightbackgroundcolor,
             text="Close",
-            padx=self.padx,
-            pady=self.pady,
-            width=int(self.button_width * 1.3),
-            bg=self.buttonbackgroundcolor,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            width=int(self.tk_format.button_width * 1.3),
+            bg=self.tk_format.buttonbackgroundcolor,
             command=self.close_plot,
         )
-        self.process_close_button.pack(pady=(20, 20), padx=(15, 15), side=LEFT)
-
+        process_close_button.pack(pady=(20, 20), padx=(15, 15), side=LEFT)
 
     def close_plot(self):
         self.plot_top.destroy()
@@ -170,13 +219,10 @@ class PlotManager():
                 self.plot_input_dir_entry.insert(0, file)
         self.plot_top.lift()
 
-
     def plot(self, filename):
-        if len(self.queue) > 0:
-            print("There is a queue here if and only if we are transferring data from a remote location.")
-            self.complete_queue_item()
+        # TODO: Review this code and test.
         title = self.plot_title_entry.get()
-        caption = ""  # self.plot_caption_entry.get()
+        caption = ""
 
         try:
             self.plot_input_file = self.plot_input_dir_entry.get()
@@ -186,37 +232,36 @@ class PlotManager():
             elif self.plot_local.get():
                 self.plot_local_remote = "local"
 
-            with open(self.local_config_loc + "plot_config.txt", "w") as plot_config:
+            with open(self.config_info.local_config_loc + "plot_config.txt", "w") as plot_config:
                 plot_config.write(self.plot_local_remote + "\n")
                 plot_config.write(self.plot_input_file + "\n")
                 plot_config.write(self.plot_title + "\n")
 
             self.plot_top.destroy()
 
-            if self.plotter.controller.plot_local_remote == "remote":
+            if self.plot_local_remote == "remote":
                 self.plotter.plot_spectra(title, filename, caption, exclude_wr=False, draw=False)
                 self.plotter.tabs[-1].ask_which_samples()
             else:
                 self.plotter.plot_spectra(title, filename, caption, exclude_wr=False, draw=True)
                 self.plotter.tabs[-1].ask_which_samples()
 
-            self.goniometer_view.flip()
+            self.controller.goniometer_view.flip()
 
-            last = len(self.view_notebook.tabs()) - 1
+            last = len(self.controller.view_notebook.tabs()) - 1
 
-            self.view_notebook.select(last)
+            self.controller.view_notebook.select(last)
             if (
                 self.plotter.save_dir is None
             ):  # If the user hasn't specified a folder where they want to save plots yet, set the default folder to be
                 # the same one they got the data from. Otherwise, leave it as is.
-                if self.opsys == "Windows":
+                if self.config_info.opsys == "Windows":
                     self.plotter.save_dir = "\\".join(filename.split("\\")[0:-1])
                 else:
                     self.plotter.save_dir = "/".join(filename.split("/")[0:-1])
 
         except Exception as e:
             print(e)
-
             Dialog(
                 self,
                 "Plotting Error",
@@ -225,3 +270,20 @@ class PlotManager():
                 {"ok": {}},
             )
             raise e
+        filename = self.plot_input_dir_entry.get()
+        if self.config_info.opsys == "Windows" or self.plot_remote.get():
+            filename = filename.replace("\\", "/")
+
+        if self.plot_remote.get():
+            self.controller.plot_remote()
+
+        else:
+            if os.path.exists(filename):
+                self.plot(filename)
+            else:
+                ErrorDialog(
+                    self,
+                    title="Error: File not found",
+                    label="Error: File not found.\n\n" + filename + "\n\ndoes not exist.",
+                )
+                return False

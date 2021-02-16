@@ -1,34 +1,80 @@
-from tkinter import RIGHT, LEFT, Entry, Button, Label, Checkbutton, Toplevel, Frame, StringVar, IntVar
+import os
+import time
+from tkinter import RIGHT, LEFT, Entry, Button, Label, Checkbutton, Toplevel, Frame, StringVar, IntVar, INSERT
+from tkinter.filedialog import askdirectory
 
+from tanager_feeder.dialogs.dialog import Dialog
 from tanager_feeder.dialogs.error_dialog import ErrorDialog
+from tanager_feeder.dialogs.remote_file_explorer import RemoteFileExplorer
+from tanager_feeder import utils
 
-class ProcessManager():
+
+class ProcessManager:
     def __init__(self, controller):
+        # The commander is in charge of sending all the commands for the spec compy to read
+        # If the user has saved spectra with this program before, load in their previously used directories.
+        self.controller = controller
+        self.config_info = controller.config_info
+        self.remote_directory_worker = controller.remote_directory_worker
+
+        self.tk_format = utils.TkFormat()
+        self.tk_buttons = []
+        self.entries = []
+        self.tk_check_buttons = []
+
+        self.process_input_dir = ""
+        self.process_output_dir = ""
+        try:
+            with open(controller.local_config_loc + "process_directories.txt", "r") as process_config:
+                self.proc_local_remote = process_config.readline().strip("\n")
+                self.process_input_dir = process_config.readline().strip("\n")
+                self.process_output_dir = process_config.readline().strip("\n")
+
+        except OSError:
+            with open(controller.local_config_loc + "process_directories.txt", "w+") as f:
+                f.write("remote")
+                f.write("C:\\Users\n")
+                f.write("C:\\Users\n")
+                self.proc_local_remote = "remote"
+                self.proc_input_dir = "C:\\Users"
+                self.proc_output_dir = "C:\\Users"
+
+        self.proc_remote = IntVar()
+        self.proc_local = IntVar()
+        if self.proc_local_remote == "remote":
+            self.proc_remote.set(1)
+            self.proc_local.set(0)
+        else:
+            self.proc_local.set(1)
+            self.proc_remote.set(0)
+
         self.process_top = Toplevel(controller.master)
         self.process_top.wm_title("Process Data")
-        self.process_frame = Frame(self.process_top, bg=self.bg, pady=15, padx=15)
+        self.process_frame = Frame(self.process_top, bg=self.tk_format.bg, pady=15, padx=15)
         self.process_frame.pack()
 
         self.input_dir_label = Label(
             self.process_frame,
-            padx=self.padx,
-            pady=self.pady,
-            bg=self.bg,
-            fg=self.textcolor,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
             text="Raw spectral data input directory:",
         )
-        self.input_dir_label.pack(padx=self.padx, pady=(10, 5))
+        self.input_dir_label.pack(padx=self.tk_format.padx, pady=(10, 5))
 
-        self.input_frame = Frame(self.process_frame, bg=self.bg)
+        self.input_frame = Frame(self.process_frame, bg=self.tk_format.bg)
         self.input_frame.pack()
 
         self.process_input_browse_button = Button(
             self.input_frame, text="Browse", command=self.choose_process_input_dir
         )
         self.process_input_browse_button.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
+            fg=self.tk_format.buttontextcolor,
+            highlightbackground=self.tk_format.highlightbackgroundcolor,
+            bg=self.tk_format.buttonbackgroundcolor,
         )
-        self.process_input_browse_button.pack(side=RIGHT, padx=self.padx)
+        self.process_input_browse_button.pack(side=RIGHT, padx=self.tk_format.padx)
         self.tk_buttons.append(self.process_input_browse_button)
 
         self.input_dir_var = StringVar()
@@ -37,39 +83,39 @@ class ProcessManager():
         self.input_dir_entry = Entry(
             self.input_frame,
             width=50,
-            bd=self.bd,
+            bd=self.tk_format.bd,
             textvariable=self.input_dir_var,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         self.input_dir_entry.insert(0, self.process_input_dir)
-        self.input_dir_entry.pack(side=RIGHT, padx=self.padx, pady=self.pady)
+        self.input_dir_entry.pack(side=RIGHT, padx=self.tk_format.padx, pady=self.tk_format.pady)
         self.entries.append(self.input_dir_entry)
 
-        self.proc_local_remote_frame = Frame(self.process_frame, bg=self.bg)
+        self.proc_local_remote_frame = Frame(self.process_frame, bg=self.tk_format.bg)
         self.proc_local_remote_frame.pack()
 
         self.output_dir_label = Label(
             self.proc_local_remote_frame,
-            padx=self.padx,
-            pady=self.pady,
-            bg=self.bg,
-            fg=self.textcolor,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
             text="Processed data output directory:",
         )
-        self.output_dir_label.pack(padx=self.padx, pady=(10, 5), side=LEFT)
+        self.output_dir_label.pack(padx=self.tk_format.padx, pady=(10, 5), side=LEFT)
 
         self.proc_local_check = Checkbutton(
             self.proc_local_remote_frame,
-            fg=self.textcolor,
+            fg=self.tk_format.textcolor,
             text=" Local",
-            selectcolor=self.check_bg,
-            bg=self.bg,
-            pady=self.pady,
+            selectcolor=self.tk_format.check_bg,
+            bg=self.tk_format.bg,
+            pady=self.tk_format.pady,
             variable=self.proc_local,
             highlightthickness=0,
-            highlightbackground=self.bg,
+            highlightbackground=self.tk_format.bg,
             command=self.local_process_cmd,
         )
         self.proc_local_check.pack(side=LEFT, pady=(5, 0), padx=(5, 5))
@@ -79,100 +125,109 @@ class ProcessManager():
 
         self.proc_remote_check = Checkbutton(
             self.proc_local_remote_frame,
-            fg=self.textcolor,
+            fg=self.tk_format.textcolor,
             text=" Remote",
-            bg=self.bg,
-            pady=self.pady,
+            bg=self.tk_format.bg,
+            pady=self.tk_format.pady,
             highlightthickness=0,
             variable=self.proc_remote,
             command=self.remote_process_cmd,
-            selectcolor=self.check_bg,
+            selectcolor=self.tk_format.check_bg,
         )
         self.proc_remote_check.pack(side=LEFT, pady=(5, 0), padx=(5, 5))
         if self.proc_local_remote == "remote":
             self.proc_remote_check.select()
         self.tk_check_buttons.append(self.proc_remote_check)
 
-        self.process_output_frame = Frame(self.process_frame, bg=self.bg)
+        self.process_output_frame = Frame(self.process_frame, bg=self.tk_format.bg)
         self.process_output_frame.pack(pady=(5, 10))
         self.process_output_browse_button = Button(
             self.process_output_frame, text="Browse", command=self.choose_process_output_dir
         )
         self.process_output_browse_button.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
+            fg=self.tk_format.buttontextcolor,
+            highlightbackground=self.tk_format.highlightbackgroundcolor,
+            bg=self.tk_format.buttonbackgroundcolor,
         )
-        self.process_output_browse_button.pack(side=RIGHT, padx=self.padx)
+        self.process_output_browse_button.pack(side=RIGHT, padx=self.tk_format.padx)
         self.tk_buttons.append(self.process_output_browse_button)
 
         self.output_dir_entry = Entry(
             self.process_output_frame,
             width=50,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bd=self.tk_format.bd,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         self.output_dir_entry.insert(0, self.process_output_dir)
-        self.output_dir_entry.pack(side=RIGHT, padx=self.padx, pady=self.pady)
+        self.output_dir_entry.pack(side=RIGHT, padx=self.tk_format.padx, pady=self.tk_format.pady)
         self.entries.append(self.output_dir_entry)
 
         self.output_file_label = Label(
-            self.process_frame, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="Output file name:"
+            self.process_frame,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
+            text="Output file name:",
         )
-        self.output_file_label.pack(padx=self.padx, pady=self.pady)
+        self.output_file_label.pack(padx=self.tk_format.padx, pady=self.tk_format.pady)
         self.output_file_entry = Entry(
             self.process_frame,
             width=50,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bd=self.tk_format.bd,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         self.output_file_entry.pack()
         self.entries.append(self.output_file_entry)
 
-        self.process_check_frame = Frame(self.process_frame, bg=self.bg)
+        self.process_check_frame = Frame(self.process_frame, bg=self.tk_format.bg)
         self.process_check_frame.pack(pady=(15, 5))
         self.process_save_dir = IntVar()
         self.process_save_dir_check = Checkbutton(
             self.process_check_frame,
-            selectcolor=self.check_bg,
-            fg=self.textcolor,
+            selectcolor=self.tk_format.check_bg,
+            fg=self.tk_format.textcolor,
             text="Save file configuration",
-            bg=self.bg,
-            pady=self.pady,
+            bg=self.tk_format.bg,
+            pady=self.tk_format.pady,
             highlightthickness=0,
             variable=self.process_save_dir,
         )
         self.process_save_dir_check.select()
 
-        self.process_button_frame = Frame(self.process_frame, bg=self.bg)
+        self.process_button_frame = Frame(self.process_frame, bg=self.tk_format.bg)
         self.process_button_frame.pack()
         self.process_button = Button(
             self.process_button_frame,
-            fg=self.textcolor,
+            fg=self.tk_format.textcolor,
             text="Process",
-            padx=self.padx,
-            pady=self.pady,
-            width=int(self.button_width * 1.3),
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            width=int(self.tk_format.button_width * 1.3),
             bg="light gray",
-            command=self.process_cmd,
+            command=self.controller.process_cmd,
         )
         self.process_button.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
+            fg=self.tk_format.buttontextcolor,
+            highlightbackground=self.tk_format.highlightbackgroundcolor,
+            bg=self.tk_format.buttonbackgroundcolor,
         )
         self.process_button.pack(padx=(15, 15), side=LEFT)
         self.tk_buttons.append(self.process_button)
 
         self.process_close_button = Button(
             self.process_button_frame,
-            fg=self.buttontextcolor,
-            highlightbackground=self.highlightbackgroundcolor,
+            fg=self.tk_format.buttontextcolor,
+            highlightbackground=self.tk_format.highlightbackgroundcolor,
             text="Close",
-            padx=self.padx,
-            pady=self.pady,
-            width=int(self.button_width * 1.3),
-            bg=self.buttonbackgroundcolor,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            width=int(self.tk_format.button_width * 1.3),
+            bg=self.tk_format.buttonbackgroundcolor,
             command=self.close_process,
         )
         self.process_close_button.pack(padx=(15, 15), side=LEFT)
@@ -222,12 +277,12 @@ class ProcessManager():
         else:
             self.process_top.lift()
             if os.path.isdir(init_dir):
-                dir = askdirectory(initialdir=init_dir, title="Select an output directory")
+                output_dir = askdirectory(initialdir=init_dir, title="Select an output directory")
             else:
-                dir = askdirectory(initialdir=os.getcwd(), title="Select an output directory")
-            if dir != ():
+                output_dir = askdirectory(initialdir=os.getcwd(), title="Select an output directory")
+            if output_dir != ():
                 self.output_dir_entry.delete(0, "end")
-                self.output_dir_entry.insert(0, dir)
+                self.output_dir_entry.insert(0, output_dir)
         self.process_top.lift()
 
     def setup_process(self):
@@ -247,33 +302,33 @@ class ProcessManager():
             input_directory = input_directory[:-1]
 
         if self.process_save_dir.get():
-            file = open(self.local_config_loc + "process_directories.txt", "w")
-            file.write(self.plot_local_remote + "\n")
+            file = open(self.config_info.local_config_loc + "process_directories.txt", "w")
+            file.write(self.proc_local_remote + "\n")
             file.write(self.input_dir_entry.get() + "\n")
             file.write(self.output_dir_entry.get() + "\n")
             file.write(output_file + "\n")
             file.close()
 
         if self.proc_local.get() == 1:
-            self.plot_local_remote = "local"
-            check = self.check_local_file(self.output_dir_entry.get(), output_file, self.process_cmd)
+            self.controller.plot_manager.plot_local_remote = "local"
+            check = self.check_local_file(self.output_dir_entry.get(), output_file, self.controller.process_cmd)
             if not check:
-                raise ProcessFileError  # If the file exists, controller.check_local_file_exists gives the user the option to overwrite,
-                # in which case process_cmd gets called again.
-            check = self.check_local_folder(self.output_dir_entry.get(), self.process_cmd)
+                raise ProcessFileError  # If the file exists, controller.check_local_file_exists
+                # gives the user the option to overwrite, in which case process_cmd gets called again.
+            check = self.check_local_folder(self.output_dir_entry.get(), self.controller.process_cmd)
             if not check:
                 raise ProcessFileError  # Same deal for the folder (except existing is good).
 
-            #TODO: Figure out temp loc for remote data
+            # TODO: Figure out temp loc for remote data
             return input_directory, "temp loc", "proc_temp.csv"
 
         else:
-            self.plot_local_remote = "remote"
+            self.controller.plot_manager.plot_local_remote = "remote"
             output_directory = self.output_dir_entry.get()
-            check = self.check_remote_folder(output_directory, self.process_cmd)
+            check = self.check_remote_folder(output_directory, self.controller.process_cmd)
             if not check:
                 raise ProcessFileError
-            #TODO: Figure out temp loc for remote data
+            # TODO: Figure out temp loc for remote data
             return input_directory, output_directory, output_file
 
     def finish_processing(self):
@@ -282,7 +337,7 @@ class ProcessManager():
             final_data_destination = final_data_destination + ".csv"
         data_base = ".".join(final_data_destination.split(".")[0:-1])
 
-        if self.opsys == "Linux" or self.opsys == "Mac":
+        if self.config_info.opsys in ("Linux", "Mac"):
             final_data_destination = self.output_dir_entry.get() + "/" + final_data_destination
             log_base = self.output_dir_entry.get() + "/" + data_base + "_log"
         else:
@@ -298,3 +353,173 @@ class ProcessManager():
 
         return final_data_destination, final_log_destination
 
+    def check_local_file(self, directory, local_file, next_action):
+        def remove_retry(file, action):
+            try:
+                os.remove(file)
+                action()
+            except OSError:
+                ErrorDialog(self, title="Error overwriting file", label="Error: Could not delete file.\n\n" + file)
+
+        if self.config_info.opsys in ("Linux", "Mac"):
+            if directory[-1] != "/":
+                directory += "/"
+        else:
+            if directory[-1] != "\\":
+                directory += "\\"
+
+        full_process_output_path = directory + local_file
+        if os.path.exists(full_process_output_path):
+            buttons = {"yes": {remove_retry: [full_process_output_path, next_action]}, "no": {}}
+            dialog = Dialog(
+                self,
+                title="Error: File Exists",
+                label="Error: Specified output file already exists.\n\n"
+                + full_process_output_path
+                + "\n\nDo you want to overwrite this data?",
+                buttons=buttons,
+            )
+            dialog.top.wm_geometry("376x175")
+            return False
+        else:
+            return True
+
+    def check_local_folder(self, local_dir, next_action):
+        def try_mk_dir(dir_to_make, action):
+            try:
+                os.makedirs(dir_to_make)
+                action()
+            except OSError:
+                ErrorDialog(self, title="Cannot create directory", label="Cannot create directory:\n\n" + dir_to_make)
+            return False
+
+        exists = os.path.exists(local_dir)
+        if exists:
+            # If the file exists, try creating and deleting a new file there to make sure we have permission.
+            try:
+                if self.config_info.opsys in ("Linux", "Mac"):
+                    if local_dir[-1] != "/":
+                        local_dir += "/"
+                else:
+                    if local_dir[-1] != "\\":
+                        local_dir += "\\"
+
+                existing = os.listdir(local_dir)
+                i = 0
+                delme = "delme" + str(i)
+                while delme in existing:
+                    i += 1
+                    delme = "delme" + str(i)
+
+                os.mkdir(local_dir + delme)
+                os.rmdir(local_dir + delme)
+                return True
+
+            except OSError:
+                ErrorDialog(
+                    self,
+                    title="Error: Cannot write",
+                    label="Error: Cannot write to specified directory.\n\n" + local_dir,
+                )
+                return False
+        else:
+            if (
+                self.controller.script_running
+            ):  # If we're running a script, just try making the directory automatically.
+                try_mk_dir(local_dir, next_action)
+            else:  # Otherwise, ask the user.
+                buttons = {"yes": {try_mk_dir: [local_dir, next_action]}, "no": {}}
+                ErrorDialog(
+                    self,
+                    title="Directory does not exist",
+                    label=local_dir + "\n\ndoes not exist. Do you want to create this directory?",
+                    buttons=buttons,
+                )
+        return exists
+
+    # Checks if the given directory exists and is writeable. If not writeable, gives user option to create.
+    def check_remote_folder(self, remote_dir, next_action):
+        def inner_mkdir(dir_to_make, action):
+            mkdir_status = self.remote_directory_worker.mkdir(dir_to_make)
+            if mkdir_status == "mkdirsuccess":
+                action()
+            elif mkdir_status == "mkdirfailedfileexists":
+                ErrorDialog(
+                    self, title="Error", label="Could not create directory:\n\n" + dir_to_make + "\n\nFile exists."
+                )
+            elif mkdir_status == "mkdirfailed":
+                ErrorDialog(self, title="Error", label="Could not create directory:\n\n" + dir_to_make)
+
+        status = self.remote_directory_worker.get_dirs(remote_dir)
+
+        if status == "listdirfailed":
+            buttons = {"yes": {inner_mkdir: [remote_dir, next_action]}, "no": {}}
+            ErrorDialog(
+                self,
+                title="Directory does not exist",
+                label=remote_dir + "\ndoes not exist. Do you want to create this directory?",
+                buttons=buttons,
+            )
+            return False
+        elif status == "listdirfailedpermission":
+            ErrorDialog(self, label="Error: Permission denied for\n" + remote_dir)
+            return False
+
+        elif status == "timeout":
+            if not self.controller.text_only:
+                buttons = {
+                    "cancel": {},
+                    "retry": {
+                        self.controller.spec_commander.remove_from_listener_queue: [["timeout"]],
+                        self.controller.next_in_queue: [],
+                    },
+                }
+                dialog = ErrorDialog(
+                    self,
+                    label="Error: Operation timed out.\n\nCheck that the automation script is running on the"
+                    " spectrometer\n computer and the spectrometer is connected.",
+                    buttons=buttons,
+                )
+                for button in dialog.tk_buttons:
+                    button.config(width=15)
+            else:
+                self.controller.log("Error: Operation timed out.")
+            return False
+
+        self.controller.spec_commander.check_writeable(remote_dir)
+        t = 3 * utils.BUFFER
+        while t > 0:
+            if "yeswriteable" in self.controller.spec_listener.queue:
+                self.controller.spec_listener.queue.remove("yeswriteable")
+                return True
+            elif "notwriteable" in self.controller.spec_listener.queue:
+                self.controller.spec_listener.queue.remove("notwriteable")
+                ErrorDialog(self, label="Error: Permission denied.\nCannot write to specified directory.")
+                return False
+            time.sleep(utils.INTERVAL)
+            t = t - utils.INTERVAL
+        if t <= 0:
+            ErrorDialog(self, label="Error: Operation timed out.")
+            return False
+
+    def choose_process_input_dir(self):
+        RemoteFileExplorer(
+            self,
+            label="Select the directory containing the data you want to process.\nThis must be on a drive mounted on"
+            " the spectrometer control computer.\n E.g. R:\\RiceData\\MarsGroup\\YourName\\spectral_data",
+            target=self.input_dir_entry,
+        )
+
+    def validate_input_dir(self):
+        pos = self.input_dir_entry.index(INSERT)
+        input_dir = utils.rm_reserved_chars(self.input_dir_entry.get())
+        if len(input_dir) < len(self.input_dir_entry.get()):
+            pos = pos - 1
+        self.input_dir_entry.delete(0, "end")
+        self.input_dir_entry.insert(0, input_dir)
+        self.input_dir_entry.icursor(pos)
+
+
+class ProcessFileError(Exception):
+    def __init__(self, message="File error while processing."):
+        super().__init__(self, message)
