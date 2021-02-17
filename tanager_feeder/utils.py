@@ -1,5 +1,6 @@
 from enum import Enum
 import os
+from threading import Thread
 from tkinter import Frame, Scrollbar, StringVar, Canvas, VERTICAL, TRUE, FALSE, RIGHT, Y, NW, LEFT, BOTH, Listbox, SINGLE, Widget
 from typing import Any
 
@@ -158,7 +159,7 @@ class SampleFrame:
 
 
 class TkFormat:
-    def __init__(self):
+    def __init__(self, config_info = None):
         # Yay formatting. Might not work for Macs.
         self.bg = "#333333"
         self.textcolor = "light gray"
@@ -171,7 +172,7 @@ class TkFormat:
         self.buttonbackgroundcolor = "#888888"
         self.highlightbackgroundcolor = "#222222"
         self.entry_background = "light gray"
-        if self.opsys == "Windows":
+        if config_info is None or config_info.opsys == "Windows":
             self.listboxhighlightcolor = "darkgray"
         else:
             self.listboxhighlightcolor = "white"
@@ -187,9 +188,9 @@ class VerticalScrolledFrame(Frame):
     # Construct and pack/place/grid normally
     # This frame only allows vertical scrolling
 
-    def __init__(self, parent, min_height=600, width=468, *args, **kw):
+    def __init__(self, controller, parent, min_height=600, width=468, *args, **kw):
         Frame.__init__(self, parent, *args, **kw)
-
+        self.controller = controller
         self.min_height = min_height  # Miniumum height for interior frame to show all elements. Changes as new samples
         # or viewing geometries are added.
 
@@ -354,3 +355,7 @@ def set_text(widget: Widget, text: str):
 def lift_widget(widget: Widget):
     widget.focus_set()
     widget.lift()
+
+def thread_lift_widget(widget: Widget):
+    thread = Thread(target=lift_widget, args=(widget,))
+    thread.start()

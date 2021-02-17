@@ -6,10 +6,23 @@ from tanager_feeder import utils
 
 
 class EditPlotManager:
-    def __init__(self, controller, tab, existing_sample_indices, sample_options, existing_geoms, current_title):
-        self.view_notebook = controller.view_notebook
-        self.tab = tab
+    def __init__(self, controller):
+        self.controller = controller
+        self.tab = None
+        self.tk_format = utils.TkFormat(self.controller.config_info)
 
+        self.exclude_specular = IntVar()
+        self.edit_plot_dialog = None
+        self.plot_samples_listbox = None
+        self.i_entry = None
+        self.e_entry = None
+        self.az_entry = None
+        self.new_plot_title_entry = None
+        self.exclude_specular_check = None
+        self.spec_tolerance_entry = None
+
+    def show(self, tab, existing_sample_indices, sample_options, existing_geoms, current_title):
+        self.tab = tab
         buttons = {
             "ok": {
                 self.select_tab: [],
@@ -25,50 +38,62 @@ class EditPlotManager:
             }
         }
 
-        self.edit_plot_dialog = Dialog(controller, "Edit Plot", "\nPlot title:", buttons=buttons)
+        self.edit_plot_dialog = Dialog(self.controller, "Edit Plot", "\nPlot title:", buttons=buttons)
         self.new_plot_title_entry = Entry(
             self.edit_plot_dialog.top,
             width=20,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bd=self.tk_format.bd,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         self.new_plot_title_entry.insert(0, current_title)
         self.new_plot_title_entry.pack()
 
         sample_label = Label(
-            self.edit_plot_dialog.top, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="\nSamples:"
+            self.edit_plot_dialog.top,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
+            text="\nSamples:",
         )
         sample_label.pack(pady=(0, 10))
         self.plot_samples_listbox = utils.ScrollableListbox(
             self.edit_plot_dialog.top,
-            self.bg,
-            self.entry_background,
-            self.listboxhighlightcolor,
+            self.tk_format.bg,
+            self.tk_format.entry_background,
+            self.tk_format.listboxhighlightcolor,
             selectmode=EXTENDED,
         )
 
-        self.geom_label = Label(
+        geom_label = Label(
             self.edit_plot_dialog.top,
-            padx=self.padx,
-            pady=self.pady,
-            bg=self.bg,
-            fg=self.textcolor,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
             text="\nEnter incidence and emission angles to plot,\nor leave blank to plot all:\n",
         )
-        self.geom_label.pack()
-        self.geom_frame = Frame(self.edit_plot_dialog.top)
-        self.geom_frame.pack(padx=(20, 20), pady=(0, 10))
-        self.i_label = Label(self.geom_frame, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="i: ")
-        self.i_label.pack(side=LEFT)
+        geom_label.pack()
+        geom_frame = Frame(self.edit_plot_dialog.top)
+        geom_frame.pack(padx=(20, 20), pady=(0, 10))
+        i_label = Label(
+            geom_frame,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
+            text="i: ",
+        )
+        i_label.pack(side=LEFT)
         self.i_entry = Entry(
-            self.geom_frame,
+            geom_frame,
             width=8,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bd=self.tk_format.bd,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         for i, incidence in enumerate(existing_geoms["i"]):
             if i == 0:
@@ -78,17 +103,22 @@ class EditPlotManager:
 
         self.i_entry.pack(side=LEFT)
 
-        self.e_label = Label(
-            self.geom_frame, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="    e: "
+        e_label = Label(
+            geom_frame,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
+            text="    e: ",
         )
-        self.e_label.pack(side=LEFT)
+        e_label.pack(side=LEFT)
         self.e_entry = Entry(
-            self.geom_frame,
+            geom_frame,
             width=8,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bd=self.tk_format.bd,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         for i, emission in enumerate(existing_geoms["e"]):
             if i == 0:
@@ -97,17 +127,22 @@ class EditPlotManager:
                 self.e_entry.insert("end", "," + str(emission))
         self.e_entry.pack(side=LEFT)
 
-        self.az_label = Label(
-            self.geom_frame, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="    az: "
+        az_label = Label(
+            geom_frame,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
+            text="    az: ",
         )
-        self.az_label.pack(side=LEFT)
+        az_label.pack(side=LEFT)
         self.az_entry = Entry(
-            self.geom_frame,
+            geom_frame,
             width=8,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bd=self.tk_format.bd,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         for i, azimuth in enumerate(existing_geoms["az"]):
             if i == 0:
@@ -115,37 +150,43 @@ class EditPlotManager:
             else:
                 self.az_entry.insert("end", "," + str(azimuth))
         self.az_entry.pack(side=LEFT)
-        print("packed")
 
-        self.exclude_specular_frame = Frame(self.edit_plot_dialog.top, bg=self.bg, padx=self.padx, pady=self.pady)
-        self.exclude_specular_frame.pack()
-        self.exclude_specular = IntVar()
+        exclude_specular_frame = Frame(
+            self.edit_plot_dialog.top, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=self.tk_format.pady
+        )
+        exclude_specular_frame.pack()
+
         self.exclude_specular_check = Checkbutton(
-            self.exclude_specular_frame,
-            selectcolor=self.check_bg,
-            fg=self.textcolor,
+            exclude_specular_frame,
+            selectcolor=self.tk_format.check_bg,
+            fg=self.tk_format.textcolor,
             text="  Exclude specular angles (+/-",
-            bg=self.bg,
-            pady=self.pady,
+            bg=self.tk_format.bg,
+            pady=self.tk_format.pady,
             highlightthickness=0,
             variable=self.exclude_specular,
         )
         self.exclude_specular_check.pack(side=LEFT)
 
         self.spec_tolerance_entry = Entry(
-            self.exclude_specular_frame,
+            exclude_specular_frame,
             width=4,
-            bd=self.bd,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bd=self.tk_format.bd,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
 
         self.spec_tolerance_entry.pack(side=LEFT)
-        self.spec_tolerance_label = Label(
-            self.exclude_specular_frame, padx=self.padx, pady=self.pady, bg=self.bg, fg=self.textcolor, text="\u00B0)"
+        spec_tolerance_label = Label(
+            exclude_specular_frame,
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            bg=self.tk_format.bg,
+            fg=self.tk_format.textcolor,
+            text="\u00B0)",
         )
-        self.spec_tolerance_label.pack(side=LEFT)
+        spec_tolerance_label.pack(side=LEFT)
 
         if tab.exclude_specular:
             self.exclude_specular_check.select()
@@ -174,7 +215,7 @@ class EditPlotManager:
                 if angle is not None:
                     try:
                         angle_list[n] = int(angle)
-                    except:
+                    except ValueError:
                         invalid_list.append(angle)
 
             return angle_list, invalid_list
@@ -195,4 +236,4 @@ class EditPlotManager:
         return incidences, emissions, azimuths
 
     def select_tab(self):
-        self.view_notebook.select(self.tab.top)
+        self.controller.view_notebook.select(self.tab.top)

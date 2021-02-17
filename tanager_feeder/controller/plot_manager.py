@@ -13,7 +13,7 @@ class PlotManager:
         self.controller = controller
         self.plotter = self.controller.plotter
         self.config_info = controller.config_info
-        self.tk_format = utils.TkFormat()
+        self.tk_format = utils.TkFormat(self.controller.config_info)
 
         try:
             with open(self.config_info.local_config_loc + "plot_config.txt", "r") as plot_config:
@@ -179,9 +179,9 @@ class PlotManager:
     def local_plot_cmd(self):
         if self.plot_local.get() and not self.plot_remote.get():
             return
-        elif self.plot_remote.get() and not self.plot_local.get():
+        if self.plot_remote.get() and not self.plot_local.get():
             return
-        elif not self.plot_remote.get():
+        if not self.plot_remote.get():
             self.plot_remote_check.select()
         else:
             self.plot_remote_check.deselect()
@@ -190,9 +190,9 @@ class PlotManager:
     def remote_plot_cmd(self):
         if self.plot_local.get() and not self.plot_remote.get():
             return
-        elif self.plot_remote.get() and not self.plot_local.get():
+        if self.plot_remote.get() and not self.plot_local.get():
             return
-        elif not self.plot_local.get():
+        if not self.plot_local.get():
             self.plot_local_check.select()
         else:
             self.plot_local_check.deselect()
@@ -219,7 +219,7 @@ class PlotManager:
                 self.plot_input_dir_entry.insert(0, file)
         self.plot_top.lift()
 
-    def plot(self, filename):
+    def plot(self, filename) -> None:
         # TODO: Review this code and test.
         title = self.plot_title_entry.get()
         caption = ""
@@ -286,4 +286,3 @@ class PlotManager:
                     title="Error: File not found",
                     label="Error: File not found.\n\n" + filename + "\n\ndoes not exist.",
                 )
-                return False

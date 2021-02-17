@@ -77,4 +77,4 @@ class RemoteDirectoryWorker:
                 self.listener.queue.remove("mkdirfailed")
                 return "mkdirfailed"
 
-        time.sleep(utils.INTERVAL)
+            time.sleep(utils.INTERVAL)

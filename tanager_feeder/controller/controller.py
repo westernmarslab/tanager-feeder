@@ -72,7 +72,8 @@ class Controller:
     def __init__(self, connection_tracker, config_info):
         self.connection_tracker = connection_tracker
         self.config_info = config_info
-        self.tk_format = utils.TkFormat()
+        self.tk_format = utils.TkFormat(self.config_info)
+
 
         try:
             self.spec_listener = SpecListener(connection_tracker, config_info)
@@ -109,11 +110,8 @@ class Controller:
         self.pi_commander = PiCommander(self.connection_tracker, self.pi_listener)
 
         self.remote_directory_worker = RemoteDirectoryWorker(self.spec_commander, self.spec_listener)
-        self.cli_manager = CliManager(self)
+        
 
-        self.local_config_loc = config_info.local_config_loc
-        self.global_config_loc = config_info.global_config_loc
-        self.opsys = config_info.opsys
 
         # The queue is a list of dictionaries commands:parameters
         # The commands are supposed to be executed in order, assuming each one succeeds.
@@ -278,24 +276,31 @@ class Controller:
 
         self.goniometer_view = GoniometerView(self, self.view_notebook)
         self.view_notebook.bind("<<NotebookTabChanged>>", lambda event: self.goniometer_view.tab_switch(event))
-        # self.view_notebook.bind("<Button-3>", lambda event: self.plot_right_click(event))
 
         # The plotter manages all the plots.
         self.plotter = Plotter(
             self,
             self.get_dpi(),
-            [self.global_config_loc + "color_config.mplstyle", self.global_config_loc + "size_config.mplstyle"],
+            [self.config_info.global_config_loc + "color_config.mplstyle", self.config_info.global_config_loc + "size_config.mplstyle"],
         )
 
+        # self.process_manager = ProcessManager(self)
+        # self.failsafes_manager = FailsafesManager(self)
+        # self.edit_plot_manager = EditPlotManager(self)
+        # self.process_manager = ProcessManager(self)
+        # self.plot_manager = PlotManager(self)
+        # self.analysis_tools_manager = AnalysisToolsManager(self)
+        # self.cli_manager = CliManager(self)
+
         try:
-            with open(self.local_config_loc + "spec_save.txt", "r") as spec_save_config:
+            with open(self.config_info.local_config_loc + "spec_save.txt", "r") as spec_save_config:
                 self.spec_save_path = spec_save_config.readline().strip("\n")
                 self.spec_basename = spec_save_config.readline().strip("\n")
                 self.spec_startnum = str(int(spec_save_config.readline().strip("\n")) + 1)
                 while len(self.spec_startnum) < self.config_info.num_len:
                     self.spec_startnum = "0" + self.spec_startnum
-        except:
-            with open(self.local_config_loc + "spec_save.txt", "w+") as f:
+        except OSError:
+            with open(self.config_info.local_config_loc + "spec_save.txt", "w+") as f:
                 f.write("C:\\Users\n")
                 f.write("basename\n")
                 f.write("-1\n")
@@ -307,10 +312,10 @@ class Controller:
                     self.spec_startnum = "0" + self.spec_startnum
 
         try:
-            with open(self.local_config_loc + "script_config.txt", "r") as script_config:
+            with open(self.config_info.local_config_loc + "script_config.txt", "r") as script_config:
                 self.script_loc = script_config.readline().strip("\n")
-        except:
-            with open(self.local_config_loc + "script_config.txt", "w+") as script_config:
+        except OSError:
+            with open(self.config_info.local_config_loc + "script_config.txt", "w+") as script_config:
                 script_config.write(os.getcwd())
                 self.script_loc = os.getcwd()
         self.notebook_frames = []
@@ -931,7 +936,7 @@ class Controller:
             target=self.scrollbar_check
         )  # Waits for everything to get packed, then checks if you need a scrollbar on the control frame.
         thread.start()
-        if self.opsys == "Windows":
+        if self.config_info.opsys == "Windows":
             self.master.wm_state("zoomed")
         self.master.mainloop()
 
@@ -983,7 +988,7 @@ class Controller:
 
     # called when user goes to File > Process and export data
     def show_process_frame(self):
-        ProcessManager(self.master)
+        self.process_manager.show()
 
     def enable_audio(self):
         self.audio_signals = True
@@ -1000,10 +1005,10 @@ class Controller:
 
     # Show failsafes settings frame
     def show_settings_frame(self):
-        FailsafesManager(self)
+        self.failsafes_manager.show()
 
     def show_plot_frame(self):
-        PlotManager(self)
+        self.plot_manager.show()
 
     def plot_remote(self, filename):
         # TODO: Review this code and test.
@@ -1050,9 +1055,9 @@ class Controller:
             self.queue = []
             return
         self.queue = []
-        with open(self.local_config_loc + "script_config.txt", "w") as script_config:
+        with open(self.config_info.local_config_loc + "script_config.txt", "w") as script_config:
             dir = ""
-            if self.opsys == "Linux" or self.opsys == "Mac":
+            if self.config_info.opsys == "Linux" or self.config_info.opsys == "Mac":
                 dir = "/".join(script_file.split("/")[0:-1])
             else:
                 dir = "\\".join(script_file.split("\\")[0:-1])
@@ -1062,9 +1067,7 @@ class Controller:
 
         with open(script_file, "r") as script:
             cmd = script.readline().strip("\n")
-            success = True
-            while cmd != "":  # probably just cmd!=''.
-                print(cmd)
+            while cmd != "":
                 self.queue.append({self.next_script_line: [cmd]})
                 cmd = script.readline().strip("\n")
                 continue
@@ -1085,9 +1088,8 @@ class Controller:
             self.console.console_entry.delete(0, "end")
             self.console.console_entry.insert(0, cmd)
             self.freeze()
-            success = self.execute_cmd("event!")
-            if success == False:
-                self.log("Exiting.")
+            self.execute_cmd("event!")
+            # TODO: see if we needed execute_cmd to return false if a command fails.
 
     # use this to make plots - matplotlib works in inches but we want to use pixels.
     def get_dpi(self):
@@ -1146,7 +1148,7 @@ class Controller:
         new_spec_basename = self.spec_basename_entry.get()
         try:
             new_spec_num = int(self.spec_startnum_entry.get())
-        except:
+        except ValueError:
             return "invalid"
 
         if new_spec_save_dir == "" or new_spec_basename == "" or new_spec_num == "":
@@ -1171,8 +1173,8 @@ class Controller:
         try:
             new_spec_config_count = int(self.instrument_config_entry.get())
             if new_spec_config_count < 1 or new_spec_config_count > 32767:
-                raise (Exception)
-        except:
+                raise ValueError
+        except ValueError:
             ErrorDialog(self, label="Error: Invalid number of spectra to average.\nEnter a value from 1 to 32767")
             return False
 
@@ -1239,7 +1241,7 @@ class Controller:
             self.configure_instrument()
             return False
 
-        file = open(self.local_config_loc + "spec_save.txt", "w")
+        file = open(self.config_info.local_config_loc + "spec_save.txt", "w")
         file.write(self.spec_save_dir_entry.get() + "\n")
         file.write(self.spec_basename_entry.get() + "\n")
         file.write(self.spec_startnum_entry.get() + "\n")
@@ -1933,7 +1935,9 @@ class Controller:
                     self.wait_dialog.top.geometry("376x175")
                     for button in self.wait_dialog.tk_buttons:
                         button.config(width=15)
+                # pylint: disable = bare-except
                 except:
+                    # TODO: figure out except type. I think AttributeError?
                     dialog = ErrorDialog(
                         self,
                         label="Error: Operation timed out.\n\nCheck that the automation script is running on the"
@@ -1979,7 +1983,7 @@ class Controller:
         self.white_referencing = False
 
     # execute a command either input into the console by the user or loaded from a script
-    def execute_cmd(self, event):
+    def execute_cmd(self, event) -> None:
         if self.script_running:
             self.complete_queue_item()
 
@@ -2001,11 +2005,11 @@ class Controller:
             num = int(self.spec_startnum_entry.get()) + 1
             self.spec_startnum_entry.delete(0, "end")
             self.spec_startnum_entry.insert(0, str(num))
-        except:
+        except ValueError:
             return
 
     def process_cmd(self):
-        self.process_manager = ProcessManager(self)
+        self.process_manager.show()
         try:
             input_directory, output_directory, output_file = self.process_manager.setup_process()
         except ProcessFileError:
@@ -2038,30 +2042,28 @@ class Controller:
                 with open(final_log_destination, "w+") as f:
                     f.write(log_data)
 
-    def thread_lift_widget(self, widget):
-        thread = Thread(target=utils.lift_widget, args=(widget,))
-        thread.start()
-
     # This gets called when the user clicks 'Edit plot' from the right-click menu on a plot.
     # Pops up a scrollable listbox with sample options.
     def ask_plot_samples(self, tab, existing_sample_indices, sample_options, existing_geoms, current_title):
         self.close_plot_option_windows()
-        EditPlotManager(self, tab, existing_sample_indices, sample_options, existing_geoms, current_title)
+        self.edit_plot_manager.show(tab, existing_sample_indices, sample_options, existing_geoms, current_title)
 
     def open_analysis_tools(self, tab):
         self.close_plot_option_windows()
-        AnalysisToolsManager(self, tab)
+        self.analysis_tools_manager.show(tab)
 
     # If the user already has analysis tools or a plot editing dialog open, close the extra to avoid confusion.
     def close_plot_option_windows(self):
+        # TODO: figure out exception type
+        # pylint: disable = bare-except, broad-except
         try:
             self.analysis_dialog.top.destroy()
         except:
             pass
         try:
             self.edit_plot_dialog.top.destroy()
-        except:
-            pass
+        except Exception as e:
+            raise e
         try:
             self.plot_options_dialog.top.destroy()
         except:
@@ -2075,7 +2077,7 @@ class Controller:
         self.plotter = Plotter(
             self,
             self.get_dpi(),
-            [self.global_config_loc + "color_config.mplstyle", self.global_config_loc + "size_config.mplstyle"],
+            [self.config_info.global_config_loc + "color_config.mplstyle", self.config_info.global_config_loc + "size_config.mplstyle"],
         )
         for i, tab in enumerate(self.view_notebook.tabs()):
             if i == 0:
@@ -2098,6 +2100,8 @@ class Controller:
         )
 
     def add_sample(self):
+        # TODO: figure out exception type
+        # pylint: disable = bare-except, broad-except
         try:
             self.add_sample_button.pack_forget()
         except:
@@ -2125,6 +2129,7 @@ class Controller:
         self.control_frame.update()
 
         self.sample_pos_vars.append(StringVar(self.master))
+
         self.sample_pos_vars[-1].trace("w", self.set_taken_sample_positions)
         menu_positions = []
         pos_set = False
@@ -2213,12 +2218,15 @@ class Controller:
             self.add_sample_button.configure(state=NORMAL)
         if len(self.sample_label_entries) == 1:
             self.sample_removal_buttons[0].pack_forget()
+
         self.set_taken_sample_positions()
 
         self.control_frame.min_height -= 50  # Reduce the required size for the control frame to display all elements.
         self.control_frame.update()  # Configure scrollbar.
 
-    def set_taken_sample_positions(self):
+    def set_taken_sample_positions(self, *args):
+        # TODO: understand where these extra args are coming from
+        print(args)
         self.taken_sample_positions = []
         for var in self.sample_pos_vars:
             self.taken_sample_positions.append(var.get())
@@ -2262,6 +2270,8 @@ class Controller:
             self.geometry_removal_buttons[0].pack_forget()
 
     def add_geometry(self):
+        # TODO: figure out exception type
+        # pylint: disable = bare-except, broad-except
         try:
             self.add_geometry_button.pack_forget()
         except:
@@ -2506,7 +2516,9 @@ class Controller:
     #     self.output_filename_entry.insert(0, filename)
     #     self.output_filename_entry.icursor(pos)
 
-    def validate_spec_save_dir(self):
+    def validate_spec_save_dir(self, *args):
+        # TODO: understand where these extra args are coming from
+        print(args)
         pos = self.spec_save_dir_entry.index(INSERT)
         spec_save_dir = utils.rm_reserved_chars(self.spec_save_dir_entry.get())
         if len(spec_save_dir) < len(self.spec_save_dir_entry.get()):
@@ -2515,7 +2527,9 @@ class Controller:
         self.spec_save_dir_entry.insert(0, spec_save_dir)
         self.spec_save_dir_entry.icursor(pos)
 
-    def validate_basename(self):
+    def validate_basename(self, *args):
+        # TODO: understand where these extra args are coming from
+        print(args)
         pos = self.spec_basename_entry.index(INSERT)
         basename = utils.rm_reserved_chars(self.spec_basename_entry.get())
         basename = basename.strip("/").strip("\\")
@@ -2523,7 +2537,9 @@ class Controller:
         self.spec_basename_entry.insert(0, basename)
         self.spec_basename_entry.icursor(pos)
 
-    def validate_startnum(self):
+    def validate_startnum(self, *args):
+        # TODO: understand where these extra args are coming from
+        print(args)
         pos = self.spec_startnum_entry.index(INSERT)
         num = utils.numbers_only(self.spec_startnum_entry.get())
         if len(num) > self.config_info.num_len:
@@ -2629,16 +2645,13 @@ class Controller:
         if window is None:
             window = utils.PretendEvent(self.master, self.master.winfo_width(), self.master.winfo_height())
         if window.widget == self.master:
-            reserve_width = 500
             try:
-                width = self.console_frame.winfo_width()
-
                 console_height = int(window.height / 3) + 10
                 if console_height < 200:
                     console_height = 200
                 goniometer_height = window.height - console_height + 10
                 self.goniometer_view.double_embed.configure(height=goniometer_height)
-                self.console_frame.configure(height=console_height)
+                self.console.console_frame.configure(height=console_height)
                 self.view_notebook.configure(height=goniometer_height)
                 self.plotter.set_height(goniometer_height)
 
@@ -2658,9 +2671,6 @@ class Controller:
             except ValueError:
                 pass
 
-    def finish_move(self):
-        self.goniometer_view.draw_circle()
-
     def complete_queue_item(self):
         self.queue.pop(0)
 
@@ -2668,14 +2678,12 @@ class Controller:
         self.spec_commander.delete_spec(
             self.spec_save_dir_entry.get(), self.spec_basename_entry.get(), self.spec_startnum_entry.get()
         )
-
         t = utils.BUFFER
         while t > 0:
             if "rmsuccess" in self.spec_listener.queue:
                 self.spec_listener.queue.remove("rmsuccess")
-
                 return True
-            elif "rmfailure" in self.spec_listener.queue:
+            if "rmfailure" in self.spec_listener.queue:
                 self.spec_listener.queue.remove("rmfailure")
                 return False
             t = t - utils.INTERVAL
@@ -2683,6 +2691,9 @@ class Controller:
         return False
 
     def freeze(self):
+        # TODO: make sure freezing works for all managers (process_manager, etc).
+        # TODO: figure out exception type
+        # pylint: disable = bare-except, broad-except
         for button in self.tk_buttons:
             try:
                 button.configure(state="disabled")
@@ -2718,6 +2729,8 @@ class Controller:
         self.console.console_entry.configure(state="disabled")
 
     def unfreeze(self):
+        # TODO: figure out exception type
+        # pylint: disable = bare-except, broad-except
         self.console.console_entry.configure(state="normal")
         self.menubar.entryconfig("Settings", state="normal")
         self.filemenu.entryconfig(0, state=NORMAL)

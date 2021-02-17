@@ -6,7 +6,7 @@ import ctypes
 import os
 import platform
 import sys
-
+# from tanager_feeder.controller_delme import Controller
 from tanager_feeder.controller.controller import Controller
 from tanager_feeder import utils
 from tanager_feeder.connection_checkers.pi_connection_checker import PiConnectionChecker
@@ -85,7 +85,11 @@ def main():
     icon_loc = package_loc + "exception"  # eventually someone should make this icon thing work. I haven't!
     config_info = utils.ConfigInfo(local_config_loc, global_config_loc, icon_loc, utils.NUMLEN, opsys)
 
-    check_spec_connection(connection_tracker, config_info)
+    connection_tracker.pi_offline = True
+    connection_tracker.spec_offline = True
+    launch(connection_tracker, config_info)
+
+    # check_spec_connection(connection_tracker, config_info)
 
 
 def check_spec_connection(connection_tracker, config_info):

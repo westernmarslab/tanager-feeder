@@ -10,7 +10,7 @@ class WaitDialog(Dialog):
             buttons = {}
         super().__init__(controller, title, label, buttons, width=400, height=150, allow_exit=False)
 
-        self.frame = Frame(self.top, bg=self.bg, width=200, height=30)
+        self.frame = Frame(self.top, bg=self.tk_format.bg, width=200, height=30)
         self.frame.pack()
 
         style = ttk.Style()

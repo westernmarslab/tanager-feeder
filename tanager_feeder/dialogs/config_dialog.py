@@ -16,23 +16,23 @@ class ConfigDialog(Dialog):
             buttons = {"ok": {}, "cancel": {}}
         super().__init__(controller, title, label, buttons, allow_exit=False)
         self.values = values
-        self.entry_frame = Frame(self.top, bg=self.bg)
+        self.entry_frame = Frame(self.top, bg=self.tk_format.bg)
         self.entry_frame.pack(pady=(10, 20))
         self.labels = {}
         self.entries = {}
         self.mins = {}
         self.maxes = {}
         for val in values:
-            frame = Frame(self.entry_frame, bg=self.bg)
+            frame = Frame(self.entry_frame, bg=self.tk_format.bg)
             frame.pack(pady=(5, 5))
-            self.labels[val] = Label(frame, text="{0:>15}".format(val) + ": ", fg=self.textcolor, bg=self.bg)
+            self.labels[val] = Label(frame, text="{0:>15}".format(val) + ": ", fg=self.tk_format.textcolor, bg=self.tk_format.bg)
             self.labels[val].pack(side=LEFT, padx=(3, 3))
             if val != "Tray position":
                 self.entries[val] = Entry(
                     frame,
-                    bg=self.entry_background,
-                    selectbackground=self.selectbackground,
-                    selectforeground=self.selectforeground,
+                    bg=self.tk_format.entry_background,
+                    selectbackground=self.tk_format.selectbackground,
+                    selectforeground=self.tk_format.selectforeground,
                 )
                 self.entries[val].pack(side=LEFT)
             else:

@@ -13,12 +13,14 @@ with contextlib.redirect_stdout(None):
 import numpy as np
 
 from tanager_feeder.goniometer_view.wireframe import Wireframe
+from tanager_feeder import utils
 
 
 # Animated graphic of goniometer
 class GoniometerView:
     def __init__(self, controller, notebook: ttk.Notebook):
         self.controller = controller
+        self.tk_format = utils.TkFormat(self.controller.config_info)
 
         self.master = self.controller.master
         self.notebook = notebook
@@ -33,8 +35,8 @@ class GoniometerView:
 
         os.environ["SDL_WINDOWID"] = str(self.double_embed.winfo_id())
         #        Needed for pygame 1.9.6, breaks 2.0.0.dev8
-        #         if self.controller.opsys=='Windows':
-        #             os.environ['SDL_VIDEODRIVER'] = 'windib'
+        # if self.controller.config_info.opsys=='Windows':
+        #     os.environ['SDL_VIDEODRIVER'] = 'windib'
         self.screen = pygame.display.set_mode((self.width, self.height))
 
         self.display_info = {
@@ -70,7 +72,10 @@ class GoniometerView:
 
         self.standard_delay = 0.0001
         self.config_delay = 0.005
+        print("ABOUT TO START PYGAME")
         pygame.init()
+        self.flip()
+        print("STARTED")
 
     def tab_switch(self, event) -> None:
         # TODO: find type of event
@@ -462,7 +467,7 @@ class GoniometerView:
             self.wireframes[sample].set_scale(tray_radius)
         self.wireframes["tray"].set_scale(tray_radius)
 
-        self.screen.fill(pygame.Color(self.controller.bg))
+        self.screen.fill(pygame.Color(self.tk_format.bg))
         slopes = []
         for wireframe in self.wireframes.values():
             for edge in wireframe.edges:
@@ -515,10 +520,10 @@ class GoniometerView:
             text_size = np.max([int(self.display_info["char_len"] / 18), 20])
             large_text = pygame.font.Font("freesansbold.ttf", text_size)
             sample_font = pygame.font.Font("freesansbold.ttf", int(0.75 * text_size))
-            i_text = large_text.render(i_str, True, pygame.Color(self.controller.textcolor))
-            e_text = large_text.render(e_str, True, pygame.Color(self.controller.textcolor))
-            az_text = large_text.render(az_str, True, pygame.Color(self.controller.textcolor))
-            sample_text = sample_font.render(sample_str, True, pygame.Color(self.controller.textcolor))
+            i_text = large_text.render(i_str, True, pygame.Color(self.tk_format.textcolor))
+            e_text = large_text.render(e_str, True, pygame.Color(self.tk_format.textcolor))
+            az_text = large_text.render(az_str, True, pygame.Color(self.tk_format.textcolor))
+            sample_text = sample_font.render(sample_str, True, pygame.Color(self.tk_format.textcolor))
 
             top_text_x = pivot[0] - 1.1 * i_radius
             top_text_y = pivot[1] - 1.1 * i_radius

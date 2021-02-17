@@ -13,9 +13,9 @@ class CustomColorDialog(Dialog):
         self.hue_entry = Entry(
             self.top,
             width=10,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         self.hue_entry.pack(padx=(10, 10))
         self.func = func

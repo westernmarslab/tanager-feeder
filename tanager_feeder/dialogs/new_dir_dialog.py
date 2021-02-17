@@ -10,9 +10,9 @@ class NewDirDialog(Dialog):
         self.dir_entry = Entry(
             self.top,
             width=40,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         self.dir_entry.pack(padx=(10, 10))
         self.listener = self.controller.spec_listener

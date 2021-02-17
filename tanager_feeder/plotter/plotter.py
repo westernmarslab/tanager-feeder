@@ -1,5 +1,5 @@
 # Plotter takes a Tk root object and uses it as a base to spawn Tk Toplevel plot windows.
-from tkinter import filedialog
+from tkinter import filedialog, TclError
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -251,11 +251,8 @@ class Plotter:
             tab0 = self.notebook.tab(id_str)
             tab = self.notebook.tab(id_str)
         # There might not actually be any tab here at all.
-        # pylint: disable = broad-except
-        except Exception as e:
-            # TODO: figure out exception type.
-            raise e
-            # return None
+        except TclError:
+            return None
         dist_to_edge = 0
         while (
             tab == tab0
@@ -264,8 +261,7 @@ class Plotter:
             id_str = "@" + str(event.x + dist_to_edge) + "," + str(event.y)
             try:
                 tab = self.notebook.tab(id_str)
-            except IndexError:  # If this didn't work, we were off the right edge of any tabs.
-                # TODO: confirm this was the right type of error to catch.
+            except TclError:  # If this didn't work, we were off the right edge of any tabs.
                 break
 
         return dist_to_edge

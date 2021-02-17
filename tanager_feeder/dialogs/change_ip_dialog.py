@@ -19,18 +19,18 @@ class ChangeIPDialog(Dialog):
         super().__init__(None, title, label, buttons, allow_exit=False, start_mainloop=False)
         self.connection_tracker = connection_tracker
 
-        self.entry_frame = Frame(self.top, bg=self.bg)
+        self.entry_frame = Frame(self.top, bg=self.tk_format.bg)
         self.entry_frame.pack(pady=(10, 20))
 
-        frame = Frame(self.entry_frame, bg=self.bg)
+        frame = Frame(self.entry_frame, bg=self.tk_format.bg)
         frame.pack(pady=(5, 5))
-        change_label = Label(frame, text="IP address: ", fg=self.textcolor, bg=self.bg)
+        change_label = Label(frame, text="IP address: ", fg=self.tk_format.textcolor, bg=self.tk_format.bg)
         change_label.pack(side=LEFT)
         self.ip_entry = Entry(
             frame,
-            bg=self.entry_background,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            bg=self.tk_format.entry_background,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         if which_compy == CompyTypes.SPEC_COMPY:
             self.ip_entry.insert(0, self.connection_tracker.spec_ip)

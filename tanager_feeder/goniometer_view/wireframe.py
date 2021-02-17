@@ -16,7 +16,7 @@ class Wireframe:
         self.el = 0
         self.home_azimuth = 90  # used for rotating
 
-    def set_center(self, center: Dict[str : Tuple[int, int, int]]):
+    def set_center(self, center: Dict):
         self.center = center
 
     def set_rotation_center(self, center):

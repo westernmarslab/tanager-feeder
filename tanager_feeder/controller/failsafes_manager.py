@@ -9,7 +9,7 @@ from tanager_feeder import utils
 class FailsafesManager:
     def __init__(self, controller):
         self.controller = controller
-        self.tk_format = utils.TkFormat()
+        self.tk_format = utils.TkFormat(self.controller.config_info)
 
         # check before taking spectra whether conditions have been met regarding when the last white reference was, etc
         self.wrfailsafe = IntVar()
@@ -333,5 +333,5 @@ class FailsafesManager:
             label += "\nDo you want to continue?"
             Dialog(self.controller, title, label, buttons)
             return False
-        else:  # if there were no errors
-            return True
+        # if there were no errors
+        return True

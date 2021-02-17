@@ -17,7 +17,7 @@ class ProcessManager:
         self.config_info = controller.config_info
         self.remote_directory_worker = controller.remote_directory_worker
 
-        self.tk_format = utils.TkFormat()
+        self.tk_format = utils.TkFormat(self.controller.config_info)
         self.tk_buttons = []
         self.entries = []
         self.tk_check_buttons = []
@@ -25,13 +25,13 @@ class ProcessManager:
         self.process_input_dir = ""
         self.process_output_dir = ""
         try:
-            with open(controller.local_config_loc + "process_directories.txt", "r") as process_config:
+            with open(self.config_info.local_config_loc + "process_directories.txt", "r") as process_config:
                 self.proc_local_remote = process_config.readline().strip("\n")
                 self.process_input_dir = process_config.readline().strip("\n")
                 self.process_output_dir = process_config.readline().strip("\n")
 
         except OSError:
-            with open(controller.local_config_loc + "process_directories.txt", "w+") as f:
+            with open(self.config_info.local_config_loc + "process_directories.txt", "w+") as f:
                 f.write("remote")
                 f.write("C:\\Users\n")
                 f.write("C:\\Users\n")
@@ -48,40 +48,50 @@ class ProcessManager:
             self.proc_local.set(1)
             self.proc_remote.set(0)
 
-        self.process_top = Toplevel(controller.master)
-        self.process_top.wm_title("Process Data")
-        self.process_frame = Frame(self.process_top, bg=self.tk_format.bg, pady=15, padx=15)
-        self.process_frame.pack()
+        self.process_save_dir = IntVar()
+        self.input_dir_var = StringVar()
+        self.process_top = None
+        self.input_dir_entry = None
+        self.proc_local_check = None
+        self.proc_remote_check = None
+        self.output_dir_entry = None
+        self.output_file_entry = None
+        self.process_save_dir_check = None
 
-        self.input_dir_label = Label(
-            self.process_frame,
+    def show(self):
+        self.process_top = Toplevel(self.controller.master)
+        self.process_top.wm_title("Process Data")
+        process_frame = Frame(self.process_top, bg=self.tk_format.bg, pady=15, padx=15)
+        process_frame.pack()
+
+        input_dir_label = Label(
+            process_frame,
             padx=self.tk_format.padx,
             pady=self.tk_format.pady,
             bg=self.tk_format.bg,
             fg=self.tk_format.textcolor,
             text="Raw spectral data input directory:",
         )
-        self.input_dir_label.pack(padx=self.tk_format.padx, pady=(10, 5))
+        input_dir_label.pack(padx=self.tk_format.padx, pady=(10, 5))
 
-        self.input_frame = Frame(self.process_frame, bg=self.tk_format.bg)
-        self.input_frame.pack()
+        input_frame = Frame(process_frame, bg=self.tk_format.bg)
+        input_frame.pack()
 
-        self.process_input_browse_button = Button(
-            self.input_frame, text="Browse", command=self.choose_process_input_dir
+        process_input_browse_button = Button(
+            input_frame, text="Browse", command=self.choose_process_input_dir
         )
-        self.process_input_browse_button.config(
+        process_input_browse_button.config(
             fg=self.tk_format.buttontextcolor,
             highlightbackground=self.tk_format.highlightbackgroundcolor,
             bg=self.tk_format.buttonbackgroundcolor,
         )
-        self.process_input_browse_button.pack(side=RIGHT, padx=self.tk_format.padx)
-        self.tk_buttons.append(self.process_input_browse_button)
+        process_input_browse_button.pack(side=RIGHT, padx=self.tk_format.padx)
+        self.tk_buttons.append(process_input_browse_button)
 
-        self.input_dir_var = StringVar()
         self.input_dir_var.trace("w", self.validate_input_dir)
 
         self.input_dir_entry = Entry(
-            self.input_frame,
+            input_frame,
             width=50,
             bd=self.tk_format.bd,
             textvariable=self.input_dir_var,
@@ -93,21 +103,21 @@ class ProcessManager:
         self.input_dir_entry.pack(side=RIGHT, padx=self.tk_format.padx, pady=self.tk_format.pady)
         self.entries.append(self.input_dir_entry)
 
-        self.proc_local_remote_frame = Frame(self.process_frame, bg=self.tk_format.bg)
-        self.proc_local_remote_frame.pack()
+        proc_local_remote_frame = Frame(process_frame, bg=self.tk_format.bg)
+        proc_local_remote_frame.pack()
 
-        self.output_dir_label = Label(
-            self.proc_local_remote_frame,
+        output_dir_label = Label(
+            proc_local_remote_frame,
             padx=self.tk_format.padx,
             pady=self.tk_format.pady,
             bg=self.tk_format.bg,
             fg=self.tk_format.textcolor,
             text="Processed data output directory:",
         )
-        self.output_dir_label.pack(padx=self.tk_format.padx, pady=(10, 5), side=LEFT)
+        output_dir_label.pack(padx=self.tk_format.padx, pady=(10, 5), side=LEFT)
 
         self.proc_local_check = Checkbutton(
-            self.proc_local_remote_frame,
+            proc_local_remote_frame,
             fg=self.tk_format.textcolor,
             text=" Local",
             selectcolor=self.tk_format.check_bg,
@@ -124,7 +134,7 @@ class ProcessManager:
         self.tk_check_buttons.append(self.proc_local_check)
 
         self.proc_remote_check = Checkbutton(
-            self.proc_local_remote_frame,
+            proc_local_remote_frame,
             fg=self.tk_format.textcolor,
             text=" Remote",
             bg=self.tk_format.bg,
@@ -139,21 +149,21 @@ class ProcessManager:
             self.proc_remote_check.select()
         self.tk_check_buttons.append(self.proc_remote_check)
 
-        self.process_output_frame = Frame(self.process_frame, bg=self.tk_format.bg)
-        self.process_output_frame.pack(pady=(5, 10))
-        self.process_output_browse_button = Button(
-            self.process_output_frame, text="Browse", command=self.choose_process_output_dir
+        process_output_frame = Frame(process_frame, bg=self.tk_format.bg)
+        process_output_frame.pack(pady=(5, 10))
+        process_output_browse_button = Button(
+            process_output_frame, text="Browse", command=self.choose_process_output_dir
         )
-        self.process_output_browse_button.config(
+        process_output_browse_button.config(
             fg=self.tk_format.buttontextcolor,
             highlightbackground=self.tk_format.highlightbackgroundcolor,
             bg=self.tk_format.buttonbackgroundcolor,
         )
-        self.process_output_browse_button.pack(side=RIGHT, padx=self.tk_format.padx)
-        self.tk_buttons.append(self.process_output_browse_button)
+        process_output_browse_button.pack(side=RIGHT, padx=self.tk_format.padx)
+        self.tk_buttons.append(process_output_browse_button)
 
         self.output_dir_entry = Entry(
-            self.process_output_frame,
+            process_output_frame,
             width=50,
             bd=self.tk_format.bd,
             bg=self.tk_format.entry_background,
@@ -164,17 +174,17 @@ class ProcessManager:
         self.output_dir_entry.pack(side=RIGHT, padx=self.tk_format.padx, pady=self.tk_format.pady)
         self.entries.append(self.output_dir_entry)
 
-        self.output_file_label = Label(
-            self.process_frame,
+        output_file_label = Label(
+            process_frame,
             padx=self.tk_format.padx,
             pady=self.tk_format.pady,
             bg=self.tk_format.bg,
             fg=self.tk_format.textcolor,
             text="Output file name:",
         )
-        self.output_file_label.pack(padx=self.tk_format.padx, pady=self.tk_format.pady)
+        output_file_label.pack(padx=self.tk_format.padx, pady=self.tk_format.pady)
         self.output_file_entry = Entry(
-            self.process_frame,
+            process_frame,
             width=50,
             bd=self.tk_format.bd,
             bg=self.tk_format.entry_background,
@@ -184,11 +194,11 @@ class ProcessManager:
         self.output_file_entry.pack()
         self.entries.append(self.output_file_entry)
 
-        self.process_check_frame = Frame(self.process_frame, bg=self.tk_format.bg)
-        self.process_check_frame.pack(pady=(15, 5))
-        self.process_save_dir = IntVar()
+        process_check_frame = Frame(process_frame, bg=self.tk_format.bg)
+        process_check_frame.pack(pady=(15, 5))
+
         self.process_save_dir_check = Checkbutton(
-            self.process_check_frame,
+            process_check_frame,
             selectcolor=self.tk_format.check_bg,
             fg=self.tk_format.textcolor,
             text="Save file configuration",
@@ -199,10 +209,10 @@ class ProcessManager:
         )
         self.process_save_dir_check.select()
 
-        self.process_button_frame = Frame(self.process_frame, bg=self.tk_format.bg)
-        self.process_button_frame.pack()
-        self.process_button = Button(
-            self.process_button_frame,
+        process_button_frame = Frame(process_frame, bg=self.tk_format.bg)
+        process_button_frame.pack()
+        process_button = Button(
+            process_button_frame,
             fg=self.tk_format.textcolor,
             text="Process",
             padx=self.tk_format.padx,
@@ -211,16 +221,16 @@ class ProcessManager:
             bg="light gray",
             command=self.controller.process_cmd,
         )
-        self.process_button.config(
+        process_button.config(
             fg=self.tk_format.buttontextcolor,
             highlightbackground=self.tk_format.highlightbackgroundcolor,
             bg=self.tk_format.buttonbackgroundcolor,
         )
-        self.process_button.pack(padx=(15, 15), side=LEFT)
-        self.tk_buttons.append(self.process_button)
+        process_button.pack(padx=(15, 15), side=LEFT)
+        self.tk_buttons.append(process_button)
 
-        self.process_close_button = Button(
-            self.process_button_frame,
+        process_close_button = Button(
+            process_button_frame,
             fg=self.tk_format.buttontextcolor,
             highlightbackground=self.tk_format.highlightbackgroundcolor,
             text="Close",
@@ -230,8 +240,8 @@ class ProcessManager:
             bg=self.tk_format.buttonbackgroundcolor,
             command=self.close_process,
         )
-        self.process_close_button.pack(padx=(15, 15), side=LEFT)
-        self.tk_buttons.append(self.process_close_button)
+        process_close_button.pack(padx=(15, 15), side=LEFT)
+        self.tk_buttons.append(process_close_button)
 
     # Closes process frame
     def close_process(self):
@@ -254,11 +264,10 @@ class ProcessManager:
     def remote_process_cmd(self):
         if self.proc_local.get() and not self.proc_remote.get():
             return
-        elif self.proc_remote.get() and not self.proc_local.get():
+        if self.proc_remote.get() and not self.proc_local.get():
             return
-        elif not self.proc_local.get():
+        if not self.proc_local.get():
             self.proc_local_check.select()
-
         else:
             self.proc_local_check.deselect()
             self.proc_local_remote = "remote"
@@ -322,14 +331,13 @@ class ProcessManager:
             # TODO: Figure out temp loc for remote data
             return input_directory, "temp loc", "proc_temp.csv"
 
-        else:
-            self.controller.plot_manager.plot_local_remote = "remote"
-            output_directory = self.output_dir_entry.get()
-            check = self.check_remote_folder(output_directory, self.controller.process_cmd)
-            if not check:
-                raise ProcessFileError
-            # TODO: Figure out temp loc for remote data
-            return input_directory, output_directory, output_file
+        self.controller.plot_manager.plot_local_remote = "remote"
+        output_directory = self.output_dir_entry.get()
+        check = self.check_remote_folder(output_directory, self.controller.process_cmd)
+        if not check:
+            raise ProcessFileError
+        # TODO: Figure out temp loc for remote data
+        return input_directory, output_directory, output_file
 
     def finish_processing(self):
         final_data_destination = self.output_file_entry.get()
@@ -381,8 +389,7 @@ class ProcessManager:
             )
             dialog.top.wm_geometry("376x175")
             return False
-        else:
-            return True
+        return True
 
     def check_local_folder(self, local_dir, next_action):
         def try_mk_dir(dir_to_make, action):
@@ -461,11 +468,11 @@ class ProcessManager:
                 buttons=buttons,
             )
             return False
-        elif status == "listdirfailedpermission":
+        if status == "listdirfailedpermission":
             ErrorDialog(self, label="Error: Permission denied for\n" + remote_dir)
             return False
 
-        elif status == "timeout":
+        if status == "timeout":
             if not self.controller.text_only:
                 buttons = {
                     "cancel": {},
@@ -492,7 +499,7 @@ class ProcessManager:
             if "yeswriteable" in self.controller.spec_listener.queue:
                 self.controller.spec_listener.queue.remove("yeswriteable")
                 return True
-            elif "notwriteable" in self.controller.spec_listener.queue:
+            if "notwriteable" in self.controller.spec_listener.queue:
                 self.controller.spec_listener.queue.remove("notwriteable")
                 ErrorDialog(self, label="Error: Permission denied.\nCannot write to specified directory.")
                 return False

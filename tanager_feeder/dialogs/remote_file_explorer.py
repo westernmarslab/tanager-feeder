@@ -46,23 +46,23 @@ class RemoteFileExplorer(Dialog):
         self.path_entry = Entry(
             self.nav_frame,
             width=50,
-            bg=self.entry_background,
+            bg=self.tk_format.entry_background,
             textvariable=self.path_entry_var,
-            selectbackground=self.selectbackground,
-            selectforeground=self.selectforeground,
+            selectbackground=self.tk_format.selectbackground,
+            selectforeground=self.tk_format.selectforeground,
         )
         self.path_entry.pack(padx=(5, 5), pady=(5, 5), side=RIGHT)
-        self.back_button = Button(self.nav_frame, fg=self.textcolor, text="<-", command=self.back, width=1)
+        self.back_button = Button(self.nav_frame, fg=self.tk_format.textcolor, text="<-", command=self.back, width=1)
         self.back_button.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
+            fg=self.tk_format.buttontextcolor, highlightbackground=self.tk_format.highlightbackgroundcolor, bg=self.tk_format.buttonbackgroundcolor
         )
         self.back_button.pack(side=RIGHT, pady=(5, 5), padx=(10, 0))
 
         self.listbox = ScrollableListbox(
             self.top,
-            self.bg,
-            self.entry_background,
-            self.listboxhighlightcolor,
+            self.tk_format.bg,
+            self.tk_format.entry_background,
+            self.tk_format.listboxhighlightcolor,
         )
         self.listbox.bind("<Double-Button-1>", self.expand)
         self.path_entry.bind("<Return>", self.go_to_path)

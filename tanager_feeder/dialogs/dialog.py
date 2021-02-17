@@ -19,49 +19,28 @@ class Dialog:
         info_string: Optional[str] = None,
         start_mainloop: bool = True,
     ):
-
         self.controller = controller
-        if self.controller is not None:
-            self.controller.freeze()
-            self.textcolor = self.controller.textcolor
-            self.bg = self.controller.bg
-            self.buttonbackgroundcolor = self.controller.buttonbackgroundcolor
-            self.highlightbackgroundcolor = self.controller.highlightbackgroundcolor
-            self.entry_background = self.controller.entry_background
-            self.buttontextcolor = self.controller.buttontextcolor
-            self.console_log = self.controller.console_log
-            self.listboxhighlightcolor = self.controller.listboxhighlightcolor
-            self.selectbackground = self.controller.selectbackground
-            self.selectforeground = self.controller.selectforeground
 
+        if self.controller is not None:
+            self.tk_format = utils.TkFormat(self.controller.config_info)
             if width is None or height is None:
-                self.top = tk.Toplevel(controller.master, bg=self.bg)
+                self.top = tk.Toplevel(controller.master, bg=self.tk_format.bg)
             else:
-                self.top = tk.Toplevel(controller.master, width=width, height=height, bg=self.bg)
+                self.top = tk.Toplevel(controller.master, width=width, height=height, bg=self.tk_format.bg)
 
             if info_string is not None:
                 self.controller.log(info_string)
         else:
-            self.textcolor = "black"
-            self.bg = "white"
-            self.buttonbackgroundcolor = "light gray"
-            self.highlightbackgroundcolor = "white"
-            self.entry_background = "white"
-            self.buttontextcolor = "black"
-            self.console_log = None
-            self.listboxhighlightcolor = "light gray"
-            self.selectbackground = "light gray"
-            self.selectforeground = "black"
-
+            self.tk_format = utils.TkFormat()
             self.top = Tk()
-            self.top.configure(background=self.bg)
+            self.top.configure(background=self.tk_format.bg)
 
         self.top.attributes("-topmost", 1)
         self.top.attributes("-topmost", 0)
 
-        self.label_frame = Frame(self.top, bg=self.bg)
+        self.label_frame = Frame(self.top, bg=self.tk_format.bg)
         self.label_frame.pack(side=tk.TOP)
-        self.__label = tk.Label(self.label_frame, fg=self.textcolor, text=label, bg=self.bg)
+        self.__label = tk.Label(self.label_frame, fg=self.tk_format.textcolor, text=label, bg=self.tk_format.bg)
         self.set_label_text(label, log_string=info_string)
         if label != "":
             self.__label.pack(pady=(10, 10), padx=(10, 10))
@@ -92,7 +71,7 @@ class Dialog:
         self.top.wm_title(newtitle)
 
     def set_label_text(self, newlabel: str, log_string: Optional[str] = None):
-        self.__label.config(fg=self.textcolor, text=newlabel)
+        self.__label.config(fg=self.tk_format.textcolor, text=newlabel)
         if log_string is not None and self.controller is not None:
             self.controller.log(log_string)
 
@@ -106,19 +85,17 @@ class Dialog:
         try:
             # pylint: disable = access-member-before-definition
             self.button_frame.destroy()
-        # pylint: disable = broad-except
-        except Exception as e:
-            # TODO: only catch appropriate exception
-            print(e)
+        except AttributeError:
+            pass
 
-        self.button_frame = Frame(self.top, bg=self.bg)
+        self.button_frame = Frame(self.top, bg=self.tk_format.bg)
         self.button_frame.pack(side=tk.BOTTOM)
         self.tk_buttons = []
 
         for button in buttons:
             if "ok" in button.lower():
                 self.ok_button = Button(
-                    self.button_frame, fg=self.textcolor, text="OK", command=self.ok, width=self.button_width
+                    self.button_frame, fg=self.tk_format.textcolor, text="OK", command=self.ok, width=self.button_width
                 )
                 self.ok_button.bind("<Return>", self.ok)
                 self.tk_buttons.append(self.ok_button)
@@ -126,7 +103,7 @@ class Dialog:
             elif "yes to all" in button.lower():
                 self.yes_to_all_button = Button(
                     self.button_frame,
-                    fg=self.textcolor,
+                    fg=self.tk_format.textcolor,
                     text="Yes to all",
                     command=self.yes_to_all,
                     width=self.button_width,
@@ -136,7 +113,7 @@ class Dialog:
             elif "yes" in button.lower():
                 self.yes_button = Button(
                     self.button_frame,
-                    fg=self.textcolor,
+                    fg=self.tk_format.textcolor,
                     text="Yes",
                     bg="light gray",
                     command=self.yes,
@@ -146,14 +123,14 @@ class Dialog:
                 self.yes_button.pack(side=tk.LEFT, padx=(10, 10), pady=(10, 10))
             elif "no" in button.lower():
                 self.no_button = Button(
-                    self.button_frame, fg=self.textcolor, text="No", command=self.no, width=self.button_width
+                    self.button_frame, fg=self.tk_format.textcolor, text="No", command=self.no, width=self.button_width
                 )
                 self.no_button.pack(side=tk.LEFT, padx=(10, 10), pady=(10, 10))
                 self.tk_buttons.append(self.no_button)
             elif "cancel_queue" in button.lower():
                 self.cancel_queue_button = Button(
                     self.button_frame,
-                    fg=self.textcolor,
+                    fg=self.tk_format.textcolor,
                     text="Cancel",
                     command=self.cancel_queue,
                     width=self.button_width,
@@ -162,26 +139,26 @@ class Dialog:
                 self.tk_buttons.append(self.cancel_queue_button)
             elif "cancel" in button.lower():
                 self.cancel_button = Button(
-                    self.button_frame, fg=self.textcolor, text="Cancel", command=self.cancel, width=self.button_width
+                    self.button_frame, fg=self.tk_format.textcolor, text="Cancel", command=self.cancel, width=self.button_width
                 )
                 self.cancel_button.pack(side=tk.LEFT, padx=(10, 10), pady=(10, 10))
                 self.tk_buttons.append(self.cancel_button)
             elif "retry" in button.lower():
                 self.retry_button = Button(
-                    self.button_frame, fg=self.textcolor, text="Retry", command=self.retry, width=self.button_width
+                    self.button_frame, fg=self.tk_format.textcolor, text="Retry", command=self.retry, width=self.button_width
                 )
                 self.retry_button.pack(side=tk.LEFT, padx=(10, 10), pady=(10, 10))
                 self.tk_buttons.append(self.retry_button)
             elif "exit" in button.lower():
                 self.exit_button = Button(
-                    self.button_frame, fg=self.textcolor, text="Exit", command=self.exit, width=self.button_width
+                    self.button_frame, fg=self.tk_format.textcolor, text="Exit", command=self.exit, width=self.button_width
                 )
                 self.exit_button.pack(side=tk.LEFT, padx=(10, 10), pady=(10, 10))
                 self.tk_buttons.append(self.exit_button)
             elif "work offline" in button.lower():
                 self.offline_button = Button(
                     self.button_frame,
-                    fg=self.textcolor,
+                    fg=self.tk_format.textcolor,
                     text="Work offline",
                     command=self.work_offline,
                     width=self.button_width,
@@ -190,32 +167,32 @@ class Dialog:
                 self.tk_buttons.append(self.offline_button)
             elif "pause" in button.lower():
                 self.pause_button = Button(
-                    self.button_frame, fg=self.textcolor, text="Pause", command=self.pause, width=self.button_width
+                    self.button_frame, fg=self.tk_format.textcolor, text="Pause", command=self.pause, width=self.button_width
                 )
                 self.pause_button.pack(side=tk.LEFT, padx=(10, 10), pady=(10, 10))
                 self.tk_buttons.append(self.pause_button)
             elif "continue" in button.lower():
                 self.continue_button = Button(
-                    self.button_frame, fg=self.textcolor, text="Continue", command=self.cont, width=self.button_width
+                    self.button_frame, fg=self.tk_format.textcolor, text="Continue", command=self.cont, width=self.button_width
                 )
                 self.continue_button.pack(side=tk.LEFT, padx=(10, 10), pady=(10, 10))
                 self.tk_buttons.append(self.continue_button)
             elif "close" in button.lower():
                 self.close_button = Button(
-                    self.button_frame, fg=self.textcolor, text="Close", command=self.close, width=self.button_width
+                    self.button_frame, fg=self.tk_format.textcolor, text="Close", command=self.close, width=self.button_width
                 )
                 self.close_button.pack(side=tk.LEFT, padx=(10, 10), pady=(10, 10))
                 self.tk_buttons.append(self.close_button)
             elif "reset" in button.lower():
                 self.reset_button = Button(
-                    self.button_frame, fg=self.textcolor, text="Reset", command=self.reset, width=self.button_width
+                    self.button_frame, fg=self.tk_format.textcolor, text="Reset", command=self.reset, width=self.button_width
                 )
                 self.reset_button.pack(side=tk.LEFT, padx=(10, 10), pady=(10, 10))
                 self.tk_buttons.append(self.reset_button)
             elif "change ip" in button.lower():
                 self.ip_button = Button(
                     self.button_frame,
-                    fg=self.textcolor,
+                    fg=self.tk_format.textcolor,
                     text="Change IP",
                     command=self.change_ip,
                     width=self.button_width,
@@ -224,9 +201,9 @@ class Dialog:
                 self.tk_buttons.append(self.ip_button)
             for tk_button in self.tk_buttons:
                 tk_button.config(
-                    fg=self.buttontextcolor,
-                    highlightbackground=self.highlightbackgroundcolor,
-                    bg=self.buttonbackgroundcolor,
+                    fg=self.tk_format.buttontextcolor,
+                    highlightbackground=self.tk_format.highlightbackgroundcolor,
+                    bg=self.tk_format.buttonbackgroundcolor,
                 )
 
     def on_closing(self):
@@ -246,8 +223,8 @@ class Dialog:
     def close(self):
         if self.controller is not None:
             self.controller.unfreeze()
-            self.top.destroy()
-            # TODO: confirm try/catch around self.top.destroy wasn't needed.
+        self.top.destroy()
+        # TODO: confirm try/catch around self.top.destroy wasn't needed.
 
     def retry(self):
         self.close()
