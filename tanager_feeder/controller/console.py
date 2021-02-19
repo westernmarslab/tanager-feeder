@@ -1,5 +1,5 @@
 import datetime
-from tkinter import RIGHT, Entry, Label, Frame, END, BOTH, BOTTOM, Text, Scrollbar, Y, NORMAL
+from tkinter import RIGHT, Entry, Label, Frame, END, BOTH, BOTTOM, Text, Scrollbar, Y
 from tanager_feeder import utils
 
 

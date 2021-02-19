@@ -569,7 +569,7 @@ class PlotSettingsManager:
             z2 = float(self.right_zoom_entry_z.get())
             self.tab.adjust_z(z1, z2)
             utils.lift_widget(self.plot_settings_dialog.top)
-        except ValueError:  # TODO: Make sure invalid range can't cause other errors.
+        except ValueError:
             utils.lift_widget(self.plot_settings_dialog.top)
             ErrorDialog(
                 self.controller,

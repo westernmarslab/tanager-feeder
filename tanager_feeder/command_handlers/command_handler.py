@@ -27,10 +27,7 @@ class CommandHandler:
         # Either update the existing wait dialog, or make a new one.
         try:
             self.controller.wait_dialog.reset(title=title, label=label, buttons=buttons)
-        # pylint: disable = broad-except
-        except Exception as e:
-            print(e)
-            # TODO: figure out what kind of exception happens if there is no wait dialog.
+        except AttributeError:
             self.controller.wait_dialog = WaitDialog(controller, title, label)
         self.wait_dialog = self.controller.wait_dialog
         self.controller.freeze()
@@ -116,10 +113,7 @@ class CommandHandler:
         self.controller.freeze()
         try:
             self.wait_dialog.ok_button.focus_set()
-        # pylint: disable=broad-except
-        except Exception as e:
-            # TODO: figure out type of exception.
-            print(e)
+        except AttributeError:
             self.wait_dialog.top.focus_set()
 
         if self.controller.audio_signals:

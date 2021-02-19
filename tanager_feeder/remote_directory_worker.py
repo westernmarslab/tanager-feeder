@@ -13,8 +13,6 @@ class RemoteDirectoryWorker:
         self.timeout_s = utils.BUFFER
 
     def wait_for_contents(self, cmdfilename):
-        #         if self.wait_dialog==None
-
         # Wait to hear what the listener finds
         self.reset_timeout()
         while self.timeout_s > 0:

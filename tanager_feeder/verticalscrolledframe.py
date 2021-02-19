@@ -1,4 +1,4 @@
-from tkinter import VERTICAL, Scrollbar, Canvas, BOTH, LEFT, TRUE, NW, RIGHT, FALSE, Frame, Y
+from tkinter import VERTICAL, Scrollbar, Canvas, BOTH, LEFT, TRUE, NW, RIGHT, FALSE, Frame, Y, Event
 
 
 class VerticalScrolledFrame(Frame):
@@ -38,9 +38,7 @@ class VerticalScrolledFrame(Frame):
         self.interior_id = canvas.create_window(0, 0, window=interior, anchor=NW)
         self.canvas.bind("<Configure>", self._configure_canvas)
 
-    def _configure_canvas(self, event):
-        print(type(event))
-        # TODO: find type of event
+    def _configure_canvas(self, event: Event):
         # pylint: disable = unused-argument
         if self.canvas.winfo_height() >= self.min_height:
             self.interior.config(height=self.canvas.winfo_height())

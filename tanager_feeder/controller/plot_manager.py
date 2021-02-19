@@ -220,7 +220,6 @@ class PlotManager:
         self.plot_top.lift()
 
     def plot(self) -> None:
-        # TODO: Review this code and test.
         plot_input_file = self.plot_input_dir_entry.get()
         plot_title = self.plot_title_entry.get()
         if self.plot_remote.get():

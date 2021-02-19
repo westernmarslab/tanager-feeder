@@ -1106,7 +1106,7 @@ class Controller:
         valid_i = utils.validate_int_input(self.incidence_entries[0].get(), -90, 90)
         if valid_i:
             if str(self.science_i) != self.incidence_entries[0].get():
-                self.angles_change_time = time.time()
+                self.failsafes_manager.angles_change_time = time.time()
             self.science_i = int(self.incidence_entries[0].get())
 
         else:
@@ -1115,7 +1115,7 @@ class Controller:
         valid_e = utils.validate_int_input(self.emission_entries[0].get(), -90, 90)
         if valid_e:
             if str(self.science_e) != self.emission_entries[0].get():
-                self.angles_change_time = time.time()
+                self.failsafes_manager.angles_change_time = time.time()
             self.science_e = int(self.emission_entries[0].get())
         else:
             warnings += "The emission angle is invalid (Min:" + str(-90) + ", Max:" + str(90) + ").\n\n"
@@ -1123,7 +1123,7 @@ class Controller:
         valid_az = utils.validate_int_input(self.azimuth_entries[0].get(), 0, 179)
         if valid_az:
             if str(self.science_az) != self.azimuth_entries[0].get():
-                self.angles_change_time = time.time()
+                self.failsafes_manager.angles_change_time = time.time()
             self.science_az = int(self.azimuth_entries[0].get())
         else:
             warnings += "The azimuth angle is invalid (Min:" + str(0) + ", Max:" + str(179) + ").\n\n"
@@ -1215,13 +1215,12 @@ class Controller:
     # software. If we need to set RS3's save configuration or the instrument configuration (number of spectra to
     # average), it puts those things into the queue saying we will need to do them when we start.
     def setup_RS3_config(self, nextaction):
-        # self.check_logfile()
+
         if self.manual_automatic.get() == 0:
             thread = Thread(target=self.set_and_animate_geom)
             thread.start()
 
         # Requested save config is guaranteed to be valid because of input checks above.
-        print("check save config")
         save_config_status = self.check_save_config()
         print(save_config_status)
         if self.check_save_config() == "not_set":
@@ -1244,7 +1243,7 @@ class Controller:
         file.write(self.spec_save_dir_entry.get() + "\n")
         file.write(self.spec_basename_entry.get() + "\n")
         file.write(self.spec_startnum_entry.get() + "\n")
-        self.process_input_dir = self.spec_save_dir_entry.get()
+        self.process_manager.process_input_dir = self.spec_save_dir_entry.get()
         return True
 
     # acquire is called every time opt, wr, or take spectrum buttons are pushed from manual mode
@@ -1433,7 +1432,7 @@ class Controller:
                 next_science_az = None
 
         if self.science_i != next_science_i or self.science_e != next_science_e or self.science_az != next_science_az:
-            self.angles_change_time = time.time()
+            self.failsafes_manager.angles_change_time = time.time()
 
         self.science_i = next_science_i
         self.science_e = next_science_e
@@ -1449,7 +1448,6 @@ class Controller:
                 raise Exception(
                     "Invalid geometry: " + str(next_science_i) + " " + str(next_science_e) + " " + str(next_science_az)
                 )
-            self.goniometer_view.invalid = True
             if valid_i:
                 self.goniometer_view.set_incidence(next_science_i)
             if valid_e:
@@ -1458,18 +1456,7 @@ class Controller:
                 self.goniometer_view.set_azimuth(next_science_az)
 
         else:
-            self.goniometer_view.invalid = False
-            if (
-                self.manual_automatic.get() == 0
-            ):  # Manual mode. Might not know motor position, just use visualization position.
-                current = (
-                    self.goniometer_view.position["motor_i"],
-                    self.goniometer_view.position["motor_e"],
-                    self.goniometer_view.position["motor_az"],
-                )
-            else:
-                current = (self.science_i, self.science_e, self.science_az)
-            movements = self.get_movements(next_science_i, next_science_e, next_science_az, current)
+            movements = self.get_movements(next_science_i, next_science_e, next_science_az)
 
             for movement in movements:
                 if "az" in movement:
@@ -1818,6 +1805,11 @@ class Controller:
             # is too tight for comfort
         return True  # Otherwise it's good!
 
+
+    # References: https://www.movable-type.co.uk/scripts/latlong.html
+    #            https://en.wikipedia.org/wiki/Great-circle_navigation
+    #            http://astrophysicsformulas.com/astronomy-formulas-astrophysics-
+    #            formulas/angular-distance-between-two-points-on-a-sphere
     def check_if_good_measurement(self, i: int, e: int, az: int) -> bool:
         # check if the measurement will be ruined by the emission arm being in the way of the light source.
         # start by checking if the light will be incident on the collimator
@@ -1832,7 +1824,6 @@ class Controller:
 
         bearing = utils.get_initial_bearing(e)
         closest_dist = utils.get_phase_angle(i, e, az)
-        closest_pos = (i, e, az)
 
         points = np.arange(0, 90, 3)
         points = np.append(points, 90)
@@ -1858,7 +1849,6 @@ class Controller:
             dist = utils.get_phase_angle(i, -1 * arm_e, arm_azes[num])
             if dist < closest_dist:
                 closest_dist = dist
-                closest_pos = pos
         if closest_dist >= self.required_angular_separation:
             return True
         return False
@@ -2133,11 +2123,9 @@ class Controller:
         )
 
     def add_sample(self):
-        # TODO: figure out exception type
-        # pylint: disable = bare-except, broad-except
         try:
             self.add_sample_button.pack_forget()
-        except:
+        except AttributeError:
             self.add_sample_button = Button(
                 self.samples_frame,
                 text="Add new",
@@ -2305,11 +2293,9 @@ class Controller:
             self.geometry_removal_buttons[0].pack_forget()
 
     def add_geometry(self):
-        # TODO: figure out exception type
-        # pylint: disable = bare-except, broad-except
         try:
             self.add_geometry_button.pack_forget()
-        except:
+        except AttributeError:
             self.add_geometry_button = Button(
                 self.individual_angles_frame,
                 text="Add new",
@@ -2578,7 +2564,7 @@ class Controller:
         pos = self.spec_startnum_entry.index(INSERT)
         num = utils.numbers_only(self.spec_startnum_entry.get())
         if len(num) > self.config_info.num_len:
-            num = num[0 : self.config_info.num_len]
+            num = num[0: self.config_info.num_len]
         if len(num) < len(self.spec_startnum_entry.get()):
             pos = pos - 1
         self.spec_startnum_entry.delete(0, "end")
@@ -2613,26 +2599,7 @@ class Controller:
 
     # get the point on the emission arm closest to intersecting the light source
     # az is the difference between the two, as shown in the visualization
-    # References: https://www.movable-type.co.uk/scripts/latlong.html
-    #            https://en.wikipedia.org/wiki/Great-circle_navigation
-    #            http://astrophysicsformulas.com/astronomy-formulas-astrophysics-
-    #            formulas/angular-distance-between-two-points-on-a-sphere
 
-    def get_closest_approach(self, i, e, az):
-        # TODO: fix this so that it identifies whether a measurement will be any good.
-        #         need to subtract component that is in same direction
-        #         or add component in opposite direction
-        #         for az=0: full component in same or opposite
-        #         az=90: no component in same or opposite
-        #         component in same plane is cos(az) or, if az > 90, cos(180-az)
-
-
-
-        i, e, az = self.motor_pos_to_science_pos(i, e, az)
-        closest_dist = utils.get_phase_angle(i, e, az)
-        closest_pos = (i, e, az)
-
-        return closest_pos, closest_dist
 
     def validate_distance(self, i: int, e: int, az: int):
         closest_dist = utils.get_phase_angle(i, e, az)
@@ -2709,35 +2676,32 @@ class Controller:
         return False
 
     def freeze(self):
-        # TODO: make sure freezing works for all managers (process_manager, etc).
-        # TODO: figure out exception type
-        # pylint: disable = bare-except, broad-except
         for button in self.tk_buttons:
             try:
                 button.configure(state="disabled")
-            except:
+            except AttributeError:
                 pass
         for entry in self.entries:
             try:
                 entry.configure(state="disabled")
-            except:
+            except AttributeError:
                 pass
         for radio in self.radiobuttons:
             try:
                 radio.configure(state="disabled")
-            except:
+            except AttributeError:
                 pass
 
         for button in self.tk_check_buttons:
             try:
                 button.configure(state="disabled")
-            except:
+            except AttributeError:
                 pass
 
         for menu in self.option_menus:
             try:
                 menu.configure(state="disabled")
-            except:
+            except AttributeError:
                 pass
 
         self.menubar.entryconfig("Settings", state="disabled")
@@ -2747,8 +2711,6 @@ class Controller:
         self.console.console_entry.configure(state="disabled")
 
     def unfreeze(self):
-        # TODO: figure out exception type
-        # pylint: disable = bare-except, broad-except
         self.console.console_entry.configure(state="normal")
         self.menubar.entryconfig("Settings", state="normal")
         self.filemenu.entryconfig(0, state=NORMAL)
@@ -2756,29 +2718,29 @@ class Controller:
         for button in self.tk_buttons:
             try:
                 button.configure(state="normal")
-            except Exception as e:
-                print(e)
+            except AttributeError:
+                pass
         for entry in self.entries:
             try:
                 entry.configure(state="normal")
-            except Exception as e:
-                print(e)
+            except AttributeError:
+                pass
         for radio in self.radiobuttons:
             try:
                 radio.configure(state="normal")
-            except Exception as e:
-                print(e)
+            except AttributeError:
+                pass
 
         for button in self.tk_check_buttons:
             try:
                 button.configure(state="normal")
-            except:
+            except AttributeError:
                 pass
 
         for menu in self.option_menus:
             try:
                 menu.configure(state="normal")
-            except:
+            except AttributeError:
                 pass
 
         if self.manual_automatic.get() == 0:

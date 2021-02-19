@@ -6,6 +6,7 @@ from tkinter import (
     Scrollbar,
     StringVar,
     Canvas,
+    Event,
     VERTICAL,
     TRUE,
     FALSE,
@@ -236,9 +237,8 @@ class VerticalScrolledFrame(Frame):
         self.canvas.bind("<Configure>", self._configure_canvas)
         self.width = width
 
-    def _configure_canvas(self, event):
+    def _configure_canvas(self, event: Event):
         # pylint: disable = unused-argument
-        # TODO: figure out type of event
         if self.canvas.winfo_height() > self.min_height:
             self.interior.config(height=self.canvas.winfo_height())
             if self.scrollbar.winfo_ismapped():
