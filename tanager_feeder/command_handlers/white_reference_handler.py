@@ -50,7 +50,7 @@ class WhiteReferenceHandler(CommandHandler):
                     self.controller.log("Error: Failed to take white reference.")
                 elif not self.cancel:
                     self.interrupt("Error: Failed to take white reference.", retry=True)
-                    self.set_text(
+                    utils.set_text(
                         self.controller.sample_label_entries[self.controller.current_sample_gui_index],
                         self.controller.current_label,
                     )

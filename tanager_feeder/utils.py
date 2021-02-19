@@ -1,7 +1,23 @@
 from enum import Enum
 import os
 from threading import Thread
-from tkinter import Frame, Scrollbar, StringVar, Canvas, VERTICAL, TRUE, FALSE, RIGHT, Y, NW, LEFT, BOTH, Listbox, SINGLE, Widget
+from tkinter import (
+    Frame,
+    Scrollbar,
+    StringVar,
+    Canvas,
+    VERTICAL,
+    TRUE,
+    FALSE,
+    RIGHT,
+    Y,
+    NW,
+    LEFT,
+    BOTH,
+    Listbox,
+    SINGLE,
+    Widget,
+)
 from typing import Any
 
 import numpy as np
@@ -133,7 +149,7 @@ def rm_reserved_chars(input_str):
 def numbers_only(input_str):
     output = ""
     for digit in input_str:
-        if digit in ('1', '2', '3', '4', '5', '6', '7', '8', '9', '0'):
+        if digit in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             output += digit
     return output
 
@@ -159,7 +175,7 @@ class SampleFrame:
 
 
 class TkFormat:
-    def __init__(self, config_info = None):
+    def __init__(self, config_info=None):
         # Yay formatting. Might not work for Macs.
         self.bg = "#333333"
         self.textcolor = "light gray"
@@ -188,6 +204,7 @@ class VerticalScrolledFrame(Frame):
     # Construct and pack/place/grid normally
     # This frame only allows vertical scrolling
 
+    # pylint: disable = keyword-arg-before-vararg
     def __init__(self, controller, parent, min_height=600, width=468, *args, **kw):
         Frame.__init__(self, parent, *args, **kw)
         self.controller = controller
@@ -221,7 +238,7 @@ class VerticalScrolledFrame(Frame):
 
     def _configure_canvas(self, event):
         # pylint: disable = unused-argument
-        #TODO: figure out type of event
+        # TODO: figure out type of event
         if self.canvas.winfo_height() > self.min_height:
             self.interior.config(height=self.canvas.winfo_height())
             if self.scrollbar.winfo_ismapped():
@@ -324,10 +341,12 @@ def get_lat1_lat2_delta_long(i, e, az):
     lat2 = 90 - np.abs(e)
     return lat1, lat2, delta_long
 
+
 def get_phase_angle(i, e, az):
     lat1, lat2, delta_long = get_lat1_lat2_delta_long(i, e, az)
     dist = np.abs(arccos(sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(delta_long)))
     return dist
+
 
 class NotScrolledFrame(Frame):
     def __init__(self, parent, *args, **kw):
@@ -355,6 +374,7 @@ def set_text(widget: Widget, text: str):
 def lift_widget(widget: Widget):
     widget.focus_set()
     widget.lift()
+
 
 def thread_lift_widget(widget: Widget):
     thread = Thread(target=lift_widget, args=(widget,))

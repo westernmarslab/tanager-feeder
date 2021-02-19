@@ -55,6 +55,7 @@ class AnalysisToolsManager:
         self.offset_entry = None
         self.offset_sample_var = None
         self.plot_slope_menu = None
+        self.plot_slope_button = None
 
         self.analyze_var = None
 
@@ -150,6 +151,8 @@ class AnalysisToolsManager:
                 sample_names.append(sample.title + ": " + sample.name)
                 max_len = np.max([max_len, len(sample_names[-1])])
         self.offset_sample_var.set(sample_names[0])
+
+        # pylint: disable = no-value-for-parameter
         offset_menu = OptionMenu(offset_sample_frame, self.offset_sample_var, *sample_names)
         offset_menu.configure(width=max_len, highlightbackground=self.tk_format.highlightbackgroundcolor)
         offset_menu.pack(side=LEFT)
@@ -536,6 +539,7 @@ class AnalysisToolsManager:
         max_len = len(plot_options[0])
         for option in plot_options:
             max_len = np.max([max_len, len(option)])
+            # pylint: disable = protected-access
             self.plot_slope_menu["menu"].add_command(label=option, command=tkinter._setit(self.plot_slope_var, option))
         self.plot_slope_menu.configure(width=max_len)
 
@@ -550,9 +554,7 @@ class AnalysisToolsManager:
             self.slope_results_frame.pack(fill=BOTH, expand=True, pady=(10, 10))
             try:
                 self.slopes_listbox.delete(0, "end")
-            # pylint: disable = broad-except
-            except Exception:
-                # TODO: figure out exception type
+            except AttributeError:
                 self.slopes_listbox = utils.ScrollableListbox(
                     self.slope_results_frame,
                     self.tk_format.bg,
@@ -591,7 +593,7 @@ class AnalysisToolsManager:
         try:
             self.slopes_listbox.delete(0, "end")
             self.plot_slope_button.configure(state="disabled")
-        except:
+        except AttributeError:
             pass
         self.tab.normalize(self.normalize_entry.get())
         thread = Thread(target=utils.lift_widget, args=(self.analysis_dialog.top,))
@@ -610,7 +612,7 @@ class AnalysisToolsManager:
             x2 = float(self.right_zoom_entry.get())
             self.tab.adjust_x(x1, x2)
             utils.lift_widget(self.analysis_dialog.top)
-        except:
+        except ValueError:
             utils.lift_widget(self.analysis_dialog.top)
             ErrorDialog(
                 self,
@@ -625,7 +627,7 @@ class AnalysisToolsManager:
             y2 = float(self.right_zoom_entry2.get())
             self.tab.adjust_y(y1, y2)
             utils.lift_widget(self.analysis_dialog.top)
-        except:
+        except ValueError:
             utils.lift_widget(self.analysis_dialog.top)
             ErrorDialog(
                 self,
@@ -641,7 +643,7 @@ class AnalysisToolsManager:
     def disable_plot(self, analyze_var="None"):
         try:
             self.slopes_listbox.delete(0, "end")
-        except:
+        except AttributeError:
             pass
         self.plot_slope_button.configure(state="disabled")
 

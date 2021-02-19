@@ -32,8 +32,8 @@ class PiConnectionChecker(ConnectionChecker):
             controller=self.controller,
             title="Lost Connection",
             label="Error: Lost connection with Raspberry Pi.\n\n"
-                  "Check you and the Raspberry Pi are\n"
-                  "both connected to the same network.",
+            "Check you and the Raspberry Pi are\n"
+            "both connected to the same network.",
             buttons=buttons,
             button_width=15,
         )
@@ -43,8 +43,8 @@ class PiConnectionChecker(ConnectionChecker):
             controller=self.controller,
             title="Not Connected",
             label="Error: Raspberry Pi not connected.\n\n"
-                  "Check you and the Raspberry Pi are\n"
-                  "both connected to the same network.",
+            "Check you and the Raspberry Pi are\n"
+            "both connected to the same network.",
             buttons=buttons,
             button_width=15,
         )

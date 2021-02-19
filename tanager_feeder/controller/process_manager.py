@@ -77,9 +77,7 @@ class ProcessManager:
         input_frame = Frame(process_frame, bg=self.tk_format.bg)
         input_frame.pack()
 
-        process_input_browse_button = Button(
-            input_frame, text="Browse", command=self.choose_process_input_dir
-        )
+        process_input_browse_button = Button(input_frame, text="Browse", command=self.choose_process_input_dir)
         process_input_browse_button.config(
             fg=self.tk_format.buttontextcolor,
             highlightbackground=self.tk_format.highlightbackgroundcolor,
@@ -299,7 +297,7 @@ class ProcessManager:
         output_file = self.output_file_entry.get()
 
         if output_file == "":
-            ErrorDialog(self, label="Error: Enter an output file name")
+            ErrorDialog(self.controller, label="Error: Enter an output file name")
             raise ProcessFileError
 
         if output_file[-4:] != ".csv":
@@ -367,7 +365,9 @@ class ProcessManager:
                 os.remove(file)
                 action()
             except OSError:
-                ErrorDialog(self, title="Error overwriting file", label="Error: Could not delete file.\n\n" + file)
+                ErrorDialog(
+                    self.controller, title="Error overwriting file", label="Error: Could not delete file.\n\n" + file
+                )
 
         if self.config_info.opsys in ("Linux", "Mac"):
             if directory[-1] != "/":
@@ -380,7 +380,7 @@ class ProcessManager:
         if os.path.exists(full_process_output_path):
             buttons = {"yes": {remove_retry: [full_process_output_path, next_action]}, "no": {}}
             dialog = Dialog(
-                self,
+                self.controller,
                 title="Error: File Exists",
                 label="Error: Specified output file already exists.\n\n"
                 + full_process_output_path
@@ -397,7 +397,9 @@ class ProcessManager:
                 os.makedirs(dir_to_make)
                 action()
             except OSError:
-                ErrorDialog(self, title="Cannot create directory", label="Cannot create directory:\n\n" + dir_to_make)
+                ErrorDialog(
+                    self.controller, title="Cannot create directory", label="Cannot create directory:\n\n" + dir_to_make
+                )
             return False
 
         exists = os.path.exists(local_dir)
@@ -424,7 +426,7 @@ class ProcessManager:
 
             except OSError:
                 ErrorDialog(
-                    self,
+                    self.controller,
                     title="Error: Cannot write",
                     label="Error: Cannot write to specified directory.\n\n" + local_dir,
                 )
@@ -437,7 +439,7 @@ class ProcessManager:
             else:  # Otherwise, ask the user.
                 buttons = {"yes": {try_mk_dir: [local_dir, next_action]}, "no": {}}
                 ErrorDialog(
-                    self,
+                    self.controller,
                     title="Directory does not exist",
                     label=local_dir + "\n\ndoes not exist. Do you want to create this directory?",
                     buttons=buttons,
@@ -452,24 +454,26 @@ class ProcessManager:
                 action()
             elif mkdir_status == "mkdirfailedfileexists":
                 ErrorDialog(
-                    self, title="Error", label="Could not create directory:\n\n" + dir_to_make + "\n\nFile exists."
+                    self.controller,
+                    title="Error",
+                    label="Could not create directory:\n\n" + dir_to_make + "\n\nFile exists.",
                 )
             elif mkdir_status == "mkdirfailed":
-                ErrorDialog(self, title="Error", label="Could not create directory:\n\n" + dir_to_make)
+                ErrorDialog(self.controller, title="Error", label="Could not create directory:\n\n" + dir_to_make)
 
         status = self.remote_directory_worker.get_dirs(remote_dir)
 
         if status == "listdirfailed":
             buttons = {"yes": {inner_mkdir: [remote_dir, next_action]}, "no": {}}
             ErrorDialog(
-                self,
+                self.controller,
                 title="Directory does not exist",
                 label=remote_dir + "\ndoes not exist. Do you want to create this directory?",
                 buttons=buttons,
             )
             return False
         if status == "listdirfailedpermission":
-            ErrorDialog(self, label="Error: Permission denied for\n" + remote_dir)
+            ErrorDialog(self.controller, label="Error: Permission denied for\n" + remote_dir)
             return False
 
         if status == "timeout":
@@ -482,7 +486,7 @@ class ProcessManager:
                     },
                 }
                 dialog = ErrorDialog(
-                    self,
+                    self.controller,
                     label="Error: Operation timed out.\n\nCheck that the automation script is running on the"
                     " spectrometer\n computer and the spectrometer is connected.",
                     buttons=buttons,
@@ -501,12 +505,12 @@ class ProcessManager:
                 return True
             if "notwriteable" in self.controller.spec_listener.queue:
                 self.controller.spec_listener.queue.remove("notwriteable")
-                ErrorDialog(self, label="Error: Permission denied.\nCannot write to specified directory.")
+                ErrorDialog(self.controller, label="Error: Permission denied.\nCannot write to specified directory.")
                 return False
             time.sleep(utils.INTERVAL)
             t = t - utils.INTERVAL
         if t <= 0:
-            ErrorDialog(self, label="Error: Operation timed out.")
+            ErrorDialog(self.controller, label="Error: Operation timed out.")
             return False
 
     def choose_process_input_dir(self):

@@ -42,14 +42,10 @@ class Tab:
         self.samples = samples
         self.geoms = geoms
 
-        self.title = title
-        base = title
-        i = 1
-        while title in self.plotter.titles:
-            title = base + " (" + str(i) + ")"
-            i = i + 1
-        self.notebook_title = title
-        self.plotter.titles.append(self.notebook_title)
+        self.notebook_title = None
+        self.set_title(
+            title, init=True
+        )  # set self.notebook title, add to plotter's list of titles, and add e.g. (1) if needed.
 
         self.x_axis = x_axis
         self.y_axis = y_axis
@@ -91,7 +87,7 @@ class Tab:
         # If this is being called after the user did Right click -> choose samples to plot, put it at the same
         # index as before.
         else:
-            self.plotter.notebook.add(self.top, text=self.title + " x")
+            self.plotter.notebook.add(self.top, text=self.notebook_title + " x")
             self.plotter.notebook.insert(tab_index, self.plotter.notebook.tabs()[-1])
             self.plotter.notebook.select(self.plotter.notebook.tabs()[tab_index])
             self.index = tab_index
@@ -114,7 +110,7 @@ class Tab:
             self.fig,
             self.white_fig,
             self.samples,
-            self.title,
+            self.notebook_title,
             self.oversize_legend,
             self.plot_scale,
             self.plot_width,
@@ -224,7 +220,7 @@ class Tab:
         self.plotter.new_tab()
 
     def open_options(self):
-        self.plotter.controller.open_options(self, self.title)
+        self.plotter.controller.open_options(self, self.notebook_title)
 
     # This is needed so that this can be one of the parts of a dict for buttons:
     # self.view_notebook.select:[lambda:tab.get_top()],.
@@ -274,7 +270,7 @@ class Tab:
             wavelengths[index] < 600 or wavelengths[index] > 2200
         ):  # If we're on the edges, spectra are noisy. Calculate slopes based on an average.
             if 2 < index < len(reflectance):
-                r = np.mean(reflectance[index - 3: index + 3])
+                r = np.mean(reflectance[index - 3 : index + 3])
                 w = wavelengths[index]
             elif index > 2:
                 r = np.mean(reflectance[-7:-1])
@@ -940,39 +936,25 @@ class Tab:
                 y_axis="average reflectance",
             )
         elif x_axis == "e,i":
-            Tab(
-                self.plotter, "Reflectance", [self.contour_sample], x_axis="contour", y_axis="average reflectance"
-            )
+            Tab(self.plotter, "Reflectance", [self.contour_sample], x_axis="contour", y_axis="average reflectance")
 
     def plot_band_centers(self, x_axis):
         if x_axis in ("e", "theta"):
-            Tab(
-                self.plotter, "Band center vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band center"
-            )
+            Tab(self.plotter, "Band center vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band center")
         elif x_axis == "i":
-            Tab(
-                self.plotter, "Band center vs " + x_axis, self.emission_samples, x_axis=x_axis, y_axis="band center"
-            )
+            Tab(self.plotter, "Band center vs " + x_axis, self.emission_samples, x_axis=x_axis, y_axis="band center")
         elif x_axis == "g":
-            Tab(
-                self.plotter, "Band center vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band center"
-            )
+            Tab(self.plotter, "Band center vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band center")
         elif x_axis == "e,i":
             Tab(self.plotter, "Band center", [self.contour_sample], x_axis="contour", y_axis="band center")
 
     def plot_band_depths(self, x_axis):
         if x_axis in ("e", "theta"):
-            Tab(
-                self.plotter, "Band depth vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band depth"
-            )
+            Tab(self.plotter, "Band depth vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band depth")
         elif x_axis == "i":
-            Tab(
-                self.plotter, "Band depth vs " + x_axis, self.emission_samples, x_axis=x_axis, y_axis="band depth"
-            )
+            Tab(self.plotter, "Band depth vs " + x_axis, self.emission_samples, x_axis=x_axis, y_axis="band depth")
         elif x_axis == "g":
-            Tab(
-                self.plotter, "Band depth vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band depth"
-            )
+            Tab(self.plotter, "Band depth vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band depth")
         elif x_axis == "e,i":
             Tab(self.plotter, "Band depth", [self.contour_sample], x_axis="contour", y_axis="band depth")
 
@@ -1112,9 +1094,9 @@ class Tab:
         self.plot.draw_legend(legend_style)
 
     #         self.refresh(original=self.original_samples, xlim=self.xlim, ylim=self.ylim, y_axis=self.y_axis)
-    def set_title(self, title):
-        self.plotter.titles.remove(self.notebook_title)
-        self.title = title
+    def set_title(self, title, init=False):
+        if not init:
+            self.plotter.titles.remove(self.notebook_title)
         base = title
         i = 1
         while title in self.plotter.titles:
@@ -1122,8 +1104,9 @@ class Tab:
             i = i + 1
         self.notebook_title = title
         self.plotter.titles.append(self.notebook_title)
-        self.plot.set_title(title)
-        self.plotter.notebook.tab(self.top, text=title + " x")
+        if not init:
+            self.plot.set_title(title)
+            self.plotter.notebook.tab(self.top, text=title + " x")
 
     def reset(self):
         self.samples = self.original_samples
@@ -1180,7 +1163,7 @@ class Tab:
         # We tell the controller which samples are already plotted so it can initiate the listbox with those
         # samples highlighted.
         self.plotter.controller.ask_plot_samples(
-            self, self.existing_indices, self.sample_options_list, self.geoms, self.title
+            self, self.existing_indices, self.sample_options_list, self.geoms, self.notebook_title
         )
 
     def set_samples(
@@ -1195,8 +1178,6 @@ class Tab:
             self.samples.append(self.sample_options_dict[label])
 
         self.geoms = {"i": incidences, "e": emissions, "az": azimuths}
-        print("azimuths: ")
-        print(azimuths)
         self.exclude_specular = exclude_specular
         if self.exclude_specular:
             try:
@@ -1232,7 +1213,7 @@ class Tab:
             winnowed_samples.append(winnowed_sample)
 
         self.samples = winnowed_samples
-        self.title = title
+        self.set_title(title)
         self.refresh()
 
     def refresh(
@@ -1240,10 +1221,11 @@ class Tab:
     ):  # Gets called when data is updated, either from edit plot or analysis tools. We set original = False if
         # calling from normalize, that way we will still hold on to the unchanged data.
         tab_index = self.plotter.notebook.index(self.plotter.notebook.select())
+        self.plotter.titles.remove(self.notebook_title)
         self.plotter.notebook.forget(self.plotter.notebook.select())
         self.__init__(
             self.plotter,
-            self.title,
+            self.notebook_title,
             self.samples,
             tab_index=tab_index,
             geoms=self.geoms,

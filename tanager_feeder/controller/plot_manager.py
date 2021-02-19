@@ -3,7 +3,6 @@ from tkinter import Entry, Button, Label, Checkbutton, Toplevel, Frame, LEFT, RI
 from tkinter.filedialog import askopenfilename
 
 from tanager_feeder.dialogs.dialog import Dialog
-from tanager_feeder.dialogs.error_dialog import ErrorDialog
 from tanager_feeder.dialogs.remote_file_explorer import RemoteFileExplorer
 from tanager_feeder import utils
 
@@ -21,6 +20,7 @@ class PlotManager:
                 self.plot_input_file = plot_config.readline().strip("\n")
                 self.plot_title = plot_config.readline().strip("\n")
         except OSError:
+            print("No past plotting location found. Using default.")
             with open(self.config_info.local_config_loc + "plot_config.txt", "w+") as f:
                 f.write("remote")
                 f.write("C:\\Users\n")
@@ -150,7 +150,7 @@ class PlotManager:
             pady=self.tk_format.pady,
             width=int(self.tk_format.button_width * 1.3),
             bg="light gray",
-            command=self.plot,
+            command=self.controller.plot,
         )
         plot_button.config(
             fg=self.tk_format.buttontextcolor,
@@ -219,31 +219,30 @@ class PlotManager:
                 self.plot_input_dir_entry.insert(0, file)
         self.plot_top.lift()
 
-    def plot(self, filename) -> None:
+    def plot(self) -> None:
         # TODO: Review this code and test.
-        title = self.plot_title_entry.get()
-        caption = ""
+        plot_input_file = self.plot_input_dir_entry.get()
+        plot_title = self.plot_title_entry.get()
+        if self.plot_remote.get():
+            self.plot_local_remote = "remote"
+        elif self.plot_local.get():
+            self.plot_local_remote = "local"
 
         try:
-            self.plot_input_file = self.plot_input_dir_entry.get()
-            self.plot_title = self.plot_title_entry.get()
-            if self.plot_remote.get():
-                self.plot_local_remote = "remote"
-            elif self.plot_local.get():
-                self.plot_local_remote = "local"
-
             with open(self.config_info.local_config_loc + "plot_config.txt", "w") as plot_config:
                 plot_config.write(self.plot_local_remote + "\n")
-                plot_config.write(self.plot_input_file + "\n")
-                plot_config.write(self.plot_title + "\n")
+                plot_config.write(plot_input_file + "\n")
+                plot_config.write(plot_title + "\n")
+        except OSError:
+            print("Error saving data location for plots.")
 
-            self.plot_top.destroy()
-
+        self.plot_top.destroy()
+        try:
             if self.plot_local_remote == "remote":
-                self.plotter.plot_spectra(title, filename, caption, exclude_wr=False, draw=False)
+                self.plotter.plot_spectra(plot_title, plot_input_file)
                 self.plotter.tabs[-1].ask_which_samples()
             else:
-                self.plotter.plot_spectra(title, filename, caption, exclude_wr=False, draw=True)
+                self.plotter.plot_spectra(plot_title, plot_input_file)
                 self.plotter.tabs[-1].ask_which_samples()
 
             self.controller.goniometer_view.flip()
@@ -256,33 +255,33 @@ class PlotManager:
             ):  # If the user hasn't specified a folder where they want to save plots yet, set the default folder to be
                 # the same one they got the data from. Otherwise, leave it as is.
                 if self.config_info.opsys == "Windows":
-                    self.plotter.save_dir = "\\".join(filename.split("\\")[0:-1])
+                    self.plotter.save_dir = "\\".join(plot_input_file.split("\\")[0:-1])
                 else:
-                    self.plotter.save_dir = "/".join(filename.split("/")[0:-1])
+                    self.plotter.save_dir = "/".join(plot_input_file.split("/")[0:-1])
 
         except Exception as e:
             print(e)
             Dialog(
-                self,
+                self.controller,
                 "Plotting Error",
                 "Error: Plotting failed.\n\nDoes file exist? Is data formatted correctly?\nIf plotting a remote file,"
                 " is the server accessible?",
                 {"ok": {}},
             )
             raise e
-        filename = self.plot_input_dir_entry.get()
-        if self.config_info.opsys == "Windows" or self.plot_remote.get():
-            filename = filename.replace("\\", "/")
 
-        if self.plot_remote.get():
-            self.controller.plot_remote()
-
-        else:
-            if os.path.exists(filename):
-                self.plot(filename)
-            else:
-                ErrorDialog(
-                    self,
-                    title="Error: File not found",
-                    label="Error: File not found.\n\n" + filename + "\n\ndoes not exist.",
-                )
+        # if self.config_info.opsys == "Windows" or self.plot_remote.get():
+        #     filename = filename.replace("\\", "/")
+        #
+        # if self.plot_remote.get():
+        #     self.controller.plot_remote()
+        #
+        # else:
+        #     if os.path.exists(filename):
+        #         self.plot(filename)
+        #     else:
+        #         ErrorDialog(
+        #             self,
+        #             title="Error: File not found",
+        #             label="Error: File not found.\n\n" + filename + "\n\ndoes not exist.",
+        #         )

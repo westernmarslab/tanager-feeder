@@ -231,7 +231,7 @@ class EditPlotManager:
                 error_string += "\nInvalid emissions: " + str(invalid_emissions)
             if invalid_azimuths != []:
                 error_string += "\nInvalid azimuths: " + str(invalid_azimuths)
-            ErrorDialog(self, "Warning!", error_string)
+            ErrorDialog(self.controller, "Warning!", error_string)
 
         return incidences, emissions, azimuths
 

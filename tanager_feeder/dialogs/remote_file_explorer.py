@@ -31,13 +31,15 @@ class RemoteFileExplorer(Dialog):
         self.current_parent = None
         self.directories_only = directories_only
 
-        self.nav_frame = Frame(self.top, bg=self.bg)
+        self.nav_frame = Frame(self.top, bg=self.tk_format.bg)
         self.nav_frame.pack()
         self.new_button = Button(
-            self.nav_frame, fg=self.textcolor, text="New Folder", command=self.askfornewdir, width=10
+            self.nav_frame, fg=self.tk_format.textcolor, text="New Folder", command=self.askfornewdir, width=10
         )
         self.new_button.config(
-            fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor, bg=self.buttonbackgroundcolor
+            fg=self.tk_format.buttontextcolor,
+            highlightbackground=self.tk_format.highlightbackgroundcolor,
+            bg=self.tk_format.buttonbackgroundcolor,
         )
         self.new_button.pack(side=RIGHT, pady=(5, 5), padx=(0, 10))
 
@@ -54,7 +56,9 @@ class RemoteFileExplorer(Dialog):
         self.path_entry.pack(padx=(5, 5), pady=(5, 5), side=RIGHT)
         self.back_button = Button(self.nav_frame, fg=self.tk_format.textcolor, text="<-", command=self.back, width=1)
         self.back_button.config(
-            fg=self.tk_format.buttontextcolor, highlightbackground=self.tk_format.highlightbackgroundcolor, bg=self.tk_format.buttonbackgroundcolor
+            fg=self.tk_format.buttontextcolor,
+            highlightbackground=self.tk_format.highlightbackgroundcolor,
+            bg=self.tk_format.buttonbackgroundcolor,
         )
         self.back_button.pack(side=RIGHT, pady=(5, 5), padx=(10, 0))
 

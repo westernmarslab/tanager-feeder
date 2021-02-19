@@ -70,10 +70,10 @@ class RemoteDirectoryWorker:
             if "mkdirsuccess" in self.listener.queue:
                 self.listener.queue.remove("mkdirsuccess")
                 return "mkdirsuccess"
-            elif "mkdirfailedfileexists" in self.listener.queue:
+            if "mkdirfailedfileexists" in self.listener.queue:
                 self.listener.queue.remove("mkdirfailedfileexists")
                 return "mkdirfailedfileexists"
-            elif "mkdirfailed" in self.listener.queue:
+            if "mkdirfailed" in self.listener.queue:
                 self.listener.queue.remove("mkdirfailed")
                 return "mkdirfailed"
 

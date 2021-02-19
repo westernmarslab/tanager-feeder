@@ -6,7 +6,7 @@ import ctypes
 import os
 import platform
 import sys
-# from tanager_feeder.controller_delme import Controller
+
 from tanager_feeder.controller.controller import Controller
 from tanager_feeder import utils
 from tanager_feeder.connection_checkers.pi_connection_checker import PiConnectionChecker

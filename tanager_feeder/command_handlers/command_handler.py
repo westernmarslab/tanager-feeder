@@ -1,6 +1,5 @@
 from threading import Thread
 import time
-from tkinter import Widget
 from typing import Dict, Optional
 
 import playsound

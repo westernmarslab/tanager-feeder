@@ -21,9 +21,7 @@ class VerticalScrolledFrame(Frame):
 
         self.canvas = canvas = Canvas(self, bd=0, highlightthickness=0, yscrollcommand=self.scrollbar.set)
         canvas.pack(side=LEFT, fill=BOTH, expand=TRUE)
-        canvas.config(
-            width=100
-        )  # I have this set so the actual width is always greater than this.
+        canvas.config(width=100)  # I have this set so the actual width is always greater than this.
         # There is an issue where the scrollbar will disappear with horizontal resize otherwise.
         self.scrollbar.config(command=canvas.yview)
 
@@ -35,16 +33,14 @@ class VerticalScrolledFrame(Frame):
         # initialize height to the bigger of 1) screen height 2) 700 px
 
         self.interior = interior = Frame(canvas)
-        interior.pack_propagate(
-            0
-        )  # This makes it so we can easily manually set the interior frame's size as needed.
+        interior.pack_propagate(0)  # This makes it so we can easily manually set the interior frame's size as needed.
         # See _configure_canvas() for how it's done.
         self.interior_id = canvas.create_window(0, 0, window=interior, anchor=NW)
         self.canvas.bind("<Configure>", self._configure_canvas)
 
     def _configure_canvas(self, event):
         print(type(event))
-        #TODO: find type of event
+        # TODO: find type of event
         # pylint: disable = unused-argument
         if self.canvas.winfo_height() >= self.min_height:
             self.interior.config(height=self.canvas.winfo_height())

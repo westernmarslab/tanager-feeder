@@ -1,6 +1,7 @@
 import colorutils
 import numpy as np
 
+
 class Sample:
     def __init__(self, name, file, title):
         self.title = title

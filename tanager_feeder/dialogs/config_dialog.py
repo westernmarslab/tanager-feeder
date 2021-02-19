@@ -25,7 +25,9 @@ class ConfigDialog(Dialog):
         for val in values:
             frame = Frame(self.entry_frame, bg=self.tk_format.bg)
             frame.pack(pady=(5, 5))
-            self.labels[val] = Label(frame, text="{0:>15}".format(val) + ": ", fg=self.tk_format.textcolor, bg=self.tk_format.bg)
+            self.labels[val] = Label(
+                frame, text="{0:>15}".format(val) + ": ", fg=self.tk_format.textcolor, bg=self.tk_format.bg
+            )
             self.labels[val].pack(side=LEFT, padx=(3, 3))
             if val != "Tray position":
                 self.entries[val] = Entry(

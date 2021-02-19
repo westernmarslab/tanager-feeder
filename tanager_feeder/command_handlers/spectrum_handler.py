@@ -97,7 +97,7 @@ class SpectrumHandler(CommandHandler):
         spec_num_string = str(self.controller.spec_num)
         while len(spec_num_string) < utils.NUMLEN:
             spec_num_string = "0" + spec_num_string
-        self.set_text(self.controller.spec_startnum_entry, spec_num_string)
+        utils.set_text(self.controller.spec_startnum_entry, spec_num_string)
 
         self.controller.plot_input_dir = self.controller.spec_save_dir_entry.get()
 

@@ -1,6 +1,6 @@
 import time
 
-from tkinter import ttk, Frame, BOTH
+from tkinter import ttk, Frame, BOTH, Event
 import os
 import math
 from typing import List, Tuple
@@ -72,16 +72,11 @@ class GoniometerView:
 
         self.standard_delay = 0.0001
         self.config_delay = 0.005
-        print("ABOUT TO START PYGAME")
-        pygame.init()
-        self.flip()
-        print("STARTED")
 
-    def tab_switch(self, event) -> None:
-        # TODO: find type of event
-        print("here is the event!")
-        print(event)
-        print(type(event))
+        # pylint: disable = no-member
+        pygame.init()
+
+    def tab_switch(self, event: Event) -> None:
         # pylint: disable=unused-argument
         self.master.update()
         os.environ["SDL_WINDOWID"] = str(self.double_embed.winfo_id())
@@ -719,4 +714,5 @@ class GoniometerView:
     @staticmethod
     def quit():
         pygame.display.quit()
+        # pylint: disable = no-member
         pygame.quit()

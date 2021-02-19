@@ -36,6 +36,7 @@ from tanager_feeder.controller.analysis_tools_manager import AnalysisToolsManage
 from tanager_feeder.controller.edit_plot_manager import EditPlotManager
 from tanager_feeder.controller.failsafes_manager import FailsafesManager
 from tanager_feeder.controller.plot_manager import PlotManager
+from tanager_feeder.controller.plot_settings_manager import PlotSettingsManager
 from tanager_feeder.controller.process_manager import ProcessManager, ProcessFileError
 
 from tanager_feeder.command_handlers.config_handler import ConfigHandler
@@ -74,7 +75,6 @@ class Controller:
         self.config_info = config_info
         self.tk_format = utils.TkFormat(self.config_info)
 
-
         try:
             self.spec_listener = SpecListener(connection_tracker, config_info)
         except OSError as e:
@@ -110,8 +110,6 @@ class Controller:
         self.pi_commander = PiCommander(self.connection_tracker, self.pi_listener)
 
         self.remote_directory_worker = RemoteDirectoryWorker(self.spec_commander, self.spec_listener)
-        
-
 
         # The queue is a list of dictionaries commands:parameters
         # The commands are supposed to be executed in order, assuming each one succeeds.
@@ -281,16 +279,20 @@ class Controller:
         self.plotter = Plotter(
             self,
             self.get_dpi(),
-            [self.config_info.global_config_loc + "color_config.mplstyle", self.config_info.global_config_loc + "size_config.mplstyle"],
+            [
+                self.config_info.global_config_loc + "color_config.mplstyle",
+                self.config_info.global_config_loc + "size_config.mplstyle",
+            ],
         )
 
-        # self.process_manager = ProcessManager(self)
-        # self.failsafes_manager = FailsafesManager(self)
-        # self.edit_plot_manager = EditPlotManager(self)
-        # self.process_manager = ProcessManager(self)
-        # self.plot_manager = PlotManager(self)
-        # self.analysis_tools_manager = AnalysisToolsManager(self)
-        # self.cli_manager = CliManager(self)
+        self.process_manager = ProcessManager(self)
+        self.failsafes_manager = FailsafesManager(self)
+        self.edit_plot_manager = EditPlotManager(self)
+        self.process_manager = ProcessManager(self)
+        self.plot_manager = PlotManager(self)
+        self.plot_settings_manager = PlotSettingsManager(self)
+        self.analysis_tools_manager = AnalysisToolsManager(self)
+        self.cli_manager = CliManager(self)
 
         try:
             with open(self.config_info.local_config_loc + "spec_save.txt", "r") as spec_save_config:
@@ -952,7 +954,7 @@ class Controller:
             try:
                 self.__science_i = int(value)
             except ValueError:
-                raise Exception("Invalid science i value")
+                raise Exception("Invalid science i value") from ValueError
 
     @property
     def science_e(self):
@@ -966,7 +968,7 @@ class Controller:
             try:
                 self.__science_e = int(value)
             except ValueError:
-                raise Exception("Invalid science e value")
+                raise Exception("Invalid science e value") from ValueError
 
     @property
     def science_az(self):
@@ -980,7 +982,7 @@ class Controller:
             try:
                 self.__science_az = int(value)
             except ValueError:
-                raise Exception("Invalid science az value")
+                raise Exception("Invalid science az value") from ValueError
 
     def scrollbar_check(self):
         time.sleep(0.5)
@@ -1032,7 +1034,6 @@ class Controller:
         window = utils.PretendEvent(self.master, self.master.winfo_width(), self.master.winfo_height())
         self.resize(window)
         time.sleep(0.2)
-
         if not self.connection_tracker.spec_offline:
             self.log("Spec compy connected.")
         else:
@@ -1049,21 +1050,20 @@ class Controller:
     def load_script(self):
         self.script_running = True
         self.script_failed = False
+
         script_file = askopenfilename(initialdir=self.script_loc, title="Select script")
         if script_file == "":
             self.script_running = False
             self.queue = []
             return
         self.queue = []
-        with open(self.config_info.local_config_loc + "script_config.txt", "w") as script_config:
-            dir = ""
-            if self.config_info.opsys == "Linux" or self.config_info.opsys == "Mac":
-                dir = "/".join(script_file.split("/")[0:-1])
-            else:
-                dir = "\\".join(script_file.split("\\")[0:-1])
 
-            self.script_loc = dir
-            script_config.write(dir)
+        with open(self.config_info.local_config_loc + "script_config.txt", "w") as script_config:
+            if self.config_info.opsys == "Linux" or self.config_info.opsys == "Mac":
+                self.script_loc = "/".join(script_file.split("/")[0:-1])
+            else:
+                self.script_loc = "\\".join(script_file.split("\\")[0:-1])
+            script_config.write(self.script_loc)
 
         with open(script_file, "r") as script:
             cmd = script.readline().strip("\n")
@@ -1161,8 +1161,7 @@ class Controller:
             or new_spec_num != self.spec_num
         ):
             return "not_set"
-        else:
-            return "set"
+        return "set"
 
     def check_mandatory_input(self):
         save_config_status = self.check_save_config()
@@ -1199,7 +1198,7 @@ class Controller:
                         height=130,
                     )
                     return False
-                elif not self.validate_distance(i, e, az):
+                if not self.validate_distance(i, e, az):
                     ErrorDialog(
                         self,
                         label="Error: Due to geometric constraints on the goniometer,\nincidence must be at least "
@@ -1277,18 +1276,16 @@ class Controller:
             action = self.acquire
             self.queue.insert(0, {self.acquire: []})
             if self.individual_range.get() == 1:
-                valid_range = self.range_setup(override)
+                valid_range = self.range_setup()
                 if not valid_range:
                     return
-                elif (
-                    type(valid_range) == str
-                ):  # If there was a warning associated with the input check for the range setup e.g. interval
+                if isinstance(valid_range, str):
+                    # If there was a warning associated with the input check for the range setup e.g. interval
                     # specified as zero, then we'll log this as a warning for the user coming up.
                     range_warnings = valid_range
 
-        if (
-            not override
-        ):  # If input isn't valid and the user asks to continue, take_spectrum will be called again with override set
+        if not override:
+            # If input isn't valid and the user asks to continue, take_spectrum will be called again with override set
             # to True
             ok = (
                 self.check_mandatory_input()
@@ -1315,7 +1312,7 @@ class Controller:
         if not setup_complete:
             if action == self.take_spectrum:
                 setup = self.setup_RS3_config({self.take_spectrum: [True, False, garbage]})
-            elif action == self.wr or action == self.acquire:
+            elif action in (self.wr, self.acquire):
                 setup = self.setup_RS3_config({action: [True, False]})
             elif action == self.opt:
                 setup = self.setup_RS3_config(
@@ -1323,7 +1320,7 @@ class Controller:
                 )  # override=True (because we just checked those things?), setup_complete=False
 
             else:
-                raise Exception()
+                raise Exception("Error: Unknown action")
             # If things were not already set up (instrument config, etc) then the compy will take care of that and call
             # take_spectrum again after it's done.
             if not setup:
@@ -1385,9 +1382,8 @@ class Controller:
         # For each (i, e, az), opt, white reference, save the white reference, move the tray, take a  spectrum, then
         # move the tray back, then update geom to next.
 
-        for index, entry in enumerate(
-            self.active_incidence_entries
-        ):  # This is one for each geometry when geometries are specified individually. When a range is specified,
+        for index, _ in enumerate(self.active_incidence_entries):
+            # This is one for each geometry when geometries are specified individually. When a range is specified,
             # we actually quietly create pretend entry objects for each pair, so it works then too.
             if index == 0:
                 self.queue.append({self.next_geom: [False]})  # For the first, don't complete anything
@@ -1453,14 +1449,13 @@ class Controller:
                 raise Exception(
                     "Invalid geometry: " + str(next_science_i) + " " + str(next_science_e) + " " + str(next_science_az)
                 )
-            else:
-                self.goniometer_view.invalid = True
-                if valid_i:
-                    self.goniometer_view.set_incidence(next_science_i)
-                if valid_e:
-                    self.goniometer_view.set_emission(next_science_e)
-                if valid_az:
-                    self.goniometer_view.set_azimuth(next_science_az)
+            self.goniometer_view.invalid = True
+            if valid_i:
+                self.goniometer_view.set_incidence(next_science_i)
+            if valid_e:
+                self.goniometer_view.set_emission(next_science_e)
+            if valid_az:
+                self.goniometer_view.set_azimuth(next_science_az)
 
         else:
             self.goniometer_view.invalid = False
@@ -1504,27 +1499,22 @@ class Controller:
         if current_motor is None:
             current_motor = (self.science_i, self.science_e, self.science_az)
 
-        current_motor_i = int(current_motor[0])
-        current_motor_e = int(current_motor[1])
-        current_motor_az = int(current_motor[2])
-
         next_science_i = int(next_science_i)
         next_science_e = int(next_science_e)
         next_science_az = int(next_science_az)
 
         movement_order = [{"i": next_science_i}, {"e": next_science_e}, {"az": next_science_az}]
         if next_science_i < -60:
-            print("YIKES")
-            if (current_motor_az < 65 and next_science_az > 65) or (
-                current_motor_az > 115 and next_science_az < 115
+            # pylint: disable = chained-comparison
+            if (self.science_az < 65 and next_science_az > 65) or (
+                self.science_az > 115 and next_science_az < 115
             ):  # passing through/into danger zone
                 movement_order = [{"i": -60}, {"e": next_science_e}, {"az": next_science_az}, {"i": next_science_i}]
                 print("Moving through or into danger!")
-            elif 65 <= current_motor_az <= 115 and current_motor_i < -65:  # Already in danger zone
+            elif 65 <= self.science_az <= 115 and self.science_i < -65:  # Already in danger zone
                 print("Starting in danger!")
-                if next_science_az != current_motor_az:
+                if next_science_az != self.science_az:
                     movement_order = [{"i": -60}, {"e": next_science_e}, {"az": next_science_az}, {"i": next_science_i}]
-
         return movement_order
 
     def next_geom(self, complete_last=True):
@@ -1660,7 +1650,7 @@ class Controller:
             steps=(unit == MovementUnits.STEPS.value),
         )
 
-    def range_setup(self, override=False):
+    def range_setup(self):
         self.active_incidence_entries = []
         self.active_emission_entries = []
         self.active_azimuth_entries = []
@@ -1758,7 +1748,6 @@ class Controller:
         if err_str != "Error: ":
             ErrorDialog(self, title="Error", label=err_str)
             return False
-        warning_string = incidence_warn_str + emission_warn_str
 
         azimuth_err_str = ""
         azimuth_warn_str = ""
@@ -1815,31 +1804,31 @@ class Controller:
                         self.active_emission_entries.append(e_entry)
                         self.active_azimuth_entries.append(az_entry)
 
+        warning_string = incidence_warn_str + emission_warn_str + azimuth_warn_str
         if warning_string == "":
             return True
-        else:
-            return warning_string
+        return warning_string
 
     def include_in_auto_range(self, i: int, e: int, az: int) -> bool:
         if not self.check_if_good_measurement(i, e, az):
             return False  # Don't include because the measurement won't work because the light will be shining
             # on/through the emission arm.
-        elif i < -60 and 70 < az < 110:
+        if i < -60 and 65 < az < 115:
             # TODO: check that this meshes with pi software approach for avoiding danger here
             return False  # Don't include because the clearance between the emission motor and the light source
             # is too tight for comfort
-        else:
-            return True  # Otherwise it's good!
+        return True  # Otherwise it's good!
 
     def check_if_good_measurement(self, i: int, e: int, az: int) -> bool:
         if not self.validate_distance(i, e, az):
             return False  # Don't include because the incident light on the collimator will heat it and ruin the
             # measurement
-        elif i < 0 and 80 < az < 100 and -10 < e < 10:
+        if i < 0 and 80 < az < 100 and -10 < e < 10:
             # TODO: validate that this list is the necessary and sufficient list of places where measurements are bad
             # (spoiler: it's not).
             return False  # Don't include because the emission arm gets in the way of the light, making this a bad
             # measurement.
+        return True
 
     # called when user clicks optimize button. No different than opt() except we clear out the queue first just in case
     # there is something leftover hanging out in there.
@@ -1891,14 +1880,16 @@ class Controller:
     def set_save_config(self):
 
         # This function gets called if the directory doesn't exist and the user clicks 'yes' for making the directory.
-        def inner_mkdir(dir):
-            status = self.remote_directory_worker.mkdir(dir)
-            if status == "mkdirsuccess":
+        def inner_mkdir(dir_to_make):
+            mkdir_status = self.remote_directory_worker.mkdir(dir_to_make)
+            if mkdir_status == "mkdirsuccess":
                 self.set_save_config()
-            elif status == "mkdirfailedfileexists":
-                ErrorDialog(self, title="Error", label="Could not create directory:\n\n" + dir + "\n\nFile exists.")
-            elif status == "mkdirfailed":
-                ErrorDialog(self, title="Error", label="Could not create directory:\n\n" + dir)
+            elif mkdir_status == "mkdirfailedfileexists":
+                ErrorDialog(
+                    self, title="Error", label="Could not create directory:\n\n" + dir_to_make + "\n\nFile exists."
+                )
+            elif mkdir_status == "mkdirfailed":
+                ErrorDialog(self, title="Error", label="Could not create directory:\n\n" + dir_to_make)
 
         status = self.remote_directory_worker.get_dirs(self.spec_save_dir_entry.get())
 
@@ -1916,11 +1907,11 @@ class Controller:
                 )
             return
 
-        elif status == "listdirfailedpermission":
+        if status == "listdirfailedpermission":
             ErrorDialog(self, label="Error: Permission denied for\n" + self.spec_save_dir_entry.get())
             return
 
-        elif status == "timeout":
+        if status == "timeout":
             if not self.text_only:
                 buttons = {
                     "cancel": {},
@@ -1935,9 +1926,7 @@ class Controller:
                     self.wait_dialog.top.geometry("376x175")
                     for button in self.wait_dialog.tk_buttons:
                         button.config(width=15)
-                # pylint: disable = bare-except
-                except:
-                    # TODO: figure out except type. I think AttributeError?
+                except AttributeError:
                     dialog = ErrorDialog(
                         self,
                         label="Error: Operation timed out.\n\nCheck that the automation script is running on the"
@@ -1956,7 +1945,7 @@ class Controller:
             if "yeswriteable" in self.spec_listener.queue:
                 self.spec_listener.queue.remove("yeswriteable")
                 break
-            elif "notwriteable" in self.spec_listener.queue:
+            if "notwriteable" in self.spec_listener.queue:
                 self.spec_listener.queue.remove("notwriteable")
                 ErrorDialog(self, label="Error: Permission denied.\nCannot write to specified directory.")
                 return
@@ -1984,10 +1973,11 @@ class Controller:
 
     # execute a command either input into the console by the user or loaded from a script
     def execute_cmd(self, event) -> None:
+        # pylint: disable = unused-argument
         if self.script_running:
             self.complete_queue_item()
 
-        self.text_only = True
+        # self.text_only = True
         command = self.console.next_cmd()
         thread = Thread(target=self.cli_manager.execute_cmd, kwargs={"cmd": command})
         thread.start()
@@ -2050,40 +2040,50 @@ class Controller:
 
     def open_analysis_tools(self, tab):
         self.close_plot_option_windows()
+        if len(tab.existing_indices) == 0:
+            ErrorDialog(self, "Error: Nothing plotted.", "Error: Nothing plotted.")
+            return
         self.analysis_tools_manager.show(tab)
+
+    def open_plot_settings(self, tab):
+        self.close_plot_option_windows()
+        if len(tab.existing_indices) == 0:
+            ErrorDialog(self, "Error: Nothing plotted.", "Error: Nothing plotted.")
+            return
+        self.plot_settings_manager.show(tab)
 
     # If the user already has analysis tools or a plot editing dialog open, close the extra to avoid confusion.
     def close_plot_option_windows(self):
-        # TODO: figure out exception type
-        # pylint: disable = bare-except, broad-except
         try:
-            self.analysis_dialog.top.destroy()
-        except:
+            self.analysis_tools_manager.analysis_dialog.top.destroy()
+        except AttributeError:
             pass
         try:
-            self.edit_plot_dialog.top.destroy()
-        except Exception as e:
-            raise e
-        try:
-            self.plot_options_dialog.top.destroy()
-        except:
+            self.edit_plot_manager.edit_plot_dialog.top.destroy()
+        except AttributeError:
             pass
         try:
-            self.plot_settings_dialog.top.destroy()
-        except:
+            self.plot_settings_manager.plot_settings_dialog.top.destroy()
+        except AttributeError:
+            pass
+        try:
+            self.plot_manager.plot_top.destroy()
+        except AttributeError:
             pass
 
     def reset_plot_data(self):
         self.plotter = Plotter(
             self,
             self.get_dpi(),
-            [self.config_info.global_config_loc + "color_config.mplstyle", self.config_info.global_config_loc + "size_config.mplstyle"],
+            [
+                self.config_info.global_config_loc + "color_config.mplstyle",
+                self.config_info.global_config_loc + "size_config.mplstyle",
+            ],
         )
         for i, tab in enumerate(self.view_notebook.tabs()):
             if i == 0:
                 continue
-            else:
-                self.view_notebook.forget(tab)
+            self.view_notebook.forget(tab)
 
     def plot(self):
         if len(self.queue) > 0:
@@ -2148,6 +2148,7 @@ class Controller:
             # OptionMenu without options.
             menu_positions.append(self.sample_pos_vars[-1].get())
 
+        # pylint: disable = no-value-for-parameter
         self.pos_menus.append(OptionMenu(self.sample_frames[-1], self.sample_pos_vars[-1], *menu_positions))
         self.pos_menus[-1].configure(width=8, highlightbackground=self.tk_format.highlightbackgroundcolor)
         self.pos_menus[-1].pack(side=LEFT)
@@ -2240,7 +2241,7 @@ class Controller:
             else:
                 menu_positions.append(pos)
 
-        for i, menu in enumerate(self.pos_menus):
+        for i, _ in enumerate(self.pos_menus):
             local_menu_positions = list(menu_positions)
             if (
                 len(menu_positions) == 0
@@ -2249,6 +2250,7 @@ class Controller:
                 # so having it in there prevents errors.
                 local_menu_positions.append(self.sample_pos_vars[i].get())
             self.pos_menus[i]["menu"].delete(0, "end")
+            # pylint: disable = protected-access
             for choice in local_menu_positions:
                 self.pos_menus[i]["menu"].add_command(label=choice, command=tk._setit(self.sample_pos_vars[i], choice))
 
@@ -2617,8 +2619,7 @@ class Controller:
                 print(e)
                 print(az)
             return False
-        else:
-            return True
+        return True
 
     def clear(self):
         if self.manual_automatic.get() == 0:
@@ -2629,9 +2630,9 @@ class Controller:
             self.sample_label_entries[self.current_sample_gui_index].delete(0, "end")
 
     def next_in_queue(self):
-        dict = self.queue[0]
-        for func in dict:
-            args = dict[func]
+        function_dict = self.queue[0]
+        for func in function_dict:
+            args = function_dict[func]
             func(*args)
 
     def refresh(self):

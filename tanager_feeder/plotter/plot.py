@@ -6,6 +6,7 @@ import matplotlib.tri as mtri
 
 from tanager_feeder import utils
 
+
 class Plot:
     def __init__(
         self,
@@ -867,7 +868,6 @@ class Plot:
 
         self.fig.canvas.draw()
         self.white_fig.canvas.draw()
-        print("plotter end!")
 
     def draw_legend(self, legend_style):
         self.legend_style = (

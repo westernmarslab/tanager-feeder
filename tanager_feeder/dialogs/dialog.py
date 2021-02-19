@@ -139,19 +139,31 @@ class Dialog:
                 self.tk_buttons.append(self.cancel_queue_button)
             elif "cancel" in button.lower():
                 self.cancel_button = Button(
-                    self.button_frame, fg=self.tk_format.textcolor, text="Cancel", command=self.cancel, width=self.button_width
+                    self.button_frame,
+                    fg=self.tk_format.textcolor,
+                    text="Cancel",
+                    command=self.cancel,
+                    width=self.button_width,
                 )
                 self.cancel_button.pack(side=tk.LEFT, padx=(10, 10), pady=(10, 10))
                 self.tk_buttons.append(self.cancel_button)
             elif "retry" in button.lower():
                 self.retry_button = Button(
-                    self.button_frame, fg=self.tk_format.textcolor, text="Retry", command=self.retry, width=self.button_width
+                    self.button_frame,
+                    fg=self.tk_format.textcolor,
+                    text="Retry",
+                    command=self.retry,
+                    width=self.button_width,
                 )
                 self.retry_button.pack(side=tk.LEFT, padx=(10, 10), pady=(10, 10))
                 self.tk_buttons.append(self.retry_button)
             elif "exit" in button.lower():
                 self.exit_button = Button(
-                    self.button_frame, fg=self.tk_format.textcolor, text="Exit", command=self.exit, width=self.button_width
+                    self.button_frame,
+                    fg=self.tk_format.textcolor,
+                    text="Exit",
+                    command=self.exit,
+                    width=self.button_width,
                 )
                 self.exit_button.pack(side=tk.LEFT, padx=(10, 10), pady=(10, 10))
                 self.tk_buttons.append(self.exit_button)
@@ -167,25 +179,41 @@ class Dialog:
                 self.tk_buttons.append(self.offline_button)
             elif "pause" in button.lower():
                 self.pause_button = Button(
-                    self.button_frame, fg=self.tk_format.textcolor, text="Pause", command=self.pause, width=self.button_width
+                    self.button_frame,
+                    fg=self.tk_format.textcolor,
+                    text="Pause",
+                    command=self.pause,
+                    width=self.button_width,
                 )
                 self.pause_button.pack(side=tk.LEFT, padx=(10, 10), pady=(10, 10))
                 self.tk_buttons.append(self.pause_button)
             elif "continue" in button.lower():
                 self.continue_button = Button(
-                    self.button_frame, fg=self.tk_format.textcolor, text="Continue", command=self.cont, width=self.button_width
+                    self.button_frame,
+                    fg=self.tk_format.textcolor,
+                    text="Continue",
+                    command=self.cont,
+                    width=self.button_width,
                 )
                 self.continue_button.pack(side=tk.LEFT, padx=(10, 10), pady=(10, 10))
                 self.tk_buttons.append(self.continue_button)
             elif "close" in button.lower():
                 self.close_button = Button(
-                    self.button_frame, fg=self.tk_format.textcolor, text="Close", command=self.close, width=self.button_width
+                    self.button_frame,
+                    fg=self.tk_format.textcolor,
+                    text="Close",
+                    command=self.close,
+                    width=self.button_width,
                 )
                 self.close_button.pack(side=tk.LEFT, padx=(10, 10), pady=(10, 10))
                 self.tk_buttons.append(self.close_button)
             elif "reset" in button.lower():
                 self.reset_button = Button(
-                    self.button_frame, fg=self.tk_format.textcolor, text="Reset", command=self.reset, width=self.button_width
+                    self.button_frame,
+                    fg=self.tk_format.textcolor,
+                    text="Reset",
+                    command=self.reset,
+                    width=self.button_width,
                 )
                 self.reset_button.pack(side=tk.LEFT, padx=(10, 10), pady=(10, 10))
                 self.tk_buttons.append(self.reset_button)

@@ -8,6 +8,7 @@ from tanager_feeder import utils
 from tanager_feeder.plotter.tab import Tab
 from tanager_feeder.plotter.sample import Sample
 
+
 class Plotter:
     def __init__(self, controller, dpi, style):
 

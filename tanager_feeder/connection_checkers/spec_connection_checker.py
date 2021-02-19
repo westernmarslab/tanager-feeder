@@ -42,8 +42,8 @@ class SpecConnectionChecker(ConnectionChecker):
             controller=self.controller,
             title="Not Connected",
             label="Error: No connection with Spec Compy.\n\n"
-                  "Check that you and the spectrometer computer are\n"
-                  "both connected to the same network.",
+            "Check that you and the spectrometer computer are\n"
+            "both connected to the same network.",
             buttons=buttons,
             button_width=15,
         )
@@ -53,7 +53,7 @@ class SpecConnectionChecker(ConnectionChecker):
             self.connection_tracker,
             title="Change IP",
             label="Enter the IP address for the spectrometer computer.\n\n"
-                  "The IP address is displayed in the ASD feeder terminal at startup.",
+            "The IP address is displayed in the ASD feeder terminal at startup.",
             which_compy=CompyTypes.SPEC_COMPY.value,
             config_loc=self.config_loc,
         )
