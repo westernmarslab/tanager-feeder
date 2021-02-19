@@ -76,9 +76,9 @@ class CliManager:
             if params[2] == "wr":
                 valid_sample = True
             if valid_i and valid_e and valid_az and valid_sample:
-                self.controller.motor_i = params[0]
-                self.controller.motor_e = params[1]
-                self.controller.motor_az = params[2]
+                self.controller.science_i = int(params[0])
+                self.controller.science_e = int(params[1])
+                self.controller.science_az = int(params[2])
 
                 if params[3] == "wr":
                     self.controller.sample_tray_index = -1
@@ -770,8 +770,7 @@ class CliManager:
             e = int(params[1])
             az = int(params[2])
 
-            current_motor = (self.controller.motor_i, self.controller.motor_e, self.controller.motor_az)
-            movements = self.controller.get_movements(i, e, az, current_motor=current_motor)
+            movements = self.controller.get_movements(i, e, az)
 
             if movements is None:
                 print("NO PATH FOUND")
@@ -850,12 +849,7 @@ class CliManager:
             e = int(params[1])
             az = int(params[2])
 
-            current_motor = (
-                self.controller.goniometer_view.motor_i,
-                self.controller.goniometer_view.motor_e,
-                self.controller.goniometer_view.motor_az,
-            )
-            movements = self.controller.get_movements(i, e, az, current_motor=current_motor)
+            movements = self.controller.get_movements(i, e, az)
 
             if movements is None:
                 self.controller.fail_script_command(
@@ -952,6 +946,9 @@ class CliManager:
         if cmd == "end file":
             self.controller.script_running = False
             self.controller.queue = []
+            self.controller.unfreeze()
+            self.controller.console.console_entry.delete(0, END)
+            self.controller.console.user_cmds.pop(0)
             if self.controller.wait_dialog is not None:
                 self.controller.wait_dialog.interrupt("Success!")  # If there is a wait dialog up, make it say success.
                 # There may never have been one that was made though.

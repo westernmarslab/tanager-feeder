@@ -65,7 +65,7 @@ from tanager_feeder.listeners.spec_listener import SpecListener
 
 from tanager_feeder.plotter.plotter import Plotter
 from tanager_feeder.remote_directory_worker import RemoteDirectoryWorker
-from tanager_feeder.utils import VerticalScrolledFrame, MovementUnits
+from tanager_feeder.utils import VerticalScrolledFrame, MovementUnits, sin, cos, arctan
 from tanager_feeder import utils
 
 
@@ -1495,25 +1495,25 @@ class Controller:
                     args = dictionary[func]
                     func(*args)
 
-    def get_movements(self, next_science_i, next_science_e, next_science_az, current_motor=None):
-        if current_motor is None:
-            current_motor = (self.science_i, self.science_e, self.science_az)
-
-        next_science_i = int(next_science_i)
-        next_science_e = int(next_science_e)
-        next_science_az = int(next_science_az)
+    def get_movements(self, next_science_i: int, next_science_e: int, next_science_az: int):
+        current_i, current_az = self.science_i, self.science_az
+        # This is the case if we're just calling set_display
+        if current_i is None:
+            current_i = self.goniometer_view.position["science_i"]
+        if current_az is None:
+            current_az = self.goniometer_view.position["science_az"]
 
         movement_order = [{"i": next_science_i}, {"e": next_science_e}, {"az": next_science_az}]
         if next_science_i < -60:
             # pylint: disable = chained-comparison
-            if (self.science_az < 65 and next_science_az > 65) or (
-                self.science_az > 115 and next_science_az < 115
+            if (current_az <= 65 and next_science_az > 65) or (
+                current_az >= 115 and next_science_az < 115
             ):  # passing through/into danger zone
                 movement_order = [{"i": -60}, {"e": next_science_e}, {"az": next_science_az}, {"i": next_science_i}]
                 print("Moving through or into danger!")
-            elif 65 <= self.science_az <= 115 and self.science_i < -65:  # Already in danger zone
+            elif 65 < current_az < 115 and current_i < -65:  # Already in danger zone
                 print("Starting in danger!")
-                if next_science_az != self.science_az:
+                if next_science_az != current_az:
                     movement_order = [{"i": -60}, {"e": next_science_e}, {"az": next_science_az}, {"i": next_science_i}]
         return movement_order
 
@@ -1814,21 +1814,54 @@ class Controller:
             return False  # Don't include because the measurement won't work because the light will be shining
             # on/through the emission arm.
         if i < -60 and 65 < az < 115:
-            # TODO: check that this meshes with pi software approach for avoiding danger here
             return False  # Don't include because the clearance between the emission motor and the light source
             # is too tight for comfort
         return True  # Otherwise it's good!
 
     def check_if_good_measurement(self, i: int, e: int, az: int) -> bool:
+        # check if the measurement will be ruined by the emission arm being in the way of the light source.
+        # start by checking if the light will be incident on the collimator
         if not self.validate_distance(i, e, az):
-            return False  # Don't include because the incident light on the collimator will heat it and ruin the
-            # measurement
-        if i < 0 and 80 < az < 100 and -10 < e < 10:
-            # TODO: validate that this list is the necessary and sufficient list of places where measurements are bad
-            # (spoiler: it's not).
-            return False  # Don't include because the emission arm gets in the way of the light, making this a bad
-            # measurement.
-        return True
+            return False
+        if i >= 10:  # If incidence is positive, light won't hit the detector arm.
+            return True
+        # Next define a list of positions of the emission arm.
+        arm_bottom_az = az - 90
+        # This is the azimuthal distance between the arc the light source travels
+        # and the detector arm. -90 to 90 because i is negative.
+
+        bearing = utils.get_initial_bearing(e)
+        closest_dist = utils.get_phase_angle(i, e, az)
+        closest_pos = (i, e, az)
+
+        points = np.arange(0, 90, 3)
+        points = np.append(points, 90)
+        arm_lat = []
+        arm_delta_long = []
+
+        for point in points:
+            tan_lat = cos(bearing) * sin(point) / np.sqrt(cos(point) ** 2 + sin(bearing) ** 2 * sin(point) ** 2)
+            lat = arctan(tan_lat)
+            arm_lat.append(lat)
+            tan_long = sin(bearing) * sin(point) / cos(point)
+            long = arctan(tan_long)
+            arm_delta_long.append(long)
+        arm_delta_long = np.array(arm_delta_long)
+        if e <= 0:
+            arm_azes = arm_bottom_az + arm_delta_long
+        else:
+            arm_azes = arm_bottom_az - arm_delta_long
+
+        for num, lat in enumerate(arm_lat):
+            arm_e = 90 - lat
+            pos = [i, -1 * arm_e, arm_bottom_az + arm_delta_long[num]]
+            dist = utils.get_phase_angle(i, -1 * arm_e, arm_azes[num])
+            if dist < closest_dist:
+                closest_dist = dist
+                closest_pos = pos
+        if closest_dist >= self.required_angular_separation:
+            return True
+        return False
 
     # called when user clicks optimize button. No different than opt() except we clear out the queue first just in case
     # there is something leftover hanging out in there.
@@ -2593,10 +2626,7 @@ class Controller:
         #         az=90: no component in same or opposite
         #         component in same plane is cos(az) or, if az > 90, cos(180-az)
 
-        def get_initial_bearing(e):
-            lat2 = 90 - np.abs(e)
-            bearing = utils.arctan2(utils.cos(lat2), utils.sin(lat2))
-            return bearing
+
 
         i, e, az = self.motor_pos_to_science_pos(i, e, az)
         closest_dist = utils.get_phase_angle(i, e, az)
@@ -2604,22 +2634,9 @@ class Controller:
 
         return closest_pos, closest_dist
 
-    def validate_distance(self, i, e, az, print_me=False):
-        try:
-            i = int(i)
-            e = int(e)
-            az = int(az)
-        except ValueError:
-            return False
-
-        closest_pos, closest_dist = self.get_closest_approach(i, e, az)
-        if closest_dist < self.required_angular_separation:
-            if print_me:
-                print(i)
-                print(e)
-                print(az)
-            return False
-        return True
+    def validate_distance(self, i: int, e: int, az: int):
+        closest_dist = utils.get_phase_angle(i, e, az)
+        return closest_dist >= self.required_angular_separation
 
     def clear(self):
         if self.manual_automatic.get() == 0:
@@ -2775,3 +2792,5 @@ class Controller:
         self.console.log(text)
 
     # TODO: Consider moving to a safe geometry on shutdown.
+
+

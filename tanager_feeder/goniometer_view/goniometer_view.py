@@ -89,7 +89,7 @@ class GoniometerView:
     def flip(event=None) -> None:
         # pylint: disable=unused-argument
         pygame.display.update()
-        pygame.display.flip()
+        # pygame.display.flip()
 
     def define_sample_tray_wireframes(self) -> None:
         tray_wireframe = Wireframe()
@@ -227,7 +227,7 @@ class GoniometerView:
         e_base_wireframe = Wireframe()
 
         i_base_nodes = self.draw_arc(0, math.pi * 2)
-        e_base_nodes = self.draw_arc(0, math.pi * 2)
+        e_base_nodes = self.draw_arc(0, math.pi * 2, 3)
 
         i_base_wireframe.add_nodes(i_base_nodes)
         e_base_wireframe.add_nodes(e_base_nodes)
@@ -361,7 +361,7 @@ class GoniometerView:
         light_guide_wireframe.set_azimuth(220)
 
     @staticmethod
-    def draw_arc(first_arc_angle: float, last_angle: float) -> List[Tuple[float, float, float]]:
+    def draw_arc(first_arc_angle: float, last_angle: float, width=1) -> List[Tuple[float, float, float]]:
         if last_angle > first_arc_angle:
             increment = math.pi / 30
         else:
@@ -369,11 +369,12 @@ class GoniometerView:
 
         node_list = []
         for angle in np.append(np.arange(first_arc_angle, last_angle, increment), last_angle):
-            x1 = math.cos(angle) * 1.01
-            x2 = math.cos(angle) * 0.99
+            delta = width/100
+            x1 = math.cos(angle) * (1+delta)
+            x2 = math.cos(angle) * (1-delta)
             y = 0
-            z1 = math.sin(angle) * 1.01
-            z2 = math.sin(angle) * 0.99
+            z1 = math.sin(angle) * (1+delta)
+            z2 = math.sin(angle) * (1-delta)
             node_list.append((x1, y, z1))
             node_list.append((x2, y, z2))
         return node_list
@@ -410,7 +411,7 @@ class GoniometerView:
         for n in range(len(science_az_guide_nodes) - 3):
             if n % 2 == 0:
                 science_az_guide_faces.append((n, n + 1, n + 3, n + 2))
-        science_az_guide_wireframe.add_faces(science_az_guide_faces, color=(200, 255, 155))
+        science_az_guide_wireframe.add_faces(science_az_guide_faces, color=(0, 80, 100))
 
         self.wireframes["motor az guide"] = motor_az_guide_wireframe
         self.wireframes["science az guide"] = science_az_guide_wireframe
@@ -428,7 +429,7 @@ class GoniometerView:
         pivot = (int(self.width / 2) - 20, int(0.7 * self.height), 0)
 
         i_radius = int(self.display_info["char_len"] / 2)  # 250
-        e_radius = int(i_radius * 0.75)
+        e_radius = int(i_radius * 0.5)
         tray_radius = i_radius * 0.25
 
         if self.display_info["collision"]:
@@ -577,7 +578,7 @@ class GoniometerView:
         self.draw_3D_goniometer(width, height)
 
     def check_collision(self, i: int, e: int, az: int) -> None:
-        self.display_info["collision"] = self.controller.check_if_good_measurement(i, e, az)
+        self.display_info["collision"] = not self.controller.check_if_good_measurement(i, e, az)
 
     def set_incidence(self, motor_i: int, config: bool = False) -> None:
         def next_pos(delta_theta):

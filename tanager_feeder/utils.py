@@ -348,6 +348,12 @@ def get_phase_angle(i, e, az):
     return dist
 
 
+def get_initial_bearing(e: int):
+    lat2 = 90 - np.abs(e)
+    bearing = arctan2(cos(lat2), sin(lat2))
+    return bearing
+
+
 class NotScrolledFrame(Frame):
     def __init__(self, parent, *args, **kw):
         Frame.__init__(self, parent, *args, **kw)

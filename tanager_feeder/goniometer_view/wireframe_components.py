@@ -26,7 +26,7 @@ class Face:
         self.delta_y = self.nodes[2].y - self.nodes[0].y
         self.delta_z = self.nodes[2].z - self.nodes[0].z
 
-    def get_normal(self):
+    def get_normal(self) -> np.ndarray:
         v1 = np.array(
             [self.nodes[1].x - self.nodes[0].x, self.nodes[1].y - self.nodes[0].y, self.nodes[1].z - self.nodes[0].z]
         )
@@ -35,7 +35,10 @@ class Face:
         )
         normal = np.cross(v1, v2)
         mag = sum(normal * normal) ** 0.5
-        normal = normal / mag
+        if mag != 0:
+            normal = normal / mag
+        else:
+            normal = np.array([0, 0, 0])
         return normal
 
     def set_normal(self, val):
