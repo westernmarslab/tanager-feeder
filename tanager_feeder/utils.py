@@ -24,6 +24,8 @@ from typing import Any
 import numpy as np
 import psutil
 
+from tanager_tcp import TanagerClient
+
 AZIMUTH_HOME = 0
 INTERVAL = 0.25
 BUFFER = 15
@@ -51,16 +53,36 @@ elif computer == "new":
     NUMLEN = 5
 
 
-class ConnectionTracker:
+class ConnectionManager:
     PI_PORT = 12345
     SPEC_PORT = 54321
     CONTROL_PORT = 12345
 
     def __init__(self, spec_ip="192.168.86.50", pi_ip="raspberrypi"):
-        self.spec_offline = False
-        self.pi_offline = False
+        self.spec_offline = True
+        self.pi_offline = True
         self.spec_ip = spec_ip
         self.pi_ip = pi_ip
+        self.spec_client = TanagerClient((spec_ip, self.SPEC_PORT), self.CONTROL_PORT)
+        self.pi_client = TanagerClient((pi_ip, self.PI_PORT), self.CONTROL_PORT)
+
+    def send_to_spec(self, message: str) -> bool:
+        if not self.spec_offline:
+            return self.spec_client.send(message)
+        return False
+
+    def send_to_pi(self, message: str) -> bool:
+        if not self.pi_offline:
+            return self.pi_client.send(message)
+        return False
+
+    def connect_spec(self, timeout: float):
+        self.spec_offline = not self.spec_client.connect(timeout)
+        return not self.spec_offline
+
+    def connect_pi(self, timeout: float):
+        self.pi_offline = not self.pi_client.connect(timeout)
+        return not self.pi_offline
 
 
 class ConfigInfo:

@@ -8,6 +8,7 @@ from tkinter import (
     Button,
     Frame,
     Entry,
+    Event,
     RIGHT,
     LEFT,
     Tk,
@@ -26,9 +27,6 @@ from tkinter import (
 from typing import Optional
 
 import numpy as np
-
-# pylint: disable = attribute-defined-outside-init
-# TODO: get rid of attributes defined outside init.
 
 from tanager_feeder.controller.cli_manager import CliManager
 from tanager_feeder.controller.console import Console
@@ -1089,7 +1087,6 @@ class Controller:
             self.console.console_entry.insert(0, cmd)
             self.freeze()
             self.execute_cmd("event!")
-            # TODO: see if we needed execute_cmd to return false if a command fails.
 
     # use this to make plots - matplotlib works in inches but we want to use pixels.
     def get_dpi(self):
@@ -1330,7 +1327,6 @@ class Controller:
             while len(startnum_str) < self.config_info.num_len:
                 startnum_str = "0" + startnum_str
             if not garbage:
-                label = ""
                 if (
                     self.white_referencing
                 ):  # This will be true when we are saving the spectrum after the white reference
@@ -1538,8 +1534,6 @@ class Controller:
     # as a parameter. When from the commandline, i may not be an incidence angle at all but a number of steps to move.
     # In this case, type will be 'steps'.
     def set_incidence(self, next_i: Optional[int] = None, unit: str = MovementUnits.ANGLE.value):
-        timeout = None
-
         if unit == "angle":
             # First check whether we actually need to move at all.
             if next_i is None:
@@ -1568,7 +1562,6 @@ class Controller:
             self.goniometer_view.set_incidence(next_i)
 
     def set_emission(self, next_e: Optional[int] = None, unit: str = MovementUnits.ANGLE.value):
-        timeout = None
         if unit == "angle":
             # First check whether we actually need to move at all.
             if next_e is None:
@@ -1597,7 +1590,6 @@ class Controller:
             self.goniometer_view.set_emission(next_e)
 
     def set_azimuth(self, next_az: Optional[int] = None, unit: str = MovementUnits.ANGLE.value):
-        timeout = None
         if unit == "angle":
             # First check whether we actually need to move at all.
             if next_az is None:
@@ -1805,7 +1797,6 @@ class Controller:
             # is too tight for comfort
         return True  # Otherwise it's good!
 
-
     # References: https://www.movable-type.co.uk/scripts/latlong.html
     #            https://en.wikipedia.org/wiki/Great-circle_navigation
     #            http://astrophysicsformulas.com/astronomy-formulas-astrophysics-
@@ -1818,13 +1809,12 @@ class Controller:
         if i >= 10:  # If incidence is positive, light won't hit the detector arm.
             return True
         # Next define a list of positions of the emission arm.
-        arm_bottom_az = az - 90
+
         # This is the azimuthal distance between the arc the light source travels
         # and the detector arm. -90 to 90 because i is negative.
-
+        arm_bottom_az = az - 90
         bearing = utils.get_initial_bearing(e)
         closest_dist = utils.get_phase_angle(i, e, az)
-
         points = np.arange(0, 90, 3)
         points = np.append(points, 90)
         arm_lat = []
@@ -1845,7 +1835,6 @@ class Controller:
 
         for num, lat in enumerate(arm_lat):
             arm_e = 90 - lat
-            pos = [i, -1 * arm_e, arm_bottom_az + arm_delta_long[num]]
             dist = utils.get_phase_angle(i, -1 * arm_e, arm_azes[num])
             if dist < closest_dist:
                 closest_dist = dist
@@ -1995,7 +1984,7 @@ class Controller:
         self.white_referencing = False
 
     # execute a command either input into the console by the user or loaded from a script
-    def execute_cmd(self, event) -> None:
+    def execute_cmd(self, event: Event) -> None:
         # pylint: disable = unused-argument
         if self.script_running:
             self.complete_queue_item()
@@ -2564,7 +2553,7 @@ class Controller:
         pos = self.spec_startnum_entry.index(INSERT)
         num = utils.numbers_only(self.spec_startnum_entry.get())
         if len(num) > self.config_info.num_len:
-            num = num[0: self.config_info.num_len]
+            num = num[0 : self.config_info.num_len]
         if len(num) < len(self.spec_startnum_entry.get()):
             pos = pos - 1
         self.spec_startnum_entry.delete(0, "end")
@@ -2599,7 +2588,6 @@ class Controller:
 
     # get the point on the emission arm closest to intersecting the light source
     # az is the difference between the two, as shown in the visualization
-
 
     def validate_distance(self, i: int, e: int, az: int):
         closest_dist = utils.get_phase_angle(i, e, az)
@@ -2676,6 +2664,14 @@ class Controller:
         return False
 
     def freeze(self):
+        try:
+            self.plot_manager.plot_top.destroy()
+        except AttributeError:
+            pass
+        try:
+            self.process_manager.process_top.destroy()
+        except AttributeError:
+            pass
         for button in self.tk_buttons:
             try:
                 button.configure(state="disabled")
@@ -2754,5 +2750,3 @@ class Controller:
         self.console.log(text)
 
     # TODO: Consider moving to a safe geometry on shutdown.
-
-

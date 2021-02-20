@@ -1,7 +1,6 @@
 from threading import Thread
 import time
 
-from tanager_tcp import TanagerClient
 from tanager_tcp import TanagerServer
 
 from tanager_feeder.listeners.listener import Listener
@@ -10,42 +9,28 @@ from tanager_feeder.connection_checkers.pi_connection_checker import PiConnectio
 
 
 class PiListener(Listener):
-    def __init__(self, connection_tracker: utils.ConnectionTracker, config_info: utils.ConfigInfo):
-        connection_checker = PiConnectionChecker(connection_tracker, config_info, func=self.listen)
-        super().__init__(connection_tracker, connection_checker)
-        self.local_server = TanagerServer(port=self.connection_tracker.PI_PORT)
-
-        if not self.connection_tracker.pi_offline:
-            # TODO: don't make a new client each time
-            TanagerClient(
-                (self.connection_tracker.pi_ip, 12345),
-                "setcontrolserveraddress&"
-                + self.local_server.server_address[0]
-                + "&"
-                + str(self.connection_tracker.PI_PORT),
-                self.connection_tracker.PI_PORT,
-            )
+    def __init__(self, connection_manager: utils.ConnectionManager, config_info: utils.ConfigInfo):
+        connection_checker = PiConnectionChecker(connection_manager, config_info, func=self.listen)
+        super().__init__(connection_manager, connection_checker)
+        self.local_server = TanagerServer(port=self.connection_manager.PI_PORT)
+        self.connection_manager = connection_manager
+        self.send_control_address()
         thread = Thread(target=self.local_server.listen)
         thread.start()
 
     def send_control_address(self):
-        # TODO: don't make a new client each time
-        TanagerClient(
-            (self.connection_tracker.pi_ip, 12345),
+        self.connection_manager.send_to_pi(
             "setcontrolserveraddress&"
             + self.local_server.server_address[0]
             + "&"
-            + str(self.connection_tracker.PI_PORT),
-            self.connection_tracker.PI_PORT,
+            + str(self.connection_manager.PI_PORT)
         )
 
     def run(self):
         i = 0
         while True:
-            if not self.connection_tracker.pi_offline and i % 20 == 0:
-                connection = self.connection_checker.check_connection(timeout=8)
-                if not connection:
-                    self.connection_tracker.pi_offline = True
+            if not self.connection_manager.pi_offline and i % 20 == 0:
+                self.connection_checker.check_connection(timeout=8)
             else:
                 self.listen()
             i += 1

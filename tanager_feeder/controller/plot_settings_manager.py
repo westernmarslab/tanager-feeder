@@ -67,9 +67,7 @@ class PlotSettingsManager:
         title_frame = Frame(outer_title_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=15)
         title_frame.pack(fill=BOTH, expand=True)
 
-        title_label = Label(
-            title_frame, text="Plot title:", bg=self.tk_format.bg, fg=self.tk_format.textcolor
-        )
+        title_label = Label(title_frame, text="Plot title:", bg=self.tk_format.bg, fg=self.tk_format.textcolor)
         self.title_entry = Entry(
             title_frame,
             width=20,
@@ -250,9 +248,7 @@ class PlotSettingsManager:
             highlightthickness=1,
         )
         outer_color_frame.pack(expand=True, fill=BOTH)
-        color_label = Label(
-            outer_color_frame, text="Color settings", bg=self.tk_format.bg, fg=self.tk_format.textcolor
-        )
+        color_label = Label(outer_color_frame, text="Color settings", bg=self.tk_format.bg, fg=self.tk_format.textcolor)
         color_label.pack()
 
         color_frame = Frame(outer_color_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=15)
@@ -288,9 +284,7 @@ class PlotSettingsManager:
 
         color_color_frame = Frame(color_frame, bg=self.tk_format.bg, padx=40, pady=0)
         color_color_frame.pack(fill=BOTH, expand=True)
-        color_sample_label = Label(
-            color_color_frame, text="Color: ", bg=self.tk_format.bg, fg=self.tk_format.textcolor
-        )
+        color_sample_label = Label(color_color_frame, text="Color: ", bg=self.tk_format.bg, fg=self.tk_format.textcolor)
         color_sample_label.pack(side=LEFT)
 
         color_names = self.tab.plot.color_names
@@ -331,9 +325,7 @@ class PlotSettingsManager:
             )
             linestyle_label.pack()
 
-            linestyle_frame = Frame(
-                outer_linestyle_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=15
-            )
+            linestyle_frame = Frame(outer_linestyle_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=15)
             linestyle_frame.pack(fill=BOTH, expand=True)
             linestyle_sample_frame = Frame(linestyle_frame, bg=self.tk_format.bg, padx=30, pady=0)
             linestyle_sample_frame.pack(fill=BOTH, expand=True)
@@ -376,9 +368,7 @@ class PlotSettingsManager:
             self.linestyle_linestyle_var.set(linestyle_names[0])
 
             # pylint: disable = no-value-for-parameter
-            linestyle_menu = OptionMenu(
-                linestyle_linestyle_frame, self.linestyle_linestyle_var, *linestyle_names
-            )
+            linestyle_menu = OptionMenu(linestyle_linestyle_frame, self.linestyle_linestyle_var, *linestyle_names)
             linestyle_menu.configure(width=max_len, highlightbackground=self.tk_format.highlightbackgroundcolor)
             linestyle_menu.pack(side=LEFT)
             linestyle_button = Button(
@@ -414,9 +404,7 @@ class PlotSettingsManager:
             )
             markerstyle_label.pack()
 
-            markerstyle_frame = Frame(
-                outer_markerstyle_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=15
-            )
+            markerstyle_frame = Frame(outer_markerstyle_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=15)
             markerstyle_frame.pack(fill=BOTH, expand=True)
             markerstyle_sample_frame = Frame(markerstyle_frame, bg=self.tk_format.bg, padx=30, pady=0)
             markerstyle_sample_frame.pack(fill=BOTH, expand=True)
@@ -443,9 +431,7 @@ class PlotSettingsManager:
             self.markerstyle_sample_var.set(sample_names[0])
 
             # pylint: disable = no-value-for-parameter
-            markerstyle_menu = OptionMenu(
-                markerstyle_sample_frame, self.markerstyle_sample_var, *sample_names
-            )
+            markerstyle_menu = OptionMenu(markerstyle_sample_frame, self.markerstyle_sample_var, *sample_names)
             markerstyle_menu.configure(width=max_len, highlightbackground=self.tk_format.highlightbackgroundcolor)
             markerstyle_menu.pack(side=LEFT)
 
@@ -524,7 +510,6 @@ class PlotSettingsManager:
             bg=self.tk_format.buttonbackgroundcolor,
         )
         legend_button.pack(side=LEFT, padx=(5, 5), pady=(5, 3))
-
 
     def select_tab(self):
         self.controller.view_notebook.select(self.tab.top)

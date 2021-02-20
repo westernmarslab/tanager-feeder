@@ -18,9 +18,6 @@ class ProcessManager:
         self.remote_directory_worker = controller.remote_directory_worker
 
         self.tk_format = utils.TkFormat(self.controller.config_info)
-        self.tk_buttons = []
-        self.entries = []
-        self.tk_check_buttons = []
 
         self.process_input_dir = ""
         self.process_output_dir = ""
@@ -84,7 +81,6 @@ class ProcessManager:
             bg=self.tk_format.buttonbackgroundcolor,
         )
         process_input_browse_button.pack(side=RIGHT, padx=self.tk_format.padx)
-        self.tk_buttons.append(process_input_browse_button)
 
         self.input_dir_var.trace("w", self.validate_input_dir)
 
@@ -99,7 +95,6 @@ class ProcessManager:
         )
         self.input_dir_entry.insert(0, self.process_input_dir)
         self.input_dir_entry.pack(side=RIGHT, padx=self.tk_format.padx, pady=self.tk_format.pady)
-        self.entries.append(self.input_dir_entry)
 
         proc_local_remote_frame = Frame(process_frame, bg=self.tk_format.bg)
         proc_local_remote_frame.pack()
@@ -129,7 +124,6 @@ class ProcessManager:
         self.proc_local_check.pack(side=LEFT, pady=(5, 0), padx=(5, 5))
         if self.proc_local_remote == "local":
             self.proc_local_check.select()
-        self.tk_check_buttons.append(self.proc_local_check)
 
         self.proc_remote_check = Checkbutton(
             proc_local_remote_frame,
@@ -145,7 +139,6 @@ class ProcessManager:
         self.proc_remote_check.pack(side=LEFT, pady=(5, 0), padx=(5, 5))
         if self.proc_local_remote == "remote":
             self.proc_remote_check.select()
-        self.tk_check_buttons.append(self.proc_remote_check)
 
         process_output_frame = Frame(process_frame, bg=self.tk_format.bg)
         process_output_frame.pack(pady=(5, 10))
@@ -158,7 +151,6 @@ class ProcessManager:
             bg=self.tk_format.buttonbackgroundcolor,
         )
         process_output_browse_button.pack(side=RIGHT, padx=self.tk_format.padx)
-        self.tk_buttons.append(process_output_browse_button)
 
         self.output_dir_entry = Entry(
             process_output_frame,
@@ -170,7 +162,6 @@ class ProcessManager:
         )
         self.output_dir_entry.insert(0, self.process_output_dir)
         self.output_dir_entry.pack(side=RIGHT, padx=self.tk_format.padx, pady=self.tk_format.pady)
-        self.entries.append(self.output_dir_entry)
 
         output_file_label = Label(
             process_frame,
@@ -190,7 +181,6 @@ class ProcessManager:
             selectforeground=self.tk_format.selectforeground,
         )
         self.output_file_entry.pack()
-        self.entries.append(self.output_file_entry)
 
         process_check_frame = Frame(process_frame, bg=self.tk_format.bg)
         process_check_frame.pack(pady=(15, 5))
@@ -225,7 +215,6 @@ class ProcessManager:
             bg=self.tk_format.buttonbackgroundcolor,
         )
         process_button.pack(padx=(15, 15), side=LEFT)
-        self.tk_buttons.append(process_button)
 
         process_close_button = Button(
             process_button_frame,
@@ -239,7 +228,6 @@ class ProcessManager:
             command=self.close_process,
         )
         process_close_button.pack(padx=(15, 15), side=LEFT)
-        self.tk_buttons.append(process_close_button)
 
     # Closes process frame
     def close_process(self):

@@ -1,7 +1,6 @@
 from threading import Thread
 import time
 
-from tanager_tcp import TanagerClient
 from tanager_tcp import TanagerServer
 
 from tanager_feeder.listeners.listener import Listener
@@ -11,45 +10,32 @@ from tanager_feeder.dialogs.error_dialog import ErrorDialog
 
 
 class SpecListener(Listener):
-    def __init__(self, connection_tracker: utils.ConnectionTracker, config_info: utils.ConfigInfo):
-        connection_checker = SpecConnectionChecker(connection_tracker, config_info, func=self.listen)
-        super().__init__(connection_tracker, connection_checker)
+    def __init__(self, connection_manager: utils.ConnectionManager, config_info: utils.ConfigInfo):
+        connection_checker = SpecConnectionChecker(connection_manager, config_info, func=self.listen)
+        super().__init__(connection_manager, connection_checker)
         self.unexpected_files = []
         self.wait_for_unexpected_count = 0
         self.alert_lostconnection = True
         self.new_dialogs = True
-        self.local_server = TanagerServer(port=self.connection_tracker.SPEC_PORT)
-        if not self.connection_tracker.spec_offline:
-            # TODO: don't make a new client each time
-            TanagerClient(
-                (self.connection_tracker.spec_ip, 12345),
-                "setcontrolserveraddress&"
-                + self.local_server.server_address[0]
-                + "&"
-                + str(self.connection_tracker.SPEC_PORT),
-                self.connection_tracker.SPEC_PORT,
-            )
+        self.local_server = TanagerServer(port=self.connection_manager.SPEC_PORT)
+        if not self.connection_manager.spec_offline:
+            self.set_control_address()
         thread = Thread(target=self.local_server.listen)
         thread.start()
 
     def set_control_address(self):
-        TanagerClient(
-            (self.connection_tracker.spec_ip, 12345),
+        self.connection_manager.send_to_spec(
             "setcontrolserveraddress&"
             + self.local_server.server_address[0]
             + "&"
-            + str(self.connection_tracker.SPEC_PORT),
-            self.connection_tracker.SPEC_PORT,
+            + str(self.connection_manager.SPEC_PORT)
         )
-        # TODO: don't make a new client each time
 
     def run(self):
         i = 0
         while True:
-            if not self.connection_tracker.spec_offline and i % 20 == 0:
-                connection = self.connection_checker.check_connection(timeout=8)
-                if not connection:
-                    self.connection_tracker.spec_offline = True
+            if not self.connection_manager.spec_offline and i % 20 == 0:
+                self.connection_checker.check_connection(timeout=8)
             else:
                 self.listen()
             i += 1

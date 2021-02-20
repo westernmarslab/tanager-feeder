@@ -369,12 +369,12 @@ class GoniometerView:
 
         node_list = []
         for angle in np.append(np.arange(first_arc_angle, last_angle, increment), last_angle):
-            delta = width/100
-            x1 = math.cos(angle) * (1+delta)
-            x2 = math.cos(angle) * (1-delta)
+            delta = width / 100
+            x1 = math.cos(angle) * (1 + delta)
+            x2 = math.cos(angle) * (1 - delta)
             y = 0
-            z1 = math.sin(angle) * (1+delta)
-            z2 = math.sin(angle) * (1-delta)
+            z1 = math.sin(angle) * (1 + delta)
+            z2 = math.sin(angle) * (1 - delta)
             node_list.append((x1, y, z1))
             node_list.append((x2, y, z2))
         return node_list
@@ -450,9 +450,8 @@ class GoniometerView:
         try:
             self.wireframes["motor az guide"].set_scale(i_radius)
             self.wireframes["science az guide"].set_scale(e_radius)
-        except Exception as e:
-            # TODO: disable broad except
-            raise e
+        except ZeroDivisionError:
+            pass
 
         self.wireframes["e"].set_scale(e_radius)
         self.wireframes["e_base"].set_scale(e_radius)

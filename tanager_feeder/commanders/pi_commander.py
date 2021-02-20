@@ -5,10 +5,6 @@ from tanager_feeder.utils import MovementUnits
 
 
 class PiCommander(Commander):
-    def __init__(self, connection_tracker, listener):
-        super().__init__(connection_tracker.pi_ip, listener)
-        self.connection_tracker = connection_tracker
-
     def configure(self, i: int, e: int, pos: str):
         self.remove_from_listener_queue(["piconfigsuccess"])
         filename = self.encrypt("configure", [i, e, pos])
@@ -77,5 +73,5 @@ class PiCommander(Commander):
             filename = self.encrypt("movetray", [pos, "steps"])
         self.send(filename)
 
-    def send(self, filename: str):
-        return super().send(filename, self.connection_tracker.PI_PORT, self.connection_tracker.pi_offline)
+    def send(self, message: str):
+        return self.connection_manager.send_to_pi(message)

@@ -1,27 +1,15 @@
 from typing import List, Optional
 
-from tanager_tcp import TanagerClient
+from tanager_feeder.utils import ConnectionManager
 
 
 class Commander:
-    def __init__(self, remote_server_ip: str, listener):
+    def __init__(self, connection_manager: ConnectionManager, listener):
         self.listener = listener
-        self.remote_server_ip = remote_server_ip
+        self.connection_manager = connection_manager
 
-    def send(self, filename: str, listening_port: int, offline: bool):
-        if offline:
-            return False
-
-        try:
-            # TODO: don't make a new client each time, invoke client's send method instead.
-            TanagerClient((self.remote_server_ip, 12345), filename, listening_port)
-            return True
-        # pylint: disable=broad-except
-        except Exception as e:
-            # TODO: Figure out what kind of exception this could be
-            print(e)
-            print("ERROR: Could not send message.")
-            return False
+    def send(self, message: str):
+        raise NotImplementedError
 
     def remove_from_listener_queue(self, commands: List):
         for command in commands:

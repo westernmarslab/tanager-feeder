@@ -37,9 +37,7 @@ class Console:
         text_frame = Frame(self.console_frame)
 
         self.some_width = self.controller.control_frame.winfo_width()
-        self.console_log = Text(
-            text_frame, width=self.some_width, bg=self.tk_format.bg, fg=self.tk_format.textcolor
-        )
+        self.console_log = Text(text_frame, width=self.some_width, bg=self.tk_format.bg, fg=self.tk_format.textcolor)
         scrollbar = Scrollbar(text_frame)
         scrollbar.pack(side=RIGHT, fill=Y)
         scrollbar.config(command=self.console_log.yview)

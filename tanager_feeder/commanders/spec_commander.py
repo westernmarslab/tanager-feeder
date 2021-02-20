@@ -4,10 +4,6 @@ from tanager_feeder.commanders.commander import Commander
 
 
 class SpecCommander(Commander):
-    def __init__(self, connection_tracker, listener):
-        super().__init__(connection_tracker.spec_ip, listener)
-        self.connection_tracker = connection_tracker
-
     def take_spectrum(
         self, path: str, basename: str, num: int, label: str, i: Optional[int], e: Optional[int], az: Optional[int]
     ):
@@ -118,5 +114,5 @@ class SpecCommander(Commander):
         self.send(filename)
         return filename
 
-    def send(self, filename):
-        return super().send(filename, self.connection_tracker.SPEC_PORT, self.connection_tracker.spec_offline)
+    def send(self, message):
+        return self.connection_manager.send_to_spec(message)

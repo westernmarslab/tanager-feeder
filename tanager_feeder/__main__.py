@@ -74,22 +74,22 @@ def main():
         with open(local_config_loc + "ip_addresses.txt", "r") as ip_config:
             spec_ip = ip_config.readline().strip("\n")
             pi_ip = ip_config.readline().strip("\n")
-        connection_tracker = utils.ConnectionTracker(spec_ip, pi_ip)
+        connection_tracker = utils.ConnectionManager(spec_ip, pi_ip)
     except FileNotFoundError:
         print("Failed to load ip config.")
         with open(local_config_loc + "ip_addresses.txt", "w+") as ip_config:
             ip_config.write("spec_compy_ip\n")
             ip_config.write("raspberrypi")
-        connection_tracker = utils.ConnectionTracker()
+        connection_tracker = utils.ConnectionManager()
 
     icon_loc = package_loc + "exception"  # eventually someone should make this icon thing work. I haven't!
     config_info = utils.ConfigInfo(local_config_loc, global_config_loc, icon_loc, utils.NUMLEN, opsys)
 
-    connection_tracker.pi_offline = True
-    connection_tracker.spec_offline = True
-    launch(connection_tracker, config_info)
+    # connection_tracker.pi_offline = True
+    # connection_tracker.spec_offline = True
+    # launch(connection_tracker, config_info)
 
-    # check_spec_connection(connection_tracker, config_info)
+    check_spec_connection(connection_tracker, config_info)
 
 
 def check_spec_connection(connection_tracker, config_info):

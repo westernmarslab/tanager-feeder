@@ -4,13 +4,13 @@ from tanager_feeder.connection_checkers.connection_checker import ConnectionChec
 from tanager_feeder.dialogs.dialog import Dialog
 from tanager_feeder.dialogs.change_ip_dialog import ChangeIPDialog
 from tanager_feeder.dialogs.error_dialog import ErrorDialog
-from tanager_feeder.utils import CompyTypes, ConfigInfo, ConnectionTracker
+from tanager_feeder.utils import CompyTypes, ConfigInfo, ConnectionManager
 
 
 class SpecConnectionChecker(ConnectionChecker):
     def __init__(
         self,
-        connection_tracker: ConnectionTracker,
+        connection_manager: ConnectionManager,
         config_info: ConfigInfo,
         controller=None,
         func=None,
@@ -18,13 +18,13 @@ class SpecConnectionChecker(ConnectionChecker):
     ):
         if args is None:
             args = []
-        super().__init__(CompyTypes.SPEC_COMPY.value, connection_tracker, config_info, controller, func, args)
+        super().__init__(connection_manager, config_info, controller, func, args)
 
     def set_work_offline(self):
-        self.connection_tracker.spec_offline = True
+        self.connection_manager.spec_offline = True
 
     def offline(self):
-        return self.connection_tracker.spec_offline
+        return self.connection_manager.spec_offline
 
     def lost_dialog(self, buttons: Dict):
         ErrorDialog(
@@ -50,10 +50,23 @@ class SpecConnectionChecker(ConnectionChecker):
 
     def ask_ip(self):
         ChangeIPDialog(
-            self.connection_tracker,
+            self.connection_manager,
             title="Change IP",
             label="Enter the IP address for the spectrometer computer.\n\n"
             "The IP address is displayed in the ASD feeder terminal at startup.",
             which_compy=CompyTypes.SPEC_COMPY.value,
             config_loc=self.config_loc,
         )
+
+    def check_connection(self, timeout: int = 3):
+        if self.connection_manager.spec_offline:
+            connected = self.connection_manager.connect_spec(timeout)
+        else:
+            connected = self.connection_manager.send_to_spec("test")
+
+        if not connected:
+            self.alert_not_connected()
+        else:
+            self.func(*self.args)
+
+        return connected
