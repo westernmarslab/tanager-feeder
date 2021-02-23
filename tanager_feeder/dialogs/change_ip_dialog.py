@@ -33,6 +33,8 @@ class ChangeIPDialog(Dialog):
             selectforeground=self.tk_format.selectforeground,
         )
         if which_compy == CompyTypes.SPEC_COMPY:
+            print("spec ip")
+            print(self.connection_manager.spec_ip)
             self.ip_entry.insert(0, self.connection_manager.spec_ip)
         else:
             self.ip_entry.insert(0, self.connection_manager.pi_ip)
@@ -45,16 +47,22 @@ class ChangeIPDialog(Dialog):
     def ok(self):
         if self.which_compy == CompyTypes.SPEC_COMPY.value:
             self.connection_manager.spec_ip = self.ip_entry.get()
+            print(self.connection_manager.spec_ip)
 
         elif self.which_compy == CompyTypes.PI.value:
             self.connection_manager.pi_ip = self.ip_entry.get()
 
         with open(self.config_loc + "ip_addresses.txt", "w+") as f:
             if self.connection_manager.spec_ip != "":
+                print("writing ip! ")
+                print("spec ip")
+                print(self.connection_manager.spec_ip)
                 f.write(self.connection_manager.spec_ip + "\n")
             else:
                 f.write("spec_compy_ip\n")
             if self.connection_manager.spec_ip != "":
+                print("writing pi_pi")
+                print(self.connection_manager.pi_ip)
                 f.write(self.connection_manager.pi_ip)
             else:
                 f.write("raspberrypi")

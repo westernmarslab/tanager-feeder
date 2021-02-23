@@ -19,7 +19,7 @@ from tkinter import (
     SINGLE,
     Widget,
 )
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 import psutil
@@ -54,17 +54,35 @@ elif computer == "new":
 
 
 class ConnectionManager:
-    PI_PORT = 12345
-    SPEC_PORT = 54321
-    CONTROL_PORT = 12345
+    LISTEN_FOR_PI_PORT = 12345
+    LISTEN_FOR_SPEC_PORT = 54321
+    REMOTE_PORT = 12345
 
     def __init__(self, spec_ip="192.168.86.50", pi_ip="raspberrypi"):
         self.spec_offline = True
         self.pi_offline = True
-        self.spec_ip = spec_ip
-        self.pi_ip = pi_ip
-        self.spec_client = TanagerClient((spec_ip, self.SPEC_PORT), self.CONTROL_PORT)
-        self.pi_client = TanagerClient((pi_ip, self.PI_PORT), self.CONTROL_PORT)
+        self._spec_ip = spec_ip
+        self._pi_ip = pi_ip
+        self.spec_client = TanagerClient((spec_ip, self.REMOTE_PORT), self.LISTEN_FOR_SPEC_PORT)
+        self.pi_client = TanagerClient((pi_ip, self.REMOTE_PORT), self.LISTEN_FOR_PI_PORT)
+
+    @property
+    def spec_ip(self):
+        return self._spec_ip
+
+    @spec_ip.setter
+    def spec_ip(self, new_ip):
+        self._spec_ip = new_ip
+        self.spec_client = TanagerClient((new_ip, self.REMOTE_PORT), self.LISTEN_FOR_SPEC_PORT)
+
+    @property
+    def pi_ip(self):
+        return self._pi_ip
+
+    @pi_ip.setter
+    def pi_ip(self, new_ip):
+        self._pi_ip = new_ip
+        self.pi_client = TanagerClient((new_ip, self.REMOTE_PORT), self.LISTEN_FOR_.PI_PORT)
 
     def send_to_spec(self, message: str) -> bool:
         if not self.spec_offline:
@@ -93,6 +111,108 @@ class ConfigInfo:
         self.opsys = opsys
         self.num_len = num_len
 
+class ControllerType:
+    """This class, which is extended by Controller, is defined so as to avoid
+      circular imports when adding type hints to classes that are imported by
+      Controller and also reference an instance of Controller"""
+    def __init__(self, connection_tracker, config_info):
+        self.connection_tracker = connection_tracker
+        self.config_info = config_info
+        self.tk_format = None
+        self.view_notebook = None
+        self.master = None
+        self.incidence_entries = None
+        self.azimuth_entries = None
+        self.emission_entries = None
+        self.opt = None
+        self.wr = None
+        self.min_science_i = None
+        self.max_science_i = None
+        self.min_science_e = None
+        self.max_science_e = None
+        self.min_science_az = None
+        self.max_science_az = None
+        self.check_viewing_geom_for_manual_operation = None
+        self.spec_config_count = None
+        self.sample_label_entries = None
+        self.current_sample_gui_index = None
+        self.validate_sample_name = None
+        self.log = None
+        self.instrument_config_entry = None
+        self.manual_automatic = None
+
+        # for plot_manager
+        self.plot = None
+        self.plotter = None
+        self.goniometer_view = None
+
+        # for process_manager
+        self.remote_directory_worker = None
+        self.process_cmd = None
+        self.plot_manager = None
+        self.script_running = None
+        self.spec_listener = None
+        self.spec_commander = None
+        self.text_only = None
+        self.next_in_queue = None
+
+        # for console
+        self.execute_cmd = None
+        self.control_frame= None
+        self.view_frame = None
+
+        # for cli_manager
+        self.set_manual_automatic = None
+        self.fail_script_command = None
+        self.min_motor_i = None
+        self.max_motor_i = None
+        self.min_motor_e = None
+        self.max_motor_e = None
+        self.min_motor_az = None
+        self.max_motor_az = None
+
+        self.configure_pi = None
+        self.take_spectrum = None
+        self.acquire = None
+        self.add_geometry = None
+        self.set_individual_range = None
+        self.individual_range = None
+        self.light_start_entry = None
+        self.light_end_entry = None
+        self.detector_start_entry = None
+        self.detector_end_entry = None
+        self.azimuth_start_entry = None
+        self.azimuth_end_entry = None
+        self.light_increment_entry = None
+        self.detector_increment_entry = None
+        self.azimuth_increment_entry = None
+
+        self.incidence_entries = None
+        self.emission_entries = None
+        self.azimuth_entries = None
+
+        self.sample_frames = None
+        self.available_sample_positions = None
+        self.taken_sample_positions = None
+        self.remove_sample = None
+        self.add_sample = None
+        self.set_taken_sample_positions = None
+        self.unfreeze = None
+        self.spec_save_dir_entry = None
+        self.sample_pos_vars = None
+        self.spec_basename_entry = None
+        self.spec_startnum_entry = None
+        self.set_save_config = None
+        self.configure_instrument = None
+        self.wait_dialog = None
+        self.move_tray = None
+        self.set_emission = None
+        self.set_incidence = None
+        self.set_azimuth = None
+        self.get_movements = None
+        self.console = None
+
+
 
 # Which spectrometer computer are you using? This should probably be desktop, but could be 'new' for the new lappy or
 # 'old' for the ancient laptop.
@@ -104,10 +224,11 @@ def limit_len(input_str, max_len):
     return input_str[:max_len]
 
 
-def validate_int_input(input_int, min_int, max_int):
+def validate_int_input(input_int: Any, min_int: int, max_int: int):
     try:
         input_int = int(input_int)
-    except ValueError:
+    except (ValueError, TypeError):
+        # TODO: all valueerror exception catching should probably be value, type
         return False
     if input_int > max_int:
         return False
@@ -259,7 +380,7 @@ class VerticalScrolledFrame(Frame):
         self.canvas.bind("<Configure>", self._configure_canvas)
         self.width = width
 
-    def _configure_canvas(self, event: Event):
+    def _configure_canvas(self, event: Optional[Event] = None):
         # pylint: disable = unused-argument
         if self.canvas.winfo_height() > self.min_height:
             self.interior.config(height=self.canvas.winfo_height())
@@ -354,7 +475,11 @@ def arctan(ratio):
     return np.arctan(ratio) * 180 / 3.14159
 
 
-def get_lat1_lat2_delta_long(i, e, az):
+def get_lat1_lat2_delta_long(i: int, e: int, az: int):
+    print(i)
+    print(e)
+    print(type(i))
+    print(type(e))
     if np.sign(i) == np.sign(e):
         delta_long = az
     else:
@@ -364,7 +489,10 @@ def get_lat1_lat2_delta_long(i, e, az):
     return lat1, lat2, delta_long
 
 
-def get_phase_angle(i, e, az):
+def get_phase_angle(i: int, e: int, az: int):
+    print(i)
+    print(e)
+    print(az)
     lat1, lat2, delta_long = get_lat1_lat2_delta_long(i, e, az)
     dist = np.abs(arccos(sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(delta_long)))
     return dist

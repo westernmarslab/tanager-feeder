@@ -63,8 +63,9 @@ class RemoteDirectoryWorker:
 
     def mkdir(self, newdir):
         self.spec_commander.mkdir(newdir)
-
-        while True:
+        timeout = 2*utils.BUFFER
+        t = 0
+        while t < timeout:
             if "mkdirsuccess" in self.listener.queue:
                 self.listener.queue.remove("mkdirsuccess")
                 return "mkdirsuccess"
@@ -76,3 +77,5 @@ class RemoteDirectoryWorker:
                 return "mkdirfailed"
 
             time.sleep(utils.INTERVAL)
+            t+=utils.INTERVAL
+        return "mkdirfailed"

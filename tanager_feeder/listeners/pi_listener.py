@@ -12,7 +12,7 @@ class PiListener(Listener):
     def __init__(self, connection_manager: utils.ConnectionManager, config_info: utils.ConfigInfo):
         connection_checker = PiConnectionChecker(connection_manager, config_info, func=self.listen)
         super().__init__(connection_manager, connection_checker)
-        self.local_server = TanagerServer(port=self.connection_manager.PI_PORT)
+        self.local_server = TanagerServer(port=self.connection_manager.LISTEN_FOR_PI_PORT)
         self.connection_manager = connection_manager
         self.send_control_address()
         thread = Thread(target=self.local_server.listen)
@@ -23,7 +23,7 @@ class PiListener(Listener):
             "setcontrolserveraddress&"
             + self.local_server.server_address[0]
             + "&"
-            + str(self.connection_manager.PI_PORT)
+            + str(self.connection_manager.LISTEN_FOR_PI_PORT)
         )
 
     def run(self):

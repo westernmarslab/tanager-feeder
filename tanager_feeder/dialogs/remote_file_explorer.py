@@ -1,4 +1,4 @@
-from tkinter import Button, END, Entry, Frame, StringVar, RIGHT
+from tkinter import Button, END, Entry, Frame, StringVar, RIGHT, Event
 from typing import Dict, List, Optional, Union
 
 from tanager_feeder.dialogs.dialog import Dialog
@@ -87,7 +87,9 @@ class RemoteFileExplorer(Dialog):
                 else:
                     self.expand(newparent=path)
 
-    def validate_path_entry_input(self):
+    def validate_path_entry_input(self, *args):
+        print(args)
+        # TODO: figure out where extra args came from
         text = self.path_entry.get()
         text = utils.rm_reserved_chars(text)
 
@@ -125,6 +127,7 @@ class RemoteFileExplorer(Dialog):
 
     def expand(
         self,
+        event: Optional[Event] = None,
         newparent: Optional[str] = None,
         buttons: Optional[Dict] = None,
         select: Optional[str] = None,

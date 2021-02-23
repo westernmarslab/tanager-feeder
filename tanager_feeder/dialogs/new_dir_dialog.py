@@ -3,7 +3,7 @@ from tanager_feeder.dialogs.dialog import Dialog
 
 
 class NewDirDialog(Dialog):
-    def __init__(self, controller, fexplorer, label="Name: ", title="New Directoy"):
+    def __init__(self, controller, fexplorer, label="New directory name: ", title="New Directoy"):
         super().__init__(
             controller, label=label, title=title, buttons={"ok": {self.get: []}, "cancel": {}}, button_width=15
         )

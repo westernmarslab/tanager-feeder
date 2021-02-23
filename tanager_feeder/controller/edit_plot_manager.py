@@ -1,12 +1,14 @@
 from tkinter import Entry, Label, Checkbutton, Frame, LEFT, EXTENDED, END, IntVar
+from typing import List, Dict, Tuple
 
 from tanager_feeder.dialogs.dialog import Dialog
 from tanager_feeder.dialogs.error_dialog import ErrorDialog
+from tanager_feeder.plotter.tab import Tab
 from tanager_feeder import utils
 
 
 class EditPlotManager:
-    def __init__(self, controller):
+    def __init__(self, controller: utils.ControllerType):
         self.controller = controller
         self.tab = None
         self.tk_format = utils.TkFormat(self.controller.config_info)
@@ -21,7 +23,7 @@ class EditPlotManager:
         self.exclude_specular_check = None
         self.spec_tolerance_entry = None
 
-    def show(self, tab, existing_sample_indices, sample_options, existing_geoms, current_title):
+    def show(self, tab: Tab, existing_sample_indices: List, sample_options: List, existing_geoms: Dict, current_title: str):
         self.tab = tab
         buttons = {
             "ok": {
@@ -199,26 +201,26 @@ class EditPlotManager:
             self.plot_samples_listbox.select_set(i)
         self.plot_samples_listbox.config(height=8)
 
-    def check_angle_lists(self, incidences, emissions, azimuths):
-        def check_list(angle_list):
+    def check_angle_lists(self, incidences: str, emissions: str, azimuths: str) -> Tuple[List, List, List]:
+        def check_list(list_to_check: str) -> Tuple[List, List]:
             invalid_list = []
-            angle_list = angle_list.split(",")
-            if "None" in angle_list or "none" in angle_list:
-                while "None" in angle_list:
-                    angle_list.remove("None")
-                while "none" in angle_list:
-                    angle_list.remove("none")
-                angle_list.append(None)
-            if angle_list == [""]:
-                angle_list = []
-            for n, angle in enumerate(angle_list):
+            list_to_check = list_to_check.split(",")
+            if "None" in list_to_check or "none" in list_to_check:
+                while "None" in list_to_check:
+                    list_to_check.remove("None")
+                while "none" in list_to_check:
+                    list_to_check.remove("none")
+                list_to_check.append(None)
+            if list_to_check == [""]:
+                list_to_check = []
+            for n, angle in enumerate(list_to_check):
                 if angle is not None:
                     try:
-                        angle_list[n] = int(angle)
+                        list_to_check[n] = int(angle)
                     except ValueError:
                         invalid_list.append(angle)
 
-            return angle_list, invalid_list
+            return list_to_check, invalid_list
 
         incidences, invalid_incidences = check_list(incidences)
         emissions, invalid_emissions = check_list(emissions)

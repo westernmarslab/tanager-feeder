@@ -5,7 +5,7 @@ from tanager_feeder import utils
 
 
 class CliManager:
-    def __init__(self, controller):
+    def __init__(self, controller: utils.ControllerType):
         self.controller = controller
 
     def execute_cmd(
@@ -13,9 +13,6 @@ class CliManager:
     ):  # In a separate method because that allows it to be spun off in a new thread, so tkinter mainloop continues,
         # which means that the console log gets updated immediately e.g. if you say sleep(10) it will say sleep up in
         # the log while it is sleeping.
-
-        def get_val(param):
-            return param.split("=")[1].strip(" ").strip('"').strip("'")
 
         if cmd == "wr()":
             if not self.controller.script_running:
@@ -174,7 +171,7 @@ class CliManager:
                 else:
                     index = 0
                     if len(params) == 3:
-                        index = int(get_val(params[2]))
+                        index = int(self.get_val(params[2]))
                     valid_index = utils.validate_int_input(index, 0, len(self.controller.emission_entries) - 1)
                     if not valid_index:
                         self.controller.log(
@@ -188,7 +185,7 @@ class CliManager:
                         self.controller.incidence_entries[index].insert(0, params[0])
                         self.controller.emission_entries[index].delete(0, "end")
                         self.controller.emission_entries[index].insert(0, params[1])
-                        self.controller.azimuth_entires[index].delete(0, "end")
+                        self.controller.azimuth_entries[index].delete(0, "end")
                         self.controller.azimuth_entries[index].insert(0, params[2])
             return True
 
@@ -274,35 +271,35 @@ class CliManager:
                 if "i_start" in param:
                     self.controller.light_start_entry.delete(0, "end")
                     try:
-                        self.controller.light_start_entry.insert(0, get_val(param))
+                        self.controller.light_start_entry.insert(0, self.get_val(param))
                     except IndexError:
                         self.controller.fail_script_command("Error: Unable to parse initial incidence angle")
                         return False
                 elif "i_end" in param:
                     self.controller.light_end_entry.delete(0, "end")
                     try:
-                        self.controller.light_end_entry.insert(0, get_val(param))
+                        self.controller.light_end_entry.insert(0, self.get_val(param))
                     except IndexError:
                         self.controller.fail_script_command("Error: Unable to parse final incidence angle")
                         return False
                 elif "e_start" in param:
                     self.controller.detector_start_entry.delete(0, "end")
                     try:
-                        self.controller.detector_start_entry.insert(0, get_val(param))
+                        self.controller.detector_start_entry.insert(0, self.get_val(param))
                     except IndexError:
                         self.controller.fail_script_command("Error: Unable to parse initial emission angle")
                         return False
                 elif "e_end" in param:
                     self.controller.detector_end_entry.delete(0, "end")
                     try:
-                        self.controller.detector_end_entry.insert(0, get_val(param))
+                        self.controller.detector_end_entry.insert(0, self.get_val(param))
                     except IndexError:
                         self.controller.fail_script_command("Error: Unable to parse final emission angle")
                         return False
                 elif "az_start" in param:
                     self.controller.azimuth_start_entry.delete(0, "end")
                     try:
-                        self.controller.azimuth_start_entry.insert(0, get_val(param))
+                        self.controller.azimuth_start_entry.insert(0, self.get_val(param))
                     except IndexError:
                         self.controller.log("Error: Unable to parse initial azimuth angle")
                         self.controller.queue = []
@@ -310,28 +307,28 @@ class CliManager:
                 elif "az_end" in param:
                     self.controller.azimuth_end_entry.delete(0, "end")
                     try:
-                        self.controller.azimuth_end_entry.insert(0, get_val(param))
+                        self.controller.azimuth_end_entry.insert(0, self.get_val(param))
                     except IndexError:
                         self.controller.fail_script_command("Error: Unable to parse final azimuth angle")
                         return False
                 elif "i_increment" in param:
                     self.controller.light_increment_entry.delete(0, "end")
                     try:
-                        self.controller.light_increment_entry.insert(0, get_val(param))
+                        self.controller.light_increment_entry.insert(0, self.get_val(param))
                     except IndexError:
                         self.controller.fail_script_command("Error: Unable to parse incidence angle increment.")
                         return False
                 elif "e_increment" in param:
                     self.controller.detector_increment_entry.delete(0, "end")
                     try:
-                        self.controller.detector_increment_entry.insert(0, get_val(param))
+                        self.controller.detector_increment_entry.insert(0, self.get_val(param))
                     except IndexError:
                         self.controller.fail_script_command("Error: Unable to parse emission angle increment.")
                         return False
                 elif "az_increment" in param:
                     self.controller.azimuth_increment_entry.delete(0, "end")
                     try:
-                        self.controller.azimuth_increment_entry.insert(0, get_val(param))
+                        self.controller.azimuth_increment_entry.insert(0, self.get_val(param))
                     except IndexError:
                         self.controller.fail_script_command("Error: Unable to parse azimuth angle increment.")
                         return False
@@ -355,7 +352,7 @@ class CliManager:
             # First clear all existing sample names
             while len(self.controller.sample_frames) > 1:
                 self.controller.remove_sample(-1)
-            self.controller.set_text(self.controller.sample_label_entries[0], "")
+            utils.set_text(self.controller.sample_label_entries[0], "")
 
             # Then add in samples in order specified in params. Each param should be a sample name and pos.
             skip_count = 0  # If a param is badly formatted, we'll skip it. Keep track of how many are skipped in order
@@ -364,7 +361,7 @@ class CliManager:
                 # TODO: test this code
                 try:
                     pos = param.split("=")[0].strip(" ")
-                    name = get_val(param)
+                    name = self.get_val(param)
                 except IndexError:
                     self.controller.fail_script_command(
                         "Error: could not parse command "
@@ -372,6 +369,7 @@ class CliManager:
                         + ". Use the format set_samples({position}={name}) e.g. set_samples(1=Basalt)"
                     )
                     skip_count += 1
+                    continue
                 valid_pos = utils.validate_int_input(pos, 1, 5)
                 if (
                     self.controller.available_sample_positions[int(pos) - 1] in self.controller.taken_sample_positions
@@ -391,7 +389,7 @@ class CliManager:
                     self.controller.add_sample()
 
                 if valid_pos:
-                    self.controller.set_text(self.controller.sample_label_entries[i - skip_count], name)
+                    utils.set_text(self.controller.sample_label_entries[i - skip_count], name)
                     self.controller.sample_pos_vars[i - skip_count].set(
                         self.controller.available_sample_positions[int(pos) - 1]
                     )
@@ -419,7 +417,7 @@ class CliManager:
                 params[i] = param.strip(" ")  # Need to do this before looking for setup only
                 if "directory" in param:
                     try:
-                        save_dir = get_val(param)
+                        save_dir = self.get_val(param)
                     except IndexError:
                         self.controller.fail_script_command("Error: Could not parse command.")
                         return False
@@ -427,7 +425,7 @@ class CliManager:
                     self.controller.spec_save_dir_entry.insert(0, save_dir)
                 elif "basename" in param:
                     try:
-                        basename = get_val(param)
+                        basename = self.get_val(param)
                     except IndexError:
                         self.controller.fail_script_command("Error: Could not parse command.")
                         return False
@@ -435,7 +433,7 @@ class CliManager:
                     self.controller.spec_basename_entry.insert(0, basename)
                 elif "num" in param:
                     try:
-                        num = get_val(param)
+                        num = self.get_val(param)
                     except IndexError:
                         self.controller.fail_script_command("Error: Could not parse command.")
                         return False
@@ -513,10 +511,10 @@ class CliManager:
             while elapsed < num - 10:
                 time.sleep(10)
                 elapsed += 10
-                self.controller.console_log.insert(END, "\t" + str(elapsed))
+                self.controller.log.insert("\t" + str(elapsed))
             remaining = num - elapsed
             time.sleep(remaining)
-            self.controller.console_log.insert(END, "\tDone sleeping.\n")
+            self.controller.log.insert("\tDone sleeping.\n")
             if len(self.controller.queue) > 0:
                 self.controller.next_in_queue()
             return True
@@ -727,6 +725,7 @@ class CliManager:
                 az = cmd.split("set_motor_azimuth(")[1].strip(")")
             except IndexError:
                 self.controller.fail_script_command(f"Error: could not parse command: {cmd}")
+                return False
 
             valid_az = utils.validate_int_input(az, self.controller.min_motor_az, self.controller.max_motor_az)
             if valid_az:
@@ -957,3 +956,7 @@ class CliManager:
 
         self.controller.fail_script_command("Error: could not parse command " + cmd)
         return False
+
+    @staticmethod
+    def get_val(param):
+        return param.split("=")[1].strip(" ").strip('"').strip("'")

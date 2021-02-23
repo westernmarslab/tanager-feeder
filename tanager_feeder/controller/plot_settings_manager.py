@@ -15,11 +15,12 @@ import numpy as np
 from tanager_feeder.dialogs.error_dialog import ErrorDialog
 from tanager_feeder.dialogs.custom_color_dialog import CustomColorDialog
 from tanager_feeder.dialogs.vertical_scrolled_dialog import VerticalScrolledDialog
+from tanager_feeder.plotter.tab import Tab
 from tanager_feeder import utils
 
 
 class PlotSettingsManager:
-    def __init__(self, controller):
+    def __init__(self, controller: utils.ControllerType):
         self.controller = controller
         self.tk_format = utils.TkFormat(controller.config_info)
 
@@ -44,7 +45,7 @@ class PlotSettingsManager:
 
         self.title_entry = None
 
-    def show(self, tab):
+    def show(self, tab: Tab) -> None:
         # If the user already has dialogs open for editing the plot, close the extras to avoid confusion.
         self.tab = tab
         self.tab.freeze()  # You have to finish dealing with this before, say, opening another analysis box.
@@ -511,11 +512,11 @@ class PlotSettingsManager:
         )
         legend_button.pack(side=LEFT, padx=(5, 5), pady=(5, 3))
 
-    def select_tab(self):
+    def select_tab(self) -> None:
         self.controller.view_notebook.select(self.tab.top)
         utils.lift_widget(self.plot_settings_dialog.top)
 
-    def apply_x(self):
+    def apply_x(self) -> None:
         self.controller.view_notebook.select(self.tab.top)
 
         try:
@@ -531,7 +532,7 @@ class PlotSettingsManager:
                 label="Error: Invalid x limits: " + self.left_zoom_entry_x.get() + ", " + self.right_zoom_entry_x.get(),
             )
 
-    def apply_y(self):
+    def apply_y(self) -> None:
         self.controller.view_notebook.select(self.tab.top)
         try:
             y1 = float(self.left_zoom_entry_y.get())
@@ -546,9 +547,8 @@ class PlotSettingsManager:
                 label="Error! Invalid y limits: " + self.left_zoom_entry_y.get() + ", " + self.right_zoom_entry_y.get(),
             )
 
-    def apply_z(self):
+    def apply_z(self) -> None:
         self.controller.view_notebook.select(self.tab.top)
-
         try:
             z1 = float(self.left_zoom_entry_z.get())
             z2 = float(self.right_zoom_entry_z.get())
@@ -562,15 +562,15 @@ class PlotSettingsManager:
                 label="Error: Invalid z limits: " + self.left_zoom_entry_z.get() + ", " + self.right_zoom_entry_z.get(),
             )
 
-    def set_title(self):
+    def set_title(self) -> None:
         self.tab.set_title(self.title_entry.get())
         utils.lift_widget(self.plot_settings_dialog.top)
 
-    def set_custom_color(self, custom_color):
+    def set_custom_color(self, custom_color: int) -> None:
         self.tab.set_color(self.color_sample_var.get(), custom_color)
         utils.lift_widget(self.plot_settings_dialog.top)
 
-    def set_color(self):
+    def set_color(self) -> None:
         if self.color_color_var.get() == "Custom":
             custom_color = None
             try:
@@ -584,14 +584,14 @@ class PlotSettingsManager:
 
         utils.lift_widget(self.plot_settings_dialog.top)
 
-    def set_linestyle(self):
+    def set_linestyle(self) -> None:
         self.tab.set_linestyle(self.linestyle_sample_var.get(), self.linestyle_linestyle_var.get())
         utils.lift_widget(self.plot_settings_dialog.top)
 
-    def set_markerstyle(self):
+    def set_markerstyle(self) -> None:
         self.tab.set_markerstyle(self.markerstyle_sample_var.get(), self.markerstyle_markerstyle_var.get())
         utils.lift_widget(self.plot_settings_dialog.top)
 
-    def set_legend(self):
+    def set_legend(self) -> None:
         self.tab.set_legend_style(self.legend_legend_var.get())
         utils.lift_widget(self.plot_settings_dialog.top)

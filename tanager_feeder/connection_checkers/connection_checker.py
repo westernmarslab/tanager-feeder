@@ -31,7 +31,7 @@ class ConnectionChecker:
         buttons = {
             "retry": {
                 self.release: [],
-                self.check_connection: [6],
+                self.check_connection: [4],
             },
             "work offline": {self.set_work_offline: [], self.func: self.args},
             "Change IP": {self.ask_ip: []},

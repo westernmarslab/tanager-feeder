@@ -8,7 +8,7 @@ from tanager_feeder import utils
 
 
 class PlotManager:
-    def __init__(self, controller):
+    def __init__(self, controller: utils.ControllerType):
         self.controller = controller
         self.plotter = self.controller.plotter
         self.config_info = controller.config_info
@@ -45,7 +45,7 @@ class PlotManager:
         self.plot_input_dir_entry = None
         self.plot_top = None
 
-    def show(self):
+    def show(self) -> None:
         self.plot_top = Toplevel(self.controller.master)
         self.plot_top.wm_title("Plot")
         plot_frame = Frame(self.plot_top, bg=self.tk_format.bg, pady=2 * self.tk_format.pady, padx=15)
@@ -172,11 +172,11 @@ class PlotManager:
         )
         process_close_button.pack(pady=(20, 20), padx=(15, 15), side=LEFT)
 
-    def close_plot(self):
+    def close_plot(self) -> None:
         self.plot_top.destroy()
 
     # Toggle back and forth between plotting your data from a remote or local file
-    def local_plot_cmd(self):
+    def local_plot_cmd(self) -> None:
         if self.plot_local.get() and not self.plot_remote.get():
             return
         if self.plot_remote.get() and not self.plot_local.get():
@@ -187,7 +187,7 @@ class PlotManager:
             self.plot_remote_check.deselect()
 
     # Toggle back and forth between plotting your data from a remote or local file
-    def remote_plot_cmd(self):
+    def remote_plot_cmd(self) -> None:
         if self.plot_local.get() and not self.plot_remote.get():
             return
         if self.plot_remote.get() and not self.plot_local.get():
@@ -197,7 +197,7 @@ class PlotManager:
         else:
             self.plot_local_check.deselect()
 
-    def choose_plot_file(self):
+    def choose_plot_file(self) -> None:
         init_file = self.plot_input_dir_entry.get()
         relative_file = init_file.split("/")[-1].split("\\")[-1]
         init_dir = init_file.strip(relative_file)
@@ -259,6 +259,7 @@ class PlotManager:
                     self.plotter.save_dir = "/".join(plot_input_file.split("/")[0:-1])
 
         except Exception as e:
+            #TODO: figure out options for exceptions.
             print(e)
             Dialog(
                 self.controller,

@@ -2,6 +2,7 @@ import os
 import time
 from tkinter import RIGHT, LEFT, Entry, Button, Label, Checkbutton, Toplevel, Frame, StringVar, IntVar, INSERT
 from tkinter.filedialog import askdirectory
+from typing import Tuple, Any
 
 from tanager_feeder.dialogs.dialog import Dialog
 from tanager_feeder.dialogs.error_dialog import ErrorDialog
@@ -10,7 +11,7 @@ from tanager_feeder import utils
 
 
 class ProcessManager:
-    def __init__(self, controller):
+    def __init__(self, controller: utils.ControllerType):
         # The commander is in charge of sending all the commands for the spec compy to read
         # If the user has saved spectra with this program before, load in their previously used directories.
         self.controller = controller
@@ -55,7 +56,7 @@ class ProcessManager:
         self.output_file_entry = None
         self.process_save_dir_check = None
 
-    def show(self):
+    def show(self) -> None:
         self.process_top = Toplevel(self.controller.master)
         self.process_top.wm_title("Process Data")
         process_frame = Frame(self.process_top, bg=self.tk_format.bg, pady=15, padx=15)
@@ -230,11 +231,11 @@ class ProcessManager:
         process_close_button.pack(padx=(15, 15), side=LEFT)
 
     # Closes process frame
-    def close_process(self):
+    def close_process(self) -> None:
         self.process_top.destroy()
 
     # Toggle back and forth between saving your processed data remotely or locally
-    def local_process_cmd(self):
+    def local_process_cmd(self) -> None:
         if self.proc_local.get() and not self.proc_remote.get():
             return
         if self.proc_remote.get() and not self.proc_local.get():
@@ -247,7 +248,7 @@ class ProcessManager:
             self.output_dir_entry.delete(0, "end")
 
     # Toggle back and forth between saving your processed data remotely or locally
-    def remote_process_cmd(self):
+    def remote_process_cmd(self) -> None:
         if self.proc_local.get() and not self.proc_remote.get():
             return
         if self.proc_remote.get() and not self.proc_local.get():
@@ -259,8 +260,8 @@ class ProcessManager:
             self.proc_local_remote = "remote"
             self.output_dir_entry.delete(0, "end")
 
-    def choose_process_output_dir(self):
-        init_dir = self.output_dir_entry.get()
+    def choose_process_output_dir(self) -> None:
+        init_dir: str = self.output_dir_entry.get()
         if self.proc_remote.get():
             RemoteFileExplorer(
                 self,
@@ -280,9 +281,8 @@ class ProcessManager:
                 self.output_dir_entry.insert(0, output_dir)
         self.process_top.lift()
 
-    def setup_process(self):
-
-        output_file = self.output_file_entry.get()
+    def setup_process(self) -> Tuple[str, str, str]:
+        output_file: str = self.output_file_entry.get()
 
         if output_file == "":
             ErrorDialog(self.controller, label="Error: Enter an output file name")
@@ -325,20 +325,21 @@ class ProcessManager:
         # TODO: Figure out temp loc for remote data
         return input_directory, output_directory, output_file
 
-    def finish_processing(self):
-        final_data_destination = self.output_file_entry.get()
+    def finish_processing(self) -> Tuple[str, str]:
+        #TODO: final_data_destination seems to just become log base?
+        final_data_destination: str = self.output_file_entry.get()
         if "." not in final_data_destination:
             final_data_destination = final_data_destination + ".csv"
-        data_base = ".".join(final_data_destination.split(".")[0:-1])
+        data_base: str = ".".join(final_data_destination.split(".")[0:-1])
 
         if self.config_info.opsys in ("Linux", "Mac"):
-            final_data_destination = self.output_dir_entry.get() + "/" + final_data_destination
-            log_base = self.output_dir_entry.get() + "/" + data_base + "_log"
+            final_data_destination: str = self.output_dir_entry.get() + "/" + final_data_destination
+            log_base: str = self.output_dir_entry.get() + "/" + data_base + "_log"
         else:
-            final_data_destination = self.output_dir_entry.get() + "\\" + final_data_destination
-            log_base = self.output_dir_entry.get() + "\\" + data_base + "_log"
+            final_data_destination: str = self.output_dir_entry.get() + "\\" + final_data_destination
+            log_base: str = self.output_dir_entry.get() + "\\" + data_base + "_log"
 
-        final_log_destination = log_base
+        final_log_destination: str = log_base
         i = 1
         while os.path.isfile(final_log_destination + ".txt"):
             final_log_destination = log_base + "_" + str(i)
@@ -347,7 +348,7 @@ class ProcessManager:
 
         return final_data_destination, final_log_destination
 
-    def check_local_file(self, directory, local_file, next_action):
+    def check_local_file(self, directory: str, local_file: str, next_action: Any) -> bool:
         def remove_retry(file, action):
             try:
                 os.remove(file)
@@ -379,8 +380,8 @@ class ProcessManager:
             return False
         return True
 
-    def check_local_folder(self, local_dir, next_action):
-        def try_mk_dir(dir_to_make, action):
+    def check_local_folder(self, local_dir: str, next_action: Any) -> bool:
+        def try_mk_dir(dir_to_make: str, action: Any) -> None:
             try:
                 os.makedirs(dir_to_make)
                 action()
@@ -388,7 +389,6 @@ class ProcessManager:
                 ErrorDialog(
                     self.controller, title="Cannot create directory", label="Cannot create directory:\n\n" + dir_to_make
                 )
-            return False
 
         exists = os.path.exists(local_dir)
         if exists:
@@ -432,11 +432,12 @@ class ProcessManager:
                     label=local_dir + "\n\ndoes not exist. Do you want to create this directory?",
                     buttons=buttons,
                 )
+        #TODO: check these return statements make sense.
         return exists
 
     # Checks if the given directory exists and is writeable. If not writeable, gives user option to create.
-    def check_remote_folder(self, remote_dir, next_action):
-        def inner_mkdir(dir_to_make, action):
+    def check_remote_folder(self, remote_dir: str, next_action: Any) -> bool:
+        def inner_mkdir(dir_to_make: str, action: Any):
             mkdir_status = self.remote_directory_worker.mkdir(dir_to_make)
             if mkdir_status == "mkdirsuccess":
                 action()
@@ -501,7 +502,7 @@ class ProcessManager:
             ErrorDialog(self.controller, label="Error: Operation timed out.")
             return False
 
-    def choose_process_input_dir(self):
+    def choose_process_input_dir(self) -> None:
         RemoteFileExplorer(
             self,
             label="Select the directory containing the data you want to process.\nThis must be on a drive mounted on"
@@ -509,7 +510,7 @@ class ProcessManager:
             target=self.input_dir_entry,
         )
 
-    def validate_input_dir(self):
+    def validate_input_dir(self) -> None:
         pos = self.input_dir_entry.index(INSERT)
         input_dir = utils.rm_reserved_chars(self.input_dir_entry.get())
         if len(input_dir) < len(self.input_dir_entry.get()):

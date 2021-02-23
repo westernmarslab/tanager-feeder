@@ -1,5 +1,6 @@
 from threading import Thread
 import time
+from tkinter import TclError
 from typing import Dict, Optional
 
 import playsound
@@ -27,7 +28,7 @@ class CommandHandler:
         # Either update the existing wait dialog, or make a new one.
         try:
             self.controller.wait_dialog.reset(title=title, label=label, buttons=buttons)
-        except AttributeError:
+        except (AttributeError, TclError):
             self.controller.wait_dialog = WaitDialog(controller, title, label)
         self.wait_dialog = self.controller.wait_dialog
         self.controller.freeze()
@@ -108,12 +109,14 @@ class CommandHandler:
         if info_string is not None:
             self.controller.log(info_string)
         if retry:
+            print(self.controller.queue)
             buttons = {"retry": {self.controller.next_in_queue: []}, "cancel": {self.finish: []}}
             self.wait_dialog.set_buttons(buttons)
         self.controller.freeze()
         try:
             self.wait_dialog.ok_button.focus_set()
-        except AttributeError:
+        except (AttributeError, TclError):
+            # TODO: may need to add TclError to AttributeError catching
             self.wait_dialog.top.focus_set()
 
         if self.controller.audio_signals:

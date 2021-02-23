@@ -39,7 +39,7 @@ class SpecConnectionChecker(ConnectionChecker):
     # Bring this up if there is no connection with the spectrometer computer
     def no_dialog(self, buttons: Dict):
         Dialog(
-            controller=self.controller,
+            controller=None,
             title="Not Connected",
             label="Error: No connection with Spec Compy.\n\n"
             "Check that you and the spectrometer computer are\n"

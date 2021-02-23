@@ -17,7 +17,7 @@ class SpecListener(Listener):
         self.wait_for_unexpected_count = 0
         self.alert_lostconnection = True
         self.new_dialogs = True
-        self.local_server = TanagerServer(port=self.connection_manager.SPEC_PORT)
+        self.local_server = TanagerServer(port=self.connection_manager.LISTEN_FOR_SPEC_PORT)
         if not self.connection_manager.spec_offline:
             self.set_control_address()
         thread = Thread(target=self.local_server.listen)
@@ -28,7 +28,7 @@ class SpecListener(Listener):
             "setcontrolserveraddress&"
             + self.local_server.server_address[0]
             + "&"
-            + str(self.connection_manager.SPEC_PORT)
+            + str(self.connection_manager.LISTEN_FOR_SPEC_PORT)
         )
 
     def run(self):

@@ -1,13 +1,14 @@
 import sys
 import time
 from tkinter import Entry, Button, Label, Checkbutton, Toplevel, Frame, BOTH, LEFT, X, IntVar
+from typing import List, Optional
 
 from tanager_feeder.dialogs.dialog import Dialog
 from tanager_feeder import utils
 
 
 class FailsafesManager:
-    def __init__(self, controller):
+    def __init__(self, controller: utils.ControllerType):
         self.controller = controller
         self.tk_format = utils.TkFormat(self.controller.config_info)
 
@@ -29,6 +30,7 @@ class FailsafesManager:
         self.opt_time = None
         self.angles_change_time = None
         self.settings_top = None
+
         self.wrfailsafe_check = None
         self.wr_timeout_entry = None
         self.optfailsafe_check = None
@@ -38,7 +40,7 @@ class FailsafesManager:
         self.wr_angles_failsafe_check = None
         self.anglechangefailsafe_check = None
 
-    def show(self):
+    def show(self) -> None:
         self.settings_top = Toplevel(self.controller.master)
         self.settings_top.wm_title("Failsafe Settings")
         settings_frame = Frame(self.settings_top, bg=self.tk_format.bg, pady=2 * self.tk_format.pady, padx=15)
@@ -200,7 +202,7 @@ class FailsafesManager:
     # If the user has failsafes activated, check that requirements are met. Always require a valid number of spectra.
     # Different requirements are checked depending on what the function func is that will be called next (opt, wr, take
     # spectrum, acquire)
-    def check_optional_input(self, func, args=None, warnings=""):
+    def check_optional_input(self, func, args: Optional[List] = None, warnings: str = "") -> bool:
         if args is None:
             args = []
         label = warnings
@@ -217,7 +219,7 @@ class FailsafesManager:
             if self.optfailsafe.get() and func != self.controller.opt:
                 try:
                     opt_limit = int(float(self.opt_timeout_entry.get())) * 60
-                except ValueError:
+                except (ValueError, AttributeError):
                     opt_limit = sys.maxsize
                 if self.opt_time is None:
                     label += "The instrument has not been optimized.\n\n"
@@ -254,7 +256,7 @@ class FailsafesManager:
 
                 try:
                     wr_limit = int(float(self.wr_timeout_entry.get())) * 60
-                except ValueError:
+                except (ValueError, AttributeError):
                     wr_limit = sys.maxsize
                 if self.wr_time is None:
                     label += "No white reference has been taken.\n\n"

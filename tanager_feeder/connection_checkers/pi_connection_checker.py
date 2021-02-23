@@ -39,15 +39,18 @@ class PiConnectionChecker(ConnectionChecker):
         )
 
     def no_dialog(self, buttons: Dict):
-        Dialog(
-            controller=self.controller,
-            title="Not Connected",
-            label="Error: Raspberry Pi not connected.\n\n"
-            "Check you and the Raspberry Pi are\n"
-            "both connected to the same network.",
-            buttons=buttons,
-            button_width=15,
-        )
+        try:
+            Dialog(
+                controller=self.controller,
+                title="Not Connected",
+                label="Error: Raspberry Pi not connected.\n\n"
+                "Check you and the Raspberry Pi are\n"
+                "both connected to the same network.",
+                buttons=buttons,
+                button_width=15,
+            )
+        except RuntimeError:
+            pass
 
     def ask_ip(self):
         ChangeIPDialog(

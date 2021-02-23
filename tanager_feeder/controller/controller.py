@@ -2,6 +2,7 @@ import os
 import time
 from threading import Thread
 from tkinter.filedialog import askopenfilename
+from typing import Dict, List, Any, Optional, Tuple
 
 import tkinter as tk
 from tkinter import (
@@ -67,14 +68,14 @@ from tanager_feeder.utils import VerticalScrolledFrame, MovementUnits, sin, cos,
 from tanager_feeder import utils
 
 
-class Controller:
-    def __init__(self, connection_tracker, config_info):
-        self.connection_tracker = connection_tracker
+class Controller(utils.ControllerType):
+    def __init__(self, connection_manager: utils.ConnectionManager, config_info: utils.ConfigInfo):
+        self.connection_manager = connection_manager
         self.config_info = config_info
         self.tk_format = utils.TkFormat(self.config_info)
 
         try:
-            self.spec_listener = SpecListener(connection_tracker, config_info)
+            self.spec_listener = SpecListener(connection_manager, config_info)
         except OSError as e:
             if e.args[0] != 10048:
                 raise
@@ -89,7 +90,7 @@ class Controller:
         self.spec_listener.start()
 
         try:
-            self.pi_listener = PiListener(connection_tracker, config_info)
+            self.pi_listener = PiListener(connection_manager, config_info)
         except OSError as e:
             if e.args[0] != 10048:
                 raise
@@ -104,8 +105,8 @@ class Controller:
         self.pi_listener.set_controller(self)
         self.pi_listener.start()
 
-        self.spec_commander = SpecCommander(self.connection_tracker, self.spec_listener)
-        self.pi_commander = PiCommander(self.connection_tracker, self.pi_listener)
+        self.spec_commander = SpecCommander(self.connection_manager, self.spec_listener)
+        self.pi_commander = PiCommander(self.connection_manager, self.pi_listener)
 
         self.remote_directory_worker = RemoteDirectoryWorker(self.spec_commander, self.spec_listener)
 
@@ -925,7 +926,7 @@ class Controller:
 
         self.console = Console(self)
 
-        if not self.connection_tracker.pi_offline:
+        if not self.connection_manager.pi_offline:
             self.set_manual_automatic(force=1)
 
         self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -982,35 +983,32 @@ class Controller:
             except ValueError:
                 raise Exception("Invalid science az value") from ValueError
 
-    def scrollbar_check(self):
+    def scrollbar_check(self) -> None:
         time.sleep(0.5)
         self.control_frame.update()
 
     # called when user goes to File > Process and export data
-    def show_process_frame(self):
+    def show_process_frame(self) -> None:
         self.process_manager.show()
 
-    def enable_audio(self):
+    def enable_audio(self) -> None:
         self.audio_signals = True
         self.audiomenu.entryconfigure(0, label="X Enabled")
         self.audiomenu.entryconfigure(1, label="  Disabled")
 
-    def disable_audio(self):
+    def disable_audio(self) -> None:
         self.audio_signals = False
         self.audiomenu.entryconfigure(0, label="  Enabled")
         self.audiomenu.entryconfigure(1, label="X Disabled")
 
-    def show_plot_settings_frame(self):
-        pass
-
     # Show failsafes settings frame
-    def show_settings_frame(self):
+    def show_settings_frame(self) -> None:
         self.failsafes_manager.show()
 
-    def show_plot_frame(self):
+    def show_plot_frame(self) -> None:
         self.plot_manager.show()
 
-    def plot_remote(self, filename):
+    def plot_remote(self, filename: str) -> None:
         # TODO: Review this code and test.
         self.queue.insert(0, {self.plot_remote: []})
         # TODO: figure out how data gets transferred and where it gets stored
@@ -1024,28 +1022,27 @@ class Controller:
             final_destination="temp loc" + "plot_temp.csv",
         )
 
-    def bind(
-        self,
-    ):  # This is probably important but I don't remember exactly how it works. Somethign to do with setting up the GUI.
+    def bind(self) -> None:
+        # This is probably important but I don't remember exactly how it works. Somethign to do with setting up the GUI.
         self.master.bind("<Configure>", self.resize)
         time.sleep(0.2)
         window = utils.PretendEvent(self.master, self.master.winfo_width(), self.master.winfo_height())
         self.resize(window)
         time.sleep(0.2)
-        if not self.connection_tracker.spec_offline:
+        if not self.connection_manager.spec_offline:
             self.log("Spec compy connected.")
         else:
             self.log("Spec compy not connected. Working offline. Restart to collect spectral data.")
-        if not self.connection_tracker.pi_offline:
+        if not self.connection_manager.pi_offline:
             self.log("Raspberry pi connected.")
         else:
             self.log("Raspberry pi not connected. Working offline. Restart to use automation features.")
 
-    def on_closing(self):
+    def on_closing(self) -> None:
         self.master.destroy()
         utils.exit_func()
 
-    def load_script(self):
+    def load_script(self) -> None:
         self.script_running = True
         self.script_failed = False
 
@@ -1072,7 +1069,7 @@ class Controller:
         self.queue.append({self.next_script_line: ["end file"]})
         self.next_in_queue()
 
-    def next_script_line(self, cmd):
+    def next_script_line(self, cmd: str) -> None:
         self.script_running = True
         if cmd == "end file":
             self.log("Script complete")
@@ -1086,10 +1083,10 @@ class Controller:
             self.console.console_entry.delete(0, "end")
             self.console.console_entry.insert(0, cmd)
             self.freeze()
-            self.execute_cmd("event!")
+            self.execute_cmd()
 
     # use this to make plots - matplotlib works in inches but we want to use pixels.
-    def get_dpi(self):
+    def get_dpi(self) -> None:
         MM_TO_IN = 1 / 25.4
         pxw = self.master.winfo_screenwidth()
         inw = self.master.winfo_screenmmwidth() * MM_TO_IN
@@ -1097,10 +1094,11 @@ class Controller:
 
     # when operating in manual mode, check validity of viewing geom when the user clicks buttons. If valid, update
     # graphic and self.i and self.e before moving on to other checks. Return any warnings.
-    def check_viewing_geom_for_manual_operation(self):
+    def check_viewing_geom_for_manual_operation(self) -> str:
         warnings = ""
 
         valid_i = utils.validate_int_input(self.incidence_entries[0].get(), -90, 90)
+        print(valid_i)
         if valid_i:
             if str(self.science_i) != self.incidence_entries[0].get():
                 self.failsafes_manager.angles_change_time = time.time()
@@ -1125,22 +1123,25 @@ class Controller:
         else:
             warnings += "The azimuth angle is invalid (Min:" + str(0) + ", Max:" + str(179) + ").\n\n"
 
-        valid_separation = self.validate_distance(
-            self.incidence_entries[0].get(), self.emission_entries[0].get(), self.azimuth_entries[0].get()
-        )
-        if valid_e and valid_i and valid_az and not valid_separation:
-            warnings += (
-                "Light source and detector should be at least "
-                + str(self.required_angular_separation)
-                + " degrees apart.\n\n"
-            )
+        if valid_i and valid_e and valid_az:
+            i = int(self.incidence_entries[0].get())
+            e = int(self.emission_entries[0].get())
+            az = int(self.azimuth_entries[0].get())
+            valid_separation = self.validate_distance(i, e, az)
+
+            if valid_e and valid_i and valid_az and not valid_separation:
+                warnings += (
+                    "Light source and detector should be at least "
+                    + str(self.required_angular_separation)
+                    + " degrees apart.\n\n"
+                )
         #             self.set_and_animate_geom()
 
         return warnings
 
     # Check whether the current save configuration for raw spectral is different from the last one saved. If it is,
     # send commands to the spec compy telling it so.
-    def check_save_config(self):
+    def check_save_config(self) -> str:
         new_spec_save_dir = self.spec_save_dir_entry.get()
         new_spec_basename = self.spec_basename_entry.get()
         try:
@@ -1160,7 +1161,7 @@ class Controller:
             return "not_set"
         return "set"
 
-    def check_mandatory_input(self):
+    def check_mandatory_input(self) -> bool:
         save_config_status = self.check_save_config()
         if save_config_status == "invalid":
             ErrorDialog(self, label="Error: Please enter a valid save configuration.")
@@ -1211,15 +1212,13 @@ class Controller:
     # Setup gets called after we already know that input is valid, but before we've set up the specrometer control
     # software. If we need to set RS3's save configuration or the instrument configuration (number of spectra to
     # average), it puts those things into the queue saying we will need to do them when we start.
-    def setup_RS3_config(self, nextaction):
-
+    def setup_RS3_config(self, nextaction: Any) -> bool:
         if self.manual_automatic.get() == 0:
             thread = Thread(target=self.set_and_animate_geom)
             thread.start()
 
         # Requested save config is guaranteed to be valid because of input checks above.
         save_config_status = self.check_save_config()
-        print(save_config_status)
         if self.check_save_config() == "not_set":
             self.complete_queue_item()
             self.queue.insert(0, nextaction)
@@ -1247,7 +1246,7 @@ class Controller:
     # also called if acquire button is pushed in automatic mode
     # Action will be either wr, take_spectrum, or opt (manual mode) OR it might just be 'acquire' (automatic mode)
     # For any of these things, we need to validate input.
-    def acquire(self, override=False, setup_complete=False, action=None, garbage=False):
+    def acquire(self, override: bool = False, setup_complete: bool = False, action: Any = None, garbage: bool = False):
         # pylint: disable = comparison-with-callable
         if not setup_complete:
             # Make sure basenum entry has the right number of digits. It is already guaranteed to have no more digits
@@ -1367,7 +1366,7 @@ class Controller:
             self.build_queue()
             self.next_in_queue()
 
-    def build_queue(self):
+    def build_queue(self) -> None:
         script_queue = list(
             self.queue
         )  # If we're running a script, the queue might have a lot of commands in it that will need to be executed
@@ -1405,7 +1404,7 @@ class Controller:
             self.queue = self.queue + script_queue
 
     # updates motor and science angle values, animates goniometer arms moving
-    def set_and_animate_geom(self, complete_queue_item=False):
+    def set_and_animate_geom(self, complete_queue_item: bool = False) -> None:
         if self.manual_automatic.get() == 1:  # automatic mode
             next_science_i = int(self.active_incidence_entries[0].get())
             next_science_e = int(self.active_emission_entries[0].get())
@@ -1478,7 +1477,7 @@ class Controller:
                     args = dictionary[func]
                     func(*args)
 
-    def get_movements(self, next_science_i: int, next_science_e: int, next_science_az: int):
+    def get_movements(self, next_science_i: int, next_science_e: int, next_science_az: int) -> List[Dict]:
         current_i, current_az = self.science_i, self.science_az
         # This is the case if we're just calling set_display
         if current_i is None:
@@ -1500,7 +1499,7 @@ class Controller:
                     movement_order = [{"i": -60}, {"e": next_science_e}, {"az": next_science_az}, {"i": next_science_i}]
         return movement_order
 
-    def next_geom(self, complete_last=True):
+    def next_geom(self, complete_last: bool = True) -> None:
         self.complete_queue_item()
         if complete_last:
             self.active_incidence_entries.pop(0)
@@ -1533,7 +1532,7 @@ class Controller:
     # Move light will either read i from the GUI (default, i=None), or if this is a text command then i will be passed
     # as a parameter. When from the commandline, i may not be an incidence angle at all but a number of steps to move.
     # In this case, type will be 'steps'.
-    def set_incidence(self, next_i: Optional[int] = None, unit: str = MovementUnits.ANGLE.value):
+    def set_incidence(self, next_i: Optional[int] = None, unit: str = MovementUnits.ANGLE.value) -> None:
         if unit == "angle":
             # First check whether we actually need to move at all.
             if next_i is None:
@@ -1561,7 +1560,7 @@ class Controller:
         if unit == MovementUnits.ANGLE.value:  # Only change the visualization if an angle is specified.
             self.goniometer_view.set_incidence(next_i)
 
-    def set_emission(self, next_e: Optional[int] = None, unit: str = MovementUnits.ANGLE.value):
+    def set_emission(self, next_e: Optional[int] = None, unit: str = MovementUnits.ANGLE.value) -> None:
         if unit == "angle":
             # First check whether we actually need to move at all.
             if next_e is None:
@@ -1589,7 +1588,7 @@ class Controller:
         if unit == MovementUnits.ANGLE.value:  # Only change the visualization if an angle is specified.
             self.goniometer_view.set_emission(next_e)
 
-    def set_azimuth(self, next_az: Optional[int] = None, unit: str = MovementUnits.ANGLE.value):
+    def set_azimuth(self, next_az: Optional[int] = None, unit: str = MovementUnits.ANGLE.value) -> None:
         if unit == "angle":
             # First check whether we actually need to move at all.
             if next_az is None:
@@ -1617,7 +1616,7 @@ class Controller:
         if unit == MovementUnits.ANGLE.value:  # Only change the visualization if an angle is specified.
             self.goniometer_view.set_azimuth(next_az)
 
-    def move_tray(self, pos, unit=MovementUnits.POSITION.value):
+    def move_tray(self, pos: str, unit=MovementUnits.POSITION.value) -> None:
         if unit == "position":
             self.goniometer_view.set_current_sample(pos)
         self.pi_commander.move_tray(pos, unit)
@@ -1629,7 +1628,7 @@ class Controller:
             steps=(unit == MovementUnits.STEPS.value),
         )
 
-    def range_setup(self):
+    def range_setup(self) -> None:
         self.active_incidence_entries = []
         self.active_emission_entries = []
         self.active_azimuth_entries = []
@@ -1844,7 +1843,7 @@ class Controller:
 
     # called when user clicks optimize button. No different than opt() except we clear out the queue first just in case
     # there is something leftover hanging out in there.
-    def opt_button_cmd(self):
+    def opt_button_cmd(self) -> None:
         self.queue = []
         self.queue.append(
             {self.opt: [True, True]}
@@ -1854,7 +1853,7 @@ class Controller:
 
     # called when user clicks wr button. No different than wr() except we clear out the queue first just in case there
     # is something leftover hanging out in there.
-    def wr_button_cmd(self):
+    def wr_button_cmd(self) -> None:
         self.queue = []
         self.queue.append(
             {self.wr: [True, True]}
@@ -1865,7 +1864,7 @@ class Controller:
 
     # called when user clicks take spectrum button. No different than take_spectrum() except we clear out the queue
     # first just in case there is something leftover hanging out in there.
-    def spec_button_cmd(self):
+    def spec_button_cmd(self) -> None:
         self.queue = []
         self.queue.append(
             {self.take_spectrum: [False, False, False]}
@@ -1874,25 +1873,24 @@ class Controller:
         self.acquire(override=False, setup_complete=False, action=self.take_spectrum, garbage=False)
 
     # commands that are put in the queue for optimizing, wr, taking a spectrum.
-    def opt(self, override=False, setup_complete=False):
+    def opt(self, override: bool = False, setup_complete: bool = False) -> None:
         self.acquire(override=override, setup_complete=setup_complete, action=self.opt)
 
-    def wr(self, override=False, setup_complete=False):
+    def wr(self, override: bool = False, setup_complete: bool = False) -> None:
         self.acquire(override=override, setup_complete=setup_complete, action=self.wr)
 
-    def take_spectrum(self, override, setup_complete, garbage):
+    def take_spectrum(self, override: bool, setup_complete: bool, garbage: bool) -> None:
         self.acquire(override=override, setup_complete=setup_complete, action=self.take_spectrum, garbage=garbage)
 
-    def configure_instrument(self):
+    def configure_instrument(self) -> None:
         self.spec_commander.configure_instrument(self.instrument_config_entry.get())
         InstrumentConfigHandler(self)
 
     # Set thes ave configuration for raw spectral data. First, use a remotedirectoryworker to check whether the
     # directory exists and is writeable. If it doesn't exist, give an option to create the directory.
-    def set_save_config(self):
-
-        # This function gets called if the directory doesn't exist and the user clicks 'yes' for making the directory.
-        def inner_mkdir(dir_to_make):
+    def set_save_config(self) -> None:
+        # inner_mkdir function gets called if the directory doesn't exist and the user clicks 'yes' for making the directory.
+        def inner_mkdir(dir_to_make: str) -> None:
             mkdir_status = self.remote_directory_worker.mkdir(dir_to_make)
             if mkdir_status == "mkdirsuccess":
                 self.set_save_config()
@@ -1974,9 +1972,10 @@ class Controller:
         self.spec_commander.set_save_path(
             self.spec_save_dir_entry.get(), self.spec_basename_entry.get(), self.spec_startnum_entry.get()
         )
+        print("Making a saveconfighandler!")
         SaveConfigHandler(self)
 
-    def reset(self):
+    def reset(self) -> None:
         self.clear_queue()
         self.overwrite_all = False
         self.script_running = False
@@ -1984,7 +1983,7 @@ class Controller:
         self.white_referencing = False
 
     # execute a command either input into the console by the user or loaded from a script
-    def execute_cmd(self, event: Event) -> None:
+    def execute_cmd(self, event: Optional[Event] = None) -> None:
         # pylint: disable = unused-argument
         if self.script_running:
             self.complete_queue_item()
@@ -1994,7 +1993,7 @@ class Controller:
         thread = Thread(target=self.cli_manager.execute_cmd, kwargs={"cmd": command})
         thread.start()
 
-    def fail_script_command(self, message):
+    def fail_script_command(self, message: str) -> None:
         self.log(message)
         self.queue = []
         self.script_running = False
@@ -2002,7 +2001,7 @@ class Controller:
             self.wait_dialog.interrupt(message)
             self.wait_dialog.top.wm_geometry("376x140")
 
-    def increment_num(self):
+    def increment_num(self) -> None:
         try:
             num = int(self.spec_startnum_entry.get()) + 1
             self.spec_startnum_entry.delete(0, "end")
@@ -2010,7 +2009,7 @@ class Controller:
         except ValueError:
             return
 
-    def process_cmd(self):
+    def process_cmd(self) -> None:
         self.process_manager.show()
         try:
             input_directory, output_directory, output_file = self.process_manager.setup_process()
@@ -2022,7 +2021,7 @@ class Controller:
         self.queue.insert(1, {self.finish_process: [output_file]})
         ProcessHandler(self)
 
-    def finish_process(self):
+    def finish_process(self) -> None:
         self.complete_queue_item()
         # We're going to transfer the data file and log file to the final destination. To transfer the log file, first
         # decide on a name to call it. This will be based on the dat file name. E.g. foo.csv would have foo_log.txt
@@ -2703,7 +2702,6 @@ class Controller:
         self.menubar.entryconfig("Settings", state="disabled")
         self.filemenu.entryconfig(0, state=DISABLED)
         self.filemenu.entryconfig(1, state=DISABLED)
-
         self.console.console_entry.configure(state="disabled")
 
     def unfreeze(self):

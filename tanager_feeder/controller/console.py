@@ -1,10 +1,10 @@
 import datetime
-from tkinter import RIGHT, Entry, Label, Frame, END, BOTH, BOTTOM, Text, Scrollbar, Y
+from tkinter import RIGHT, Entry, Event, Label, Frame, END, BOTH, BOTTOM, Text, Scrollbar, Y
 from tanager_feeder import utils
 
 
 class Console:
-    def __init__(self, controller):
+    def __init__(self, controller: utils.ControllerType):
         self.controller = controller
         self.tk_format = utils.TkFormat(self.controller.config_info)
 
@@ -13,9 +13,10 @@ class Console:
 
         self.console_log = None
         self.console_entry = None
+        self.console_frame = None
         self.show()
 
-    def show(self):
+    def show(self) -> None:
         self.console_frame = Frame(
             self.controller.view_frame,
             bg=self.tk_format.border_color,
@@ -58,7 +59,7 @@ class Console:
         self.console_log.pack(fill=BOTH, expand=True)
         self.console_entry.focus()
 
-    def log(self, info_string):
+    def log(self, info_string: str) -> None:
         self.controller.master.update()
         space = self.console_log.winfo_width()
         space = str(int(space / 8.5))
@@ -92,7 +93,7 @@ class Console:
     # when the focus is on the console entry box, the user can scroll through past commands.
     # these are stored in user_cmds with the index of the most recent command at 0
     # Every time the user enters a command, the user_cmd_index is changed to -1
-    def iterate_cmds(self, keypress_event):
+    def iterate_cmds(self, keypress_event: Event) -> None:
         if (
             keypress_event.keycode == 111 or keypress_event.keycode == 38
         ):  # up arrows on linux and windows, respectively
@@ -112,8 +113,8 @@ class Console:
                 self.console_entry.delete(0, "end")
                 self.console_entry.insert(0, next_cmd)
 
-    def next_cmd(self):
-        command = self.console_entry.get()
+    def next_cmd(self) -> str:
+        command: str = self.console_entry.get()
         self.user_cmds.insert(0, command)
         self.user_cmd_index = -1
         if command != "end file":
