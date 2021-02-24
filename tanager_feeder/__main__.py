@@ -52,12 +52,12 @@ def main():
         x11.XInitThreads()
 
         home_loc += "/"
-        local_config_loc = home_loc + ".tanager_config/"  # package_loc+'local_config/'
+        local_config_loc = home_loc + ".tanager_config/"
         global_config_loc = package_loc + "global_config/"
 
     elif opsys == "Windows":
         home_loc += "\\"
-        local_config_loc = home_loc + ".tanager_config\\"  # package_loc+'local_config\\'
+        local_config_loc = home_loc + ".tanager_config\\"
         global_config_loc = package_loc + "global_config\\"
 
     elif opsys == "Mac":

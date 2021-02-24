@@ -29,7 +29,7 @@ class Tab:
         exclude_artifacts=False,
         exclude_specular=False,
         specularity_tolerance=None,
-        draw=True,
+        draw=False,
     ):
         if geoms is None:
             geoms = {"i": [], "e": [], "az": []}
@@ -59,7 +59,6 @@ class Tab:
 
         self.width = self.plotter.notebook.winfo_width()
         self.height = self.plotter.notebook.winfo_height()
-
         # If we need a bigger frame to hold a giant long legend, expand.
         self.legend_len = 0
         for sample in self.samples:
@@ -67,7 +66,6 @@ class Tab:
         self.legend_height = self.legend_len * 21 + 100  # 21 px per legend entry.
         self.plot_scale = (self.height - 130) / 21
         self.plot_width = self.width / 9  # very vague character approximation of plot width
-
         if self.height > self.legend_height:
             self.top = utils.NotScrolledFrame(self.plotter.notebook)
             self.oversize_legend = False
@@ -119,14 +117,14 @@ class Tab:
             xlim=self.xlim,
             ylim=self.ylim,
             exclude_artifacts=self.exclude_artifacts,
-            draw=draw,
+            draw=True,
         )
-
-        if draw:
-            self.canvas.draw()  # sometimes silently crashes if run from pip module (not IDE) on some login
-            # configurations. Related to thread safety (only crashes for remote plotting, which involves a
-            # separate thread). To protect against this, draw will be false if this is called from a separate
-            # thread and the user is asked for input instead.
+        # return
+        # if draw:
+        #     self.canvas.draw()  # sometimes silently crashes.
+        #     # Related to thread safety (only crashes for remote plotting, which involves a
+        #     # separate thread). To protect against this, draw will be false if this is called from a separate
+        #     # thread and the user is asked for input instead.
 
         self.popup_menu = Menu(self.top.interior, tearoff=0)
         if self.x_axis == "wavelength" and (self.y_axis == "reflectance" or self.y_axis == "normalized reflectance"):

@@ -130,6 +130,7 @@ class Plotter:
         new_samples = []
         for sample in self.samples[file]:
             new_samples.append(self.samples[file][sample])
+
         self.new_tab()
 
     @staticmethod

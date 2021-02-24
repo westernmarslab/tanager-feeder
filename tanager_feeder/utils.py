@@ -254,8 +254,7 @@ def decrypt(encrypted):
     params = encrypted.split("&")[1:]
     i = 0
     for param in params:
-        params[i] = param.replace("+", "\\").replace("=", ":")
-        params[i] = params[i].replace("++", "+")
+        params[i] = param
         i = i + 1
     return cmd, params
 

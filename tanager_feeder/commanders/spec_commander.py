@@ -84,9 +84,9 @@ class SpecCommander(Commander):
         self.send(filename)
         return filename
 
-    def transfer_data(self, source: str, temp_destination_dir: str, temp_destination_file: str):
-        self.remove_from_listener_queue(["datacopied", "datafailure"])
-        filename = self.encrypt("transferdata", parameters=[source, temp_destination_dir, temp_destination_file])
+    def transfer_data(self, source: str):
+        self.remove_from_listener_queue(["datatransfercomplete", "datafailure", "batch"])
+        filename = self.encrypt("transferdata", parameters=[source])
         self.send(filename)
         return filename
 

@@ -21,6 +21,8 @@ class Commander:
             "log_data",
             "donemoving",
             "currentposition",
+            "datatransfercomplete",
+            "batch"
         ]
         for command in commands:
             if command in extended_commands:
@@ -35,8 +37,5 @@ class Commander:
         filename = cmd
         for param in parameters:
             param = str(param)
-            param = param.replace("/", "+")
-            param = param.replace("\\", "+")
-            param = param.replace(":", "=")
             filename = filename + "&" + param
         return filename

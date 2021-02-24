@@ -1,8 +1,6 @@
 import time
 from typing import Optional
 
-import shutil
-
 from tanager_feeder.command_handlers.command_handler import CommandHandler
 from tanager_feeder import utils
 
@@ -11,36 +9,41 @@ class DataHandler(CommandHandler):
     def __init__(
         self,
         controller,
+        destination: str,
         title: str = "Transferring data...",
         label: str = "Tranferring data...",
-        source: Optional[str] = None,
-        temp_destination: Optional[str] = None,
-        final_destination: Optional[str] = None,
     ):
         self.listener = controller.spec_listener
         super().__init__(controller, title, label, timeout=2 * utils.BUFFER)
-        self.source = source
-        self.temp_destination = temp_destination
-        self.final_destination = final_destination
+        self.destination = destination
         self.wait_dialog.top.geometry("%dx%d%+d%+d" % (376, 130, 107, 69))
 
     def wait(self):
+        data=[]
+        next_batch = 0
         while self.timeout_s > 0:
-            if "datacopied" in self.listener.queue:
-                self.listener.queue.remove("datacopied")
-
-                if self.temp_destination is not None and self.final_destination is not None:
-                    try:
-                        shutil.move(self.temp_destination, self.final_destination)
-                    # pylint: disable = broad-except
-                    except Exception as e:
-                        print("Exception moving data")
-                        print(e)
-                        self.interrupt("Error transferring data", retry=True)
-                        return
-
-                    self.success()
+            batch_string = f"batch{next_batch}"
+            for item in self.listener.queue:
+                if batch_string in item:
+                    self.listener.queue.remove(item)
+                    print(f"FOUND {batch_string}")
+                    data.append(item[len(batch_string):])
+                    next_batch += 1
+            if f"datatransfercomplete{next_batch}" in self.listener.queue:
+                self.listener.queue.remove(f"datatransfercomplete{next_batch}")
+                print("GOT ALL DATA")
+                print(self.destination)
+                try:
+                    with open(self.destination, "w+") as file:
+                        for batch in data:
+                            file.write(batch)
+                except OSError:
+                    print("Exception writing data")
+                    self.interrupt(f"Error writing data to control computer location.\nDo you have permission to write to\n{self.destination}?", retry=True)
                     return
+
+                self.success()
+                return
 
             elif "datafailure" in self.listener.queue:
                 self.listener.queue.remove("datafailure")
@@ -51,7 +54,6 @@ class DataHandler(CommandHandler):
         self.timeout()
 
     def success(self):
-        self.controller.complete_queue_item()
         self.interrupt("Data transferred successfully.")
-        if len(self.controller.queue) > 0:
-            self.controller.next_in_queue()
+        super().success()
+

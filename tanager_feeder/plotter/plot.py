@@ -25,6 +25,26 @@ class Plot:
         exclude_artifacts=False,
         draw=True,
     ):
+        pass
+
+    # def __initfoo__(
+    #     self,
+    #     plotter,
+    #     fig,
+    #     white_fig,
+    #     samples,
+    #     title,
+    #     oversize_legend=False,
+    #     plot_scale=18,
+    #     plot_width=215,
+    #     x_axis="wavelength",
+    #     y_axis="reflectance",
+    #     xlim=None,
+    #     ylim=None,
+    #     exclude_artifacts=False,
+    #     draw=True,
+    # ):
+    #     return
         self.plotter = plotter
         self.samples = samples
         self.contour_levels = []
@@ -43,6 +63,7 @@ class Plot:
         self.markers_drawn = False  # Referenced to decide whether to display markerstyle options in open_options
         self.lines_drawn = False  # Referenced to decide whether to display linestyle options in open_options
         # If y limits for plot not specified, make the plot wide enough to display min and max values for all samples.
+
         if ylim is None and xlim is None:
             for i, sample in enumerate(self.samples):
                 for j, label in enumerate(sample.geoms):
@@ -64,6 +85,7 @@ class Plot:
             delta_y = self.ylim[1] - self.ylim[0]
             self.ylim[0] = self.ylim[0] - delta_y * 0.02
             self.ylim[1] = self.ylim[1] + delta_y * 0.02
+
 
         elif ylim is None:
             for i, sample in enumerate(self.samples):
@@ -199,6 +221,7 @@ class Plot:
         self.leg_ax.tick_params(axis="both", which="both", colors="0.2")
         self.white_leg_ax.tick_params(axis="both", which="both", colors="1")
 
+
         pos1 = self.ax.get_position()  # get the original position
         y0 = pos1.y0 * 1.5  # This is all just magic to tweak the exact position.
         height = pos1.height * 0.9
@@ -213,6 +236,7 @@ class Plot:
             pos2 = [pos1.x0 - 0.1, y0 * 0.6, pos1.width * 1.4, pos1.height * (1.4 + 0.006 * self.legend_len)]
 
         self.ax.set_position(pos2)
+
         self.white_ax.set_position(
             pos2
         )  # set a new position, slightly adjusted so it doesn't go off the edges of the screen.
@@ -228,6 +252,8 @@ class Plot:
 
         if draw:
             self.draw()
+
+        print("finished drawing")
 
         self.contour = None
         self.colorbar = None
@@ -458,6 +484,7 @@ class Plot:
             self.white_ax.grid(which="major", alpha=0.3)
 
     def draw(self):
+
         self.ax.cla()
         self.white_ax.cla()
 
@@ -503,6 +530,7 @@ class Plot:
             self.adjust_y(np.min(y), np.max(y))
 
         else:
+
             min_r = None  # we'll use these for setting polar r limits if we are doing a polar plot.
             max_r = None
 
@@ -831,6 +859,7 @@ class Plot:
             self.ax.set_ylabel("Band Depth", fontsize=18)
             with plt.style.context("default"):
                 self.white_ax.set_ylabel("Band Depth", fontsize=18)
+
         if self.x_axis == "wavelength":
             self.ax.set_xlabel("Wavelength (nm)", fontsize=18)
             with plt.style.context("default"):
@@ -847,8 +876,8 @@ class Plot:
             self.ax.set_xlabel("Phase angle (degrees)", fontsize=18)
             with plt.style.context("default"):
                 self.white_ax.set_xlabel("Phase angle (degrees)", fontsize=18)
-        self.ax.tick_params(labelsize=14)
 
+        self.ax.tick_params(labelsize=14)
         with plt.style.context(("default")):
             self.white_ax.tick_params(labelsize=14)
         if self.x_axis != "contour":
@@ -865,7 +894,11 @@ class Plot:
             self.white_ax.set_ylim(*self.ylim)
             self.set_x_ticks()
             self.set_y_ticks()
-
+        print("hooey")
+        return
+        # TODO: Test thoroughly, especially for plotting remote data
+        # TODO: after clearing data cache, new tab (2) still turns up (instead of new tab)
+        # TODO: after clearing data cache, cannot plot same file again.
         self.fig.canvas.draw()
         self.white_fig.canvas.draw()
 
@@ -1042,6 +1075,3 @@ class Plot:
                 )
                 self.white_leg_ax.add_patch(p)
                 bottom += buffer_per_sample
-
-        self.fig.canvas.draw()
-        self.white_fig.canvas.draw()

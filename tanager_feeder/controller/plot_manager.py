@@ -150,7 +150,7 @@ class PlotManager:
             pady=self.tk_format.pady,
             width=int(self.tk_format.button_width * 1.3),
             bg="light gray",
-            command=self.controller.plot,
+            command=self.plot_button_cmd,
         )
         plot_button.config(
             fg=self.tk_format.buttontextcolor,
@@ -203,7 +203,7 @@ class PlotManager:
         init_dir = init_file.strip(relative_file)
         if self.plot_remote.get():
             RemoteFileExplorer(
-                self,
+                self.controller,
                 target=self.plot_input_dir_entry,
                 title="Select a file",
                 label="Select a file to plot",
@@ -219,9 +219,19 @@ class PlotManager:
                 self.plot_input_dir_entry.insert(0, file)
         self.plot_top.lift()
 
-    def plot(self) -> None:
+    def plot_button_cmd(self) -> None:
         plot_input_file = self.plot_input_dir_entry.get()
-        plot_title = self.plot_title_entry.get()
+
+        if (
+                self.plotter.save_dir is None
+        ):  # If the user hasn't specified a folder where they want to save plots yet, set the default folder to be
+            # the same one they got the data from. Otherwise, leave it as is.
+            if self.config_info.opsys == "Windows":
+                self.plotter.save_dir = "\\".join(plot_input_file.split("\\")[0:-1])
+            else:
+                self.plotter.save_dir = "/".join(plot_input_file.split("/")[0:-1])
+
+        self.plot_title = self.plot_title_entry.get()
         if self.plot_remote.get():
             self.plot_local_remote = "remote"
         elif self.plot_local.get():
@@ -231,34 +241,29 @@ class PlotManager:
             with open(self.config_info.local_config_loc + "plot_config.txt", "w") as plot_config:
                 plot_config.write(self.plot_local_remote + "\n")
                 plot_config.write(plot_input_file + "\n")
-                plot_config.write(plot_title + "\n")
+                plot_config.write(self.plot_title + "\n")
         except OSError:
             print("Error saving data location for plots.")
 
         self.plot_top.destroy()
+        if self.plot_local_remote == "remote":
+            self.controller.plot_remote(plot_input_file)
+        else:
+            self.plot(plot_input_file)
+
+    def plot(self, plot_input_file, draw = True):
+        if len(self.controller.queue) > 0:
+            if self.controller.queue[0] == {self.plot: [plot_input_file]}:
+                # Happens if we just transferred data from spec compy.
+                self.controller.complete_queue_item()
         try:
-            if self.plot_local_remote == "remote":
-                self.plotter.plot_spectra(plot_title, plot_input_file)
-                self.plotter.tabs[-1].ask_which_samples()
-            else:
-                self.plotter.plot_spectra(plot_title, plot_input_file)
-                self.plotter.tabs[-1].ask_which_samples()
+            self.plotter.plot_spectra(self.plot_title, plot_input_file)
+            # self.plotter.tabs[-1].ask_which_samples()
+            # # self.controller.goniometer_view.flip()
+            # last = len(self.controller.view_notebook.tabs()) - 1
+            # self.controller.view_notebook.select(last)
 
-            self.controller.goniometer_view.flip()
-
-            last = len(self.controller.view_notebook.tabs()) - 1
-
-            self.controller.view_notebook.select(last)
-            if (
-                self.plotter.save_dir is None
-            ):  # If the user hasn't specified a folder where they want to save plots yet, set the default folder to be
-                # the same one they got the data from. Otherwise, leave it as is.
-                if self.config_info.opsys == "Windows":
-                    self.plotter.save_dir = "\\".join(plot_input_file.split("\\")[0:-1])
-                else:
-                    self.plotter.save_dir = "/".join(plot_input_file.split("/")[0:-1])
-
-        except Exception as e:
+        except (IndexError, KeyError, Exception) as e:
             #TODO: figure out options for exceptions.
             print(e)
             Dialog(
@@ -269,19 +274,3 @@ class PlotManager:
                 {"ok": {}},
             )
             raise e
-
-        # if self.config_info.opsys == "Windows" or self.plot_remote.get():
-        #     filename = filename.replace("\\", "/")
-        #
-        # if self.plot_remote.get():
-        #     self.controller.plot_remote()
-        #
-        # else:
-        #     if os.path.exists(filename):
-        #         self.plot(filename)
-        #     else:
-        #         ErrorDialog(
-        #             self,
-        #             title="Error: File not found",
-        #             label="Error: File not found.\n\n" + filename + "\n\ndoes not exist.",
-        #         )

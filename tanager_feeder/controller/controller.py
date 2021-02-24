@@ -79,13 +79,15 @@ class Controller(utils.ControllerType):
         except OSError as e:
             if e.args[0] != 10048:
                 raise
-            Dialog(
+            dialog = Dialog(
                 None,
                 "Error: Multiple connections",
                 "Only one usage of the Tanager Feeder socket address is permitted."
-                "\nClose other programs and try again.",
+                "\nClose other programs and try again."
+                "\n\nIf the issue persists, restart your computer.",
                 buttons={"ok": {utils.exit_func: []}},
             )
+            dialog.top.wm_geometry("300x200")
         self.spec_listener.set_controller(self)
         self.spec_listener.start()
 
@@ -1009,17 +1011,14 @@ class Controller(utils.ControllerType):
         self.plot_manager.show()
 
     def plot_remote(self, filename: str) -> None:
-        # TODO: Review this code and test.
-        self.queue.insert(0, {self.plot_remote: []})
-        # TODO: figure out how data gets transferred and where it gets stored
-        self.queue.insert(1, {self.plot_manager.plot: ["temp loc" + "plot_temp.csv"]})
-        self.spec_commander.transfer_data(filename, "spec_share_loc", "plot_temp.csv")
+        print("PLOT REMOTE!!")
+        self.queue.insert(0, {self.plot_remote: [filename]})
+        plot_loc = os.path.join(self.config_info.local_config_loc, "plot_temp.csv")
+        self.queue.insert(1, {self.plot_manager.plot: [plot_loc, False]})
+        self.spec_commander.transfer_data(filename)
         DataHandler(
             self,
-            source=filename,
-            # TODO: figure out how data gets transferred and where it gets placed
-            temp_destination="temp loc" + "plot_temp.csv",
-            final_destination="temp loc" + "plot_temp.csv",
+            destination=plot_loc,
         )
 
     def bind(self) -> None:
@@ -2095,12 +2094,8 @@ class Controller(utils.ControllerType):
             if i == 0:
                 continue
             self.view_notebook.forget(tab)
+        self.plot_manager = PlotManager(self)
 
-    def plot(self):
-        if len(self.queue) > 0:
-            print("There is a queue here if and only if we are transferring data from a remote location.")
-            self.complete_queue_item()
-        self.plot_manager.plot()
 
     def choose_spec_save_dir(self):
         RemoteFileExplorer(

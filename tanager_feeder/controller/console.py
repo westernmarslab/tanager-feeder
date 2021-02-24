@@ -63,8 +63,6 @@ class Console:
         self.controller.master.update()
         space = self.console_log.winfo_width()
         space = str(int(space / 8.5))
-        if int(space) < 20:
-            space = str(20)
         datestring = ""
         datestringlist = str(datetime.datetime.now()).split(".")[:-1]
         for d in datestringlist:
@@ -73,17 +71,30 @@ class Console:
         while info_string[0] == "\n":
             info_string = info_string[1:]
 
+        first_space = int(space)-15
+        if "\n" not in info_string:
+            if len(info_string) > first_space:
+                i = first_space - 7
+                while True:
+                    if i ==0:
+                        info_string = info_string[0:int(first_space/2)] + "\n" + info_string[int(first_space/2):]
+                    if info_string[i] == " ":
+                        info_string = info_string[0:i] + "\n"+info_string[i+1:]
+                        break
+                    i -= 1
+
+                # info_string = info_string[0:first_space-10]+"\n"+info_string[first_space - 10:]
+        first_space = str(first_space)
         if "\n" in info_string:
             lines = info_string.split("\n")
-
-            lines[0] = ("{1:" + space + "}{0}").format(datestring, lines[0])
+            lines[0] = ("{1:" + first_space + "}{0}").format(datestring, lines[0])
             for i, _ in enumerate(lines):
                 if i == 0:
                     continue
-                lines[i] = ("{1:" + space + "}{0}").format("", lines[i])
+                lines[i] = ("{1:" + str(space) + "}{0}").format("", lines[i])
             info_string = "\n".join(lines)
         else:
-            info_string = ("{1:" + space + "}{0}").format(datestring, info_string)
+            info_string = ("{1:" + first_space + "}{0}").format(datestring, info_string)
 
         if info_string[-2:-1] != "\n":
             info_string += "\n"
