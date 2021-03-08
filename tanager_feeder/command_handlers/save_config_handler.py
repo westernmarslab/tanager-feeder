@@ -19,10 +19,12 @@ class SaveConfigHandler(CommandHandler):
         self.keep_around: bool = False
         self.unexpected_files: List = []
         self.listener.new_dialogs = False
+        self.tk_format = utils.TkFormat()
         super().__init__(controller, title, label=label, timeout=timeout)
 
     def wait(self):
         t = 30
+
         while "donelookingforunexpected" not in self.listener.queue and t > 0:
             t = t - utils.INTERVAL
             time.sleep(utils.INTERVAL)
@@ -118,7 +120,6 @@ class SaveConfigHandler(CommandHandler):
             + self.controller.spec_basename_entry.get()
             + "\n\tStart number: "
             + self.controller.spec_startnum_entry.get(),
-            write_to_file=True,
         )
 
         if self.keep_around:
@@ -135,9 +136,9 @@ class SaveConfigHandler(CommandHandler):
 
             listbox = utils.ScrollableListbox(
                 dialog.top,
-                self.wait_dialog.bg,
-                self.wait_dialog.entry_background,
-                self.wait_dialog.listboxhighlightcolor,
+                self.tk_format.bg,
+                self.tk_format.entry_background,
+                self.tk_format.listboxhighlightcolor,
             )
             for file in self.unexpected_files:
                 listbox.insert(END, file)

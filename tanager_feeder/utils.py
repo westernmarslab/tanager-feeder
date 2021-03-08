@@ -18,8 +18,10 @@ from tkinter import (
     Listbox,
     SINGLE,
     Widget,
+    END,
 )
-from typing import Any, Optional
+from typing import Any, Optional, Union
+import time
 
 import numpy as np
 import psutil
@@ -82,16 +84,22 @@ class ConnectionManager:
     @pi_ip.setter
     def pi_ip(self, new_ip):
         self._pi_ip = new_ip
-        self.pi_client = TanagerClient((new_ip, self.REMOTE_PORT), self.LISTEN_FOR_.PI_PORT)
+        self.pi_client = TanagerClient((new_ip, self.REMOTE_PORT), self.LISTEN_FOR_PI_PORT)
 
     def send_to_spec(self, message: str) -> bool:
         if not self.spec_offline:
-            return self.spec_client.send(message)
+            sent = self.spec_client.send(message)
+            if not sent:
+                self.spec_offline = True
+            return sent
         return False
 
     def send_to_pi(self, message: str) -> bool:
         if not self.pi_offline:
-            return self.pi_client.send(message)
+            sent = self.pi_client.send(message)
+            if not sent:
+                self.pi_offline = True
+            return sent
         return False
 
     def connect_spec(self, timeout: float):
@@ -430,10 +438,24 @@ class ScrollableListbox(Listbox):
             exportselection=0,
         )
         self.pack(side=LEFT, expand=True, fill=BOTH, padx=(10, 0))
+        self.bind('<Control-c>', self.copy)
 
     def destroy(self):
         self.scrollbar.destroy()
         super().destroy()
+
+    def copy(self, event=None):
+        self.clipboard_clear()
+
+        all_items = self.get(0, END)  # tuple with text of all items in Listbox
+        sel_idx = self.curselection()  # tuple with indexes of selected items
+        sel_list = [all_items[item] for item in sel_idx]  # list with text of all selected items
+
+        for i, text in enumerate(sel_list):
+            if i < len(sel_list) -1:
+                self.clipboard_append(text+',\n')
+            else:
+                self.clipboard_append(text)
 
 
 def exit_func():
@@ -474,11 +496,7 @@ def arctan(ratio):
     return np.arctan(ratio) * 180 / 3.14159
 
 
-def get_lat1_lat2_delta_long(i: int, e: int, az: int):
-    print(i)
-    print(e)
-    print(type(i))
-    print(type(e))
+def get_lat1_lat2_delta_long(i: Union[int, float], e: Union[int, float], az: Union[int, float]):
     if np.sign(i) == np.sign(e):
         delta_long = az
     else:
@@ -489,9 +507,6 @@ def get_lat1_lat2_delta_long(i: int, e: int, az: int):
 
 
 def get_phase_angle(i: int, e: int, az: int):
-    print(i)
-    print(e)
-    print(az)
     lat1, lat2, delta_long = get_lat1_lat2_delta_long(i, e, az)
     dist = np.abs(arccos(sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(delta_long)))
     return dist
@@ -527,10 +542,14 @@ def set_text(widget: Widget, text: str):
 
 
 def lift_widget(widget: Widget):
+    time.sleep(5)
+    print("LIFTING WIDGET IN UTILS")
     widget.focus_set()
     widget.lift()
 
 
 def thread_lift_widget(widget: Widget):
+    time.sleep(3)
+    print("LIFTING")
     thread = Thread(target=lift_widget, args=(widget,))
     thread.start()

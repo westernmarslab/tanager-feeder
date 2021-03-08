@@ -51,7 +51,7 @@ class ConfigDialog(Dialog):
                     "4          ",
                     "5          ",
                 )
-                menu.configure(width=15, highlightbackground=self.controller.highlightbackgroundcolor)
+                menu.configure(width=15, highlightbackground=self.tk_format.highlightbackgroundcolor)
                 menu.pack()
 
         self.set_buttons(buttons)

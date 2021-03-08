@@ -27,24 +27,6 @@ class Plot:
     ):
         pass
 
-    # def __initfoo__(
-    #     self,
-    #     plotter,
-    #     fig,
-    #     white_fig,
-    #     samples,
-    #     title,
-    #     oversize_legend=False,
-    #     plot_scale=18,
-    #     plot_width=215,
-    #     x_axis="wavelength",
-    #     y_axis="reflectance",
-    #     xlim=None,
-    #     ylim=None,
-    #     exclude_artifacts=False,
-    #     draw=True,
-    # ):
-    #     return
         self.plotter = plotter
         self.samples = samples
         self.contour_levels = []
@@ -530,13 +512,13 @@ class Plot:
             self.adjust_y(np.min(y), np.max(y))
 
         else:
-
             min_r = None  # we'll use these for setting polar r limits if we are doing a polar plot.
             max_r = None
 
             for j, sample in enumerate(self.samples):
-                for i, label in enumerate(sample.geoms):
-                    legend_label = self.legend_labels[sample][i]
+                for k, label in enumerate(sample.geoms):
+
+                    legend_label = self.legend_labels[sample][k]
 
                     color = sample.next_color()
                     white_color = sample.next_white_color()
@@ -552,14 +534,14 @@ class Plot:
                     ) and self.x_axis == "wavelength":
                         wavelengths = sample.data[label][self.x_axis]
                         reflectance = sample.data[label][self.y_axis]
-
                         if (
                             self.exclude_artifacts
                         ):  # If we are excluding data from the suspect region from 1050 to 1450 nm, divide each
                             # spectrum into 3 segments. One on either side of that bad region, and then one straight
                             # dashed line through the bad region. All the same color. Only attach a legend label to
                             # the first one so the legend only gets drawn once.
-                            _, _, g = self.plotter.get_e_i_g(label)
+                            i, e, az = float(label[0]), float(label[1]), float(label[2])
+                            g = utils.get_phase_angle(i, e, az)
                             if self.plotter.artifact_danger(g):  # Only exclude data for high phase angle spectra
                                 artifact_index_left = self.plotter.get_index(
                                     np.array(wavelengths), utils.MIN_WAVELENGTH_ARTIFACT_FREE
@@ -894,13 +876,7 @@ class Plot:
             self.white_ax.set_ylim(*self.ylim)
             self.set_x_ticks()
             self.set_y_ticks()
-        print("hooey")
-        return
-        # TODO: Test thoroughly, especially for plotting remote data
-        # TODO: after clearing data cache, new tab (2) still turns up (instead of new tab)
-        # TODO: after clearing data cache, cannot plot same file again.
-        self.fig.canvas.draw()
-        self.white_fig.canvas.draw()
+
 
     def draw_legend(self, legend_style):
         self.legend_style = (
@@ -1047,11 +1023,11 @@ class Plot:
                         )
 
                     p = patches.Rectangle(
-                        (left, bottom), width, height, facecolor=sample.colors[i], transform=self.leg_ax.transAxes
+                        (left, bottom), width, height, facecolor=sample.colors[k], transform=self.leg_ax.transAxes
                     )
                     self.leg_ax.add_patch(p)
                     p = patches.Rectangle(
-                        (left, bottom), width, height, facecolor=sample.white_colors[i], transform=self.leg_ax.transAxes
+                        (left, bottom), width, height, facecolor=sample.white_colors[k], transform=self.leg_ax.transAxes
                     )
                     self.white_leg_ax.add_patch(p)
                     bottom += height

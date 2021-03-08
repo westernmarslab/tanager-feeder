@@ -85,6 +85,7 @@ class SpecCommander(Commander):
         return filename
 
     def transfer_data(self, source: str):
+        print("COMMANDING A TRANSFER")
         self.remove_from_listener_queue(["datatransfercomplete", "datafailure", "batch"])
         filename = self.encrypt("transferdata", parameters=[source])
         self.send(filename)

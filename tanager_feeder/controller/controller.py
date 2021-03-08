@@ -24,6 +24,7 @@ from tkinter import (
     Radiobutton,
     OptionMenu,
     INSERT,
+    TclError,
 )
 from typing import Optional
 
@@ -1011,7 +1012,6 @@ class Controller(utils.ControllerType):
         self.plot_manager.show()
 
     def plot_remote(self, filename: str) -> None:
-        print("PLOT REMOTE!!")
         self.queue.insert(0, {self.plot_remote: [filename]})
         plot_loc = os.path.join(self.config_info.local_config_loc, "plot_temp.csv")
         self.queue.insert(1, {self.plot_manager.plot: [plot_loc, False]})
@@ -1195,6 +1195,7 @@ class Controller(utils.ControllerType):
                         height=130,
                     )
                     return False
+                i, e, az = int(i), int(e), int(az)
                 if not self.validate_distance(i, e, az):
                     ErrorDialog(
                         self,
@@ -1222,7 +1223,7 @@ class Controller(utils.ControllerType):
             self.complete_queue_item()
             self.queue.insert(0, nextaction)
             self.queue.insert(0, {self.set_save_config: []})
-            self.set_save_config()  # self.take_spectrum,[True])
+            self.set_save_config()
             return False
 
         # Requested instrument config is guaranteed to be valid because of input checks above.
@@ -1325,9 +1326,8 @@ class Controller(utils.ControllerType):
             while len(startnum_str) < self.config_info.num_len:
                 startnum_str = "0" + startnum_str
             if not garbage:
-                if (
-                    self.white_referencing
-                ):  # This will be true when we are saving the spectrum after the white reference
+                if self.white_referencing:
+                    # This will be true when we are saving the spectrum after the white reference
                     label = "White Reference"
                 else:
                     label = self.sample_label_entries[self.current_sample_gui_index].get()
@@ -1591,6 +1591,7 @@ class Controller(utils.ControllerType):
         if unit == "angle":
             # First check whether we actually need to move at all.
             if next_az is None:
+                # TODO: confirm this shouldn't have a try/catch involved.
                 next_az = int(self.active_azimuth_entries[0].get())
 
             if next_az == self.science_az:  # No change in azimuth angle, no need to move
@@ -1935,7 +1936,7 @@ class Controller(utils.ControllerType):
                     self.wait_dialog.top.geometry("376x175")
                     for button in self.wait_dialog.tk_buttons:
                         button.config(width=15)
-                except AttributeError:
+                except (AttributeError, TclError):
                     dialog = ErrorDialog(
                         self,
                         label="Error: Operation timed out.\n\nCheck that the automation script is running on the"
@@ -1971,7 +1972,6 @@ class Controller(utils.ControllerType):
         self.spec_commander.set_save_path(
             self.spec_save_dir_entry.get(), self.spec_basename_entry.get(), self.spec_startnum_entry.get()
         )
-        print("Making a saveconfighandler!")
         SaveConfigHandler(self)
 
     def reset(self) -> None:
@@ -2008,39 +2008,38 @@ class Controller(utils.ControllerType):
         except ValueError:
             return
 
-    def process_cmd(self) -> None:
-        self.process_manager.show()
-        try:
-            input_directory, output_directory, output_file = self.process_manager.setup_process()
-        except ProcessFileError:
-            return
+    def process_cmd(self, input_directory: Optional[str] = None, output_directory: Optional[str] = None, output_file: Optional[str] = None) -> None:
+        if input_directory is None or output_directory is None or output_file is None:
+            try:
+                input_directory, output_directory, output_file = self.process_manager.setup_process()
+            except ProcessFileError:
+                print("Process File Error!")
+                return
+        if self.process_manager.proc_local.get() == 1:
+            self.spec_commander.process(input_directory, "spec_temp_data_loc", output_file)
+            self.queue.insert(0, {self.process_cmd: [input_directory, output_directory, output_file]})
+            self.queue.insert(1, {self.finish_process: [os.path.join("spec_temp_data_loc", output_file), os.path.join(output_directory, output_file)]})
+        else:
+            self.spec_commander.process(input_directory, output_directory, output_file)
+            self.queue.insert(0, {self.process_cmd: [input_directory, output_directory, output_file]})
+        print("queue! in controller.py")
+        print(self.queue)
+        ProcessHandler(self, os.path.join(output_directory, output_file))
 
-        self.spec_commander.process(input_directory, output_directory, output_file)
-        self.queue.insert(0, {self.process_cmd: []})
-        self.queue.insert(1, {self.finish_process: [output_file]})
-        ProcessHandler(self)
-
-    def finish_process(self) -> None:
-        self.complete_queue_item()
+    def finish_process(self, source_file, output_file) -> None:
+        print("FINISH PROCESSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS")
+        self.spec_commander.transfer_data(source_file)
+        DataHandler(
+            self,
+            destination=output_file,
+        )
+        return
         # We're going to transfer the data file and log file to the final destination. To transfer the log file, first
         # decide on a name to call it. This will be based on the dat file name. E.g. foo.csv would have foo_log.txt
         # associated with it.
         final_data_destination, final_log_destination = self.process_manager.finish_processing()
 
-        # TODO: figure out what goes on here with TCP transfer.
-        for item in self.spec_listener.queue:
-            if "spec_data" in item:
-                spec_data = item["spec_data"]
-                print("Writing data to " + final_data_destination)
-                with open(final_data_destination, "w+") as f:
-                    f.write(spec_data)
 
-        for item in self.spec_listener.queue:
-            if "log_data" in item:
-                log_data = item["log_data"]
-                print("Writing log file to " + final_log_destination)
-                with open(final_log_destination, "w+") as f:
-                    f.write(log_data)
 
     # This gets called when the user clicks 'Edit plot' from the right-click menu on a plot.
     # Pops up a scrollable listbox with sample options.
@@ -2066,19 +2065,19 @@ class Controller(utils.ControllerType):
     def close_plot_option_windows(self):
         try:
             self.analysis_tools_manager.analysis_dialog.top.destroy()
-        except AttributeError:
+        except (AttributeError, TclError):
             pass
         try:
             self.edit_plot_manager.edit_plot_dialog.top.destroy()
-        except AttributeError:
+        except (AttributeError, TclError):
             pass
         try:
             self.plot_settings_manager.plot_settings_dialog.top.destroy()
-        except AttributeError:
+        except (AttributeError, TclError):
             pass
         try:
             self.plot_manager.plot_top.destroy()
-        except AttributeError:
+        except (AttributeError, TclError):
             pass
 
     def reset_plot_data(self):
@@ -2108,7 +2107,7 @@ class Controller(utils.ControllerType):
     def add_sample(self):
         try:
             self.add_sample_button.pack_forget()
-        except AttributeError:
+        except (AttributeError, TclError):
             self.add_sample_button = Button(
                 self.samples_frame,
                 text="Add new",
@@ -2278,7 +2277,7 @@ class Controller(utils.ControllerType):
     def add_geometry(self):
         try:
             self.add_geometry_button.pack_forget()
-        except AttributeError:
+        except (AttributeError, TclError):
             self.add_geometry_button = Button(
                 self.individual_angles_frame,
                 text="Add new",
@@ -2632,7 +2631,7 @@ class Controller(utils.ControllerType):
                 )
                 self.goniometer_view.flip()
                 self.master.update()
-            except AttributeError:
+            except (AttributeError, TclError):
                 # Happens when the program is just starting up and there is no view yet
                 pass
             except ValueError:
@@ -2660,38 +2659,38 @@ class Controller(utils.ControllerType):
     def freeze(self):
         try:
             self.plot_manager.plot_top.destroy()
-        except AttributeError:
+        except (AttributeError, TclError):
             pass
         try:
             self.process_manager.process_top.destroy()
-        except AttributeError:
+        except (AttributeError, TclError):
             pass
         for button in self.tk_buttons:
             try:
                 button.configure(state="disabled")
-            except AttributeError:
+            except (AttributeError, TclError):
                 pass
         for entry in self.entries:
             try:
                 entry.configure(state="disabled")
-            except AttributeError:
+            except (AttributeError, TclError):
                 pass
         for radio in self.radiobuttons:
             try:
                 radio.configure(state="disabled")
-            except AttributeError:
+            except (AttributeError, TclError):
                 pass
 
         for button in self.tk_check_buttons:
             try:
                 button.configure(state="disabled")
-            except AttributeError:
+            except (AttributeError, TclError):
                 pass
 
         for menu in self.option_menus:
             try:
                 menu.configure(state="disabled")
-            except AttributeError:
+            except (AttributeError, TclError):
                 pass
 
         self.menubar.entryconfig("Settings", state="disabled")
@@ -2707,29 +2706,29 @@ class Controller(utils.ControllerType):
         for button in self.tk_buttons:
             try:
                 button.configure(state="normal")
-            except AttributeError:
+            except (AttributeError, TclError):
                 pass
         for entry in self.entries:
             try:
                 entry.configure(state="normal")
-            except AttributeError:
+            except (AttributeError, TclError):
                 pass
         for radio in self.radiobuttons:
             try:
                 radio.configure(state="normal")
-            except AttributeError:
+            except (AttributeError, TclError):
                 pass
 
         for button in self.tk_check_buttons:
             try:
                 button.configure(state="normal")
-            except AttributeError:
+            except (AttributeError, TclError):
                 pass
 
         for menu in self.option_menus:
             try:
                 menu.configure(state="normal")
-            except AttributeError:
+            except (AttributeError, TclError):
                 pass
 
         if self.manual_automatic.get() == 0:
@@ -2739,7 +2738,7 @@ class Controller(utils.ControllerType):
             for pos_menu in self.pos_menus:
                 pos_menu.configure(state="disabled")
 
-    def log(self, text: str):
-        self.console.log(text)
+    def log(self, text: str, newline: Optional[bool] = True):
+        self.console.log(text, newline)
 
     # TODO: Consider moving to a safe geometry on shutdown.

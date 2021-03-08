@@ -213,13 +213,29 @@ class EditPlotManager:
                 list_to_check.append(None)
             if list_to_check == [""]:
                 list_to_check = []
+            print(list_to_check)
+            # If e.g. %5 is included in the list, include all angles where angle % 5 == 0
+            n = 0
+            while n < len(list_to_check):
+                angle = list_to_check[n]
+                if "%" in str(angle):
+                    try:
+                        val = int(str(angle).replace("%", ""))
+                    except ValueError:
+                        invalid_list.append(angle)
+                        continue
+                    for k in range(-70, 171):
+                        if k % val == 0:
+                            list_to_check.insert(n, k)
+                            n+=1
+                    list_to_check.remove(angle)
+
             for n, angle in enumerate(list_to_check):
                 if angle is not None:
                     try:
                         list_to_check[n] = int(angle)
                     except ValueError:
                         invalid_list.append(angle)
-
             return list_to_check, invalid_list
 
         incidences, invalid_incidences = check_list(incidences)

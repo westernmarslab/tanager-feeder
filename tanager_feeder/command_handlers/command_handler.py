@@ -109,14 +109,12 @@ class CommandHandler:
         if info_string is not None:
             self.controller.log(info_string)
         if retry:
-            print(self.controller.queue)
             buttons = {"retry": {self.controller.next_in_queue: []}, "cancel": {self.finish: []}}
             self.wait_dialog.set_buttons(buttons)
         self.controller.freeze()
         try:
             self.wait_dialog.ok_button.focus_set()
         except (AttributeError, TclError):
-            # TODO: may need to add TclError to AttributeError catching
             self.wait_dialog.top.focus_set()
 
         if self.controller.audio_signals:
@@ -159,7 +157,7 @@ class CommandHandler:
                 " directory and try again.",
             )
 
-    def success(self):
+    def success(self, message: str = "Success!"):
         if len(self.controller.queue) > 0:
             self.controller.complete_queue_item()
         else:
@@ -174,7 +172,6 @@ class CommandHandler:
             self.interrupt("Paused.")
             self.wait_dialog.set_buttons(buttons)
         elif len(self.controller.queue) > 0:
-            print(self.controller.queue)
             self.controller.next_in_queue()
         elif self.controller.script_running:
             self.controller.log("Success!")
@@ -182,4 +179,4 @@ class CommandHandler:
             self.finish()
         else:
             self.controller.reset()
-            self.interrupt("Success!")
+            self.interrupt(message)

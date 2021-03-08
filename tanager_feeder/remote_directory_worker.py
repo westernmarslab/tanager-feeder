@@ -66,15 +66,19 @@ class RemoteDirectoryWorker:
         timeout = 2*utils.BUFFER
         t = 0
         while t < timeout:
-            if "mkdirsuccess" in self.listener.queue:
-                self.listener.queue.remove("mkdirsuccess")
-                return "mkdirsuccess"
-            if "mkdirfailedfileexists" in self.listener.queue:
-                self.listener.queue.remove("mkdirfailedfileexists")
-                return "mkdirfailedfileexists"
-            if "mkdirfailed" in self.listener.queue:
-                self.listener.queue.remove("mkdirfailed")
-                return "mkdirfailed"
+            for item in self.listener.queue:
+                if item == "mkdirsuccess":
+                    self.listener.queue.remove("mkdirsuccess")
+                    return "mkdirsuccess"
+                if item == "mkdirfailedfileexists":
+                    self.listener.queue.remove("mkdirfailedfileexists")
+                    return "mkdirfailedfileexists"
+                if item == "mkdirfailedpermission":
+                    self.listener.queue.remove("mkdirfailedpermission")
+                    return "mkdirfailedpermission"
+                if "mkdirfailed" in item:
+                    self.listener.queue.remove(item)
+                    return "mkdirfailed"
 
             time.sleep(utils.INTERVAL)
             t+=utils.INTERVAL

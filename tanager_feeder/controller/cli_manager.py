@@ -544,7 +544,7 @@ class CliManager:
                     if not self.controller.script_running:
                         self.controller.queue = []
                     self.controller.queue.insert(0, {self.controller.move_tray: [steps, "steps"]})
-                    self.controller.move_tray(steps, type="steps")
+                    self.controller.move_tray(steps, unit="steps")
                 else:
                     self.controller.fail_script_command(
                         "Error: " + str(steps) + " is not a valid number of steps. Enter an integer from -800 to 800."
@@ -576,7 +576,7 @@ class CliManager:
             return True
 
         if "set_emission(" in cmd:
-            if self.controller.manual_automatic.get() == 0 or self.controller.connection_tracker.pi_offline:
+            if self.controller.manual_automatic.get() == 0 or self.controller.connection_manager.pi_offline:
                 self.controller.fail_script_command("Error: Not in automatic mode")
                 return False
             try:
@@ -622,7 +622,7 @@ class CliManager:
             return True
 
         if "set_azimuth(" in cmd:
-            if self.controller.manual_automatic.get() == 0 or self.controller.connection_tracker.pi_offline:
+            if self.controller.manual_automatic.get() == 0 or self.controller.connection_manager.pi_offline:
                 self.controller.fail_script_command("Error: Not in automatic mode")
                 return False
             try:
@@ -656,6 +656,7 @@ class CliManager:
                 az = param
                 valid_az = utils.validate_int_input(az, self.controller.min_science_az, self.controller.max_science_az)
                 if valid_az:
+                    az = int(az)
                     if not self.controller.script_running:
                         self.controller.queue = []
                     self.controller.queue.insert(0, {self.controller.set_azimuth: [az]})
@@ -667,7 +668,7 @@ class CliManager:
 
         # Accepts incidence angle in degrees, converts to motor position. OR accepts motor steps to move.
         if "set_incidence(" in cmd:
-            if self.controller.manual_automatic.get() == 0 or self.controller.connection_tracker.pi_offline:
+            if self.controller.manual_automatic.get() == 0 or self.controller.connection_manager.pi_offline:
                 self.controller.log("Error: Not in automatic mode")
                 self.controller.queue = []
                 self.controller.script_running = False
@@ -718,7 +719,7 @@ class CliManager:
             return True
 
         if "set_motor_azimuth" in cmd:
-            if self.controller.manual_automatic.get() == 0 or self.controller.connection_tracker.pi_offline:
+            if self.controller.manual_automatic.get() == 0 or self.controller.connection_manager.pi_offline:
                 self.controller.fail_script_command("Error: Not in automatic mode")
                 return False
             try:
@@ -772,7 +773,6 @@ class CliManager:
             movements = self.controller.get_movements(i, e, az)
 
             if movements is None:
-                print("NO PATH FOUND")
                 self.controller.fail_script_command(
                     "Error: Cannot find a path from current geometry to i= "
                     + str(i)

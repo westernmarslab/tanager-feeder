@@ -33,11 +33,10 @@ class InstrumentConfigHandler(CommandHandler):
         self.timeout()
 
     def success(self):
-        self.controller.spec_config_count = self.controller.instrument_config_entry.get()
+        self.controller.spec_config_count = int(self.controller.instrument_config_entry.get())
 
         self.controller.log(
-            "Instrument configured to average " + str(self.controller.spec_config_count) + " spectra.",
-            write_to_file=True,
+            "Instrument configured to average " + str(self.controller.spec_config_count) + " spectra."
         )
 
         super().success()

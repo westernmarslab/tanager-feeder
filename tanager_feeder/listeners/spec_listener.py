@@ -65,6 +65,8 @@ class SpecListener(Listener):
 
                 if cmd == "spec_data_final":
                     self.queue.append("spec_data_transferred")
+            elif cmd == "savedfile":
+                self.queue.append(cmd)
 
             elif "log_data" in cmd:
                 found = False

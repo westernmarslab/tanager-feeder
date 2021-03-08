@@ -1,5 +1,5 @@
 import os
-from tkinter import Entry, Button, Label, Checkbutton, Toplevel, Frame, LEFT, RIGHT, IntVar
+from tkinter import Entry, Button, Label, Checkbutton, Toplevel, Frame, LEFT, RIGHT, IntVar, END, TclError
 from tkinter.filedialog import askopenfilename
 
 from tanager_feeder.dialogs.dialog import Dialog
@@ -18,7 +18,7 @@ class PlotManager:
             with open(self.config_info.local_config_loc + "plot_config.txt", "r") as plot_config:
                 self.plot_local_remote = plot_config.readline().strip("\n")
                 self.plot_input_file = plot_config.readline().strip("\n")
-                self.plot_title = plot_config.readline().strip("\n")
+                self.dataset_name = plot_config.readline().strip("\n")
         except OSError:
             print("No past plotting location found. Using default.")
             with open(self.config_info.local_config_loc + "plot_config.txt", "w+") as f:
@@ -27,7 +27,7 @@ class PlotManager:
                 f.write("C:\\Users\n")
 
             self.plot_local_remote = "remote"
-            self.plot_title = ""
+            self.dataset_name = ""
             self.plot_input_file = "C:\\Users"
 
         self.plot_remote = IntVar()
@@ -41,7 +41,7 @@ class PlotManager:
 
         self.plot_local_check = None
         self.plot_remote_check = None
-        self.plot_title_entry = None
+        self.dataset_name_entry = None
         self.plot_input_dir_entry = None
         self.plot_top = None
 
@@ -51,16 +51,16 @@ class PlotManager:
         plot_frame = Frame(self.plot_top, bg=self.tk_format.bg, pady=2 * self.tk_format.pady, padx=15)
         plot_frame.pack()
 
-        plot_title_label = Label(
+        dataset_name_label = Label(
             plot_frame,
             padx=self.tk_format.padx,
             pady=self.tk_format.pady,
             bg=self.tk_format.bg,
             fg=self.tk_format.textcolor,
-            text="Plot title:",
+            text="Dataset name:",
         )
-        plot_title_label.pack(padx=self.tk_format.padx, pady=(15, 5))
-        self.plot_title_entry = Entry(
+        dataset_name_label.pack(padx=self.tk_format.padx, pady=(15, 5))
+        self.dataset_name_entry = Entry(
             plot_frame,
             width=50,
             bd=self.tk_format.bd,
@@ -68,8 +68,8 @@ class PlotManager:
             selectbackground=self.tk_format.selectbackground,
             selectforeground=self.tk_format.selectforeground,
         )
-        self.plot_title_entry.insert(0, self.plot_title)
-        self.plot_title_entry.pack(pady=(5, 20))
+        self.dataset_name_entry.insert(0, self.dataset_name)
+        self.dataset_name_entry.pack(pady=(5, 20))
         plot_local_remote_frame = Frame(plot_frame, bg=self.tk_format.bg)
         plot_local_remote_frame.pack()
 
@@ -185,6 +185,7 @@ class PlotManager:
             self.plot_remote_check.select()
         else:
             self.plot_remote_check.deselect()
+        self.plot_input_dir_entry.delete(0, END)
 
     # Toggle back and forth between plotting your data from a remote or local file
     def remote_plot_cmd(self) -> None:
@@ -196,6 +197,7 @@ class PlotManager:
             self.plot_local_check.select()
         else:
             self.plot_local_check.deselect()
+        self.plot_input_dir_entry.delete(0, END)
 
     def choose_plot_file(self) -> None:
         init_file = self.plot_input_dir_entry.get()
@@ -231,7 +233,7 @@ class PlotManager:
             else:
                 self.plotter.save_dir = "/".join(plot_input_file.split("/")[0:-1])
 
-        self.plot_title = self.plot_title_entry.get()
+        self.dataset_name = self.dataset_name_entry.get()
         if self.plot_remote.get():
             self.plot_local_remote = "remote"
         elif self.plot_local.get():
@@ -241,7 +243,7 @@ class PlotManager:
             with open(self.config_info.local_config_loc + "plot_config.txt", "w") as plot_config:
                 plot_config.write(self.plot_local_remote + "\n")
                 plot_config.write(plot_input_file + "\n")
-                plot_config.write(self.plot_title + "\n")
+                plot_config.write(self.dataset_name + "\n")
         except OSError:
             print("Error saving data location for plots.")
 
@@ -253,19 +255,15 @@ class PlotManager:
 
     def plot(self, plot_input_file, draw = True):
         if len(self.controller.queue) > 0:
-            if self.controller.queue[0] == {self.plot: [plot_input_file]}:
+            if self.plot in self.controller.queue[0]:
                 # Happens if we just transferred data from spec compy.
                 self.controller.complete_queue_item()
+                self.controller.wait_dialog.top.destroy()
+
         try:
-            self.plotter.plot_spectra(self.plot_title, plot_input_file)
-            # self.plotter.tabs[-1].ask_which_samples()
-            # # self.controller.goniometer_view.flip()
-            # last = len(self.controller.view_notebook.tabs()) - 1
-            # self.controller.view_notebook.select(last)
+            self.plotter.load_samples(self.dataset_name, plot_input_file)
 
         except (IndexError, KeyError, Exception) as e:
-            #TODO: figure out options for exceptions.
-            print(e)
             Dialog(
                 self.controller,
                 "Plotting Error",

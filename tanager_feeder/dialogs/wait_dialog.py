@@ -1,4 +1,4 @@
-from tkinter import ttk, Frame
+from tkinter import ttk, Frame, TclError
 from typing import Dict, Optional
 
 from tanager_feeder.dialogs.dialog import Dialog
@@ -21,7 +21,10 @@ class WaitDialog(Dialog):
 
     def interrupt(self, label: str):
         self.set_label_text(label)
-        self.pbar.stop()
+        try:
+            self.pbar.stop()
+        except TclError:
+            pass
         self.set_buttons({"ok": {}})
 
     def reset(self, title: str = "Working...", label: str = "Working...", buttons: Optional[Dict] = None):

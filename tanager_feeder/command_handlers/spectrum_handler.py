@@ -14,7 +14,6 @@ class SpectrumHandler(CommandHandler):
 
     def wait(self):
         while self.timeout_s > 0:
-
             if "failedtosavefile" in self.listener.queue:
                 self.listener.queue.remove("failedtosavefile")
                 self.interrupt("Error: Failed to save file.\nAre you sure the spectrometer is connected?", retry=True)
@@ -53,14 +52,14 @@ class SpectrumHandler(CommandHandler):
 
                 if self.controller.manual_automatic.get() == 0 and not self.controller.script_running:
                     self.interrupt("Error: File exists.\nDo you want to overwrite this data?")
-                    self.wait_dialog.top.wm_geometry("420x130")
+                    self.wait_dialog.top.wm_geometry("420x145")
                     buttons = {"yes": {self.remove_retry: []}, "no": {self.finish: []}}
 
                     self.wait_dialog.set_buttons(buttons)
 
                 else:
                     self.interrupt("Error: File exists.\nDo you want to overwrite this data?")
-                    self.wait_dialog.top.wm_geometry("420x130")
+                    self.wait_dialog.top.wm_geometry("420x145")
                     buttons = {
                         "yes": {self.remove_retry: []},
                         "yes to all": {self.controller.set_overwrite_all: [True], self.remove_retry: []},
@@ -174,7 +173,7 @@ class SpectrumHandler(CommandHandler):
                     + ".asd). This data is likely garbage."
                 )
         else:
-            self.controller.log(info_string, True)
+            self.controller.log(info_string)
 
         self.controller.clear()
         super().success()

@@ -17,6 +17,7 @@ class DataHandler(CommandHandler):
         super().__init__(controller, title, label, timeout=2 * utils.BUFFER)
         self.destination = destination
         self.wait_dialog.top.geometry("%dx%d%+d%+d" % (376, 130, 107, 69))
+        self.controller.log("Tranferring data...", newline=False)
 
     def wait(self):
         data=[]
@@ -24,15 +25,24 @@ class DataHandler(CommandHandler):
         while self.timeout_s > 0:
             batch_string = f"batch{next_batch}"
             for item in self.listener.queue:
+                if f"datatransferstarted" in item:
+                    total_batches = float(item.replace("datatransferstarted",""))
                 if batch_string in item:
                     self.listener.queue.remove(item)
-                    print(f"FOUND {batch_string}")
+                    if next_batch +1 < total_batches:
+                        percent_complete = int((next_batch+1)/total_batches*100)
+                        self.controller.log(f" {percent_complete}%", newline=False)
+                    else:
+                        percent_complete = 100
+                        self.controller.log(f" {percent_complete}%", newline=True)
+
                     data.append(item[len(batch_string):])
                     next_batch += 1
+                    self.timeout_s = 2*utils.BUFFER
+
             if f"datatransfercomplete{next_batch}" in self.listener.queue:
                 self.listener.queue.remove(f"datatransfercomplete{next_batch}")
-                print("GOT ALL DATA")
-                print(self.destination)
+                self.controller.log("\n\n", newline=False)
                 try:
                     with open(self.destination, "w+") as file:
                         for batch in data:

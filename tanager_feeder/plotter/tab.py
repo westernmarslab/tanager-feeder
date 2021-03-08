@@ -322,10 +322,7 @@ class Tab:
             incidence_sample = Sample(sample.name, sample.file, sample.title)
             emission_sample = Sample(sample.name, sample.file, sample.title)
             for geom in sample.geoms:
-                i = geom[0]
-                e = geom[1]
-                az = geom[2]
-
+                i, e, az = int(geom[0]), int(geom[1]), int(geom[2])
                 g = utils.get_phase_angle(i, e, az)
 
                 if (
@@ -365,7 +362,7 @@ class Tab:
                 self.contour_sample.data["all samples"]["i"].append(i)
                 self.contour_sample.data["all samples"]["average reflectance"].append(avg)
 
-                avgs.append(geom + ": " + str(avg))
+                avgs.append(str(geom) + ": " + str(avg))
             self.emission_samples.append(emission_sample)
             self.incidence_samples.append(incidence_sample)
         self.plot.draw_vertical_lines([left, right])
@@ -387,7 +384,8 @@ class Tab:
             incidence_sample = Sample(sample.name, sample.file, sample.title)
             emission_sample = Sample(sample.name, sample.file, sample.title)
             for label in sample.geoms:
-                e, i, g = self.plotter.get_e_i_g(label)
+                i, e, az = float(label[0]), float(label[1]), float(label[2])
+                g = utils.get_phase_angle(i, e, az)
 
                 if (
                     self.exclude_artifacts
@@ -452,7 +450,7 @@ class Tab:
                 self.contour_sample.data["all samples"]["i"].append(i)
                 self.contour_sample.data["all samples"]["band center"].append(center)
 
-                centers.append(label + ": " + str(center))
+                centers.append(str(label) + ": " + str(center))
             self.emission_samples.append(emission_sample)
             self.incidence_samples.append(incidence_sample)
         self.plot.draw_vertical_lines([left, right])
@@ -474,8 +472,8 @@ class Tab:
             incidence_sample = Sample(sample.name, sample.file, sample.title)
             emission_sample = Sample(sample.name, sample.file, sample.title)
             for label in sample.geoms:
-                e, i, g = self.plotter.get_e_i_g(label)
-
+                i, e, az = float(label[0]), float(label[1]), float(label[2])
+                g = utils.get_phase_angle(i, e, az)
                 if (
                     self.exclude_artifacts
                 ):  # If we are excluding artifacts, don't calculate slopes for anything in the range that is
@@ -539,7 +537,7 @@ class Tab:
                 self.contour_sample.data["all samples"]["i"].append(i)
                 self.contour_sample.data["all samples"]["band depth"].append(depth)
 
-                depths.append(label + ": " + str(depth))
+                depths.append(str(label) + ": " + str(depth))
             self.emission_samples.append(emission_sample)
             self.incidence_samples.append(incidence_sample)
         self.plot.draw_vertical_lines([left, right])
@@ -548,9 +546,9 @@ class Tab:
 
     @staticmethod
     def get_e_i_g(label):  # Extract e, i, and g from a label.
-        i = int(label.split("i=")[1].split(" ")[0])
-        e = int(label.split("e=")[1].split(" ")[0].strip(")"))
-        az = int(label.split("az=")[1].strip(")"))
+        i = float(label.split("i=")[1].split(" ")[0])
+        e = float(label.split("e=")[1].split(" ")[0].strip(")"))
+        az = float(label.split("az=")[1].strip(")"))
         g = utils.get_phase_angle(i, e, az)
         return e, i, g
 
@@ -570,8 +568,8 @@ class Tab:
             incidence_sample = Sample(sample.name, sample.file, sample.title)
             emission_sample = Sample(sample.name, sample.file, sample.title)
             for label in sample.geoms:
-                e, i, g = self.plotter.get_e_i_g(label)
-
+                i, e, az = float(label[0]), float(label[1]), float(label[2])
+                g = utils.get_phase_angle(i, e, az)
                 if (
                     self.exclude_artifacts
                 ):  # If we are excluding artifacts, don't calculate slopes for anything in the range that is
@@ -614,7 +612,7 @@ class Tab:
                 self.contour_sample.data["all samples"]["i"].append(i)
                 self.contour_sample.data["all samples"]["slope"].append(slope)
 
-                slopes.append(label + ": " + str(slope))
+                slopes.append(str(label) + ": " + str(slope))
             self.emission_samples.append(emission_sample)
             self.incidence_samples.append(incidence_sample)
         self.plot.draw_vertical_lines([left, right])
@@ -676,7 +674,8 @@ class Tab:
             for label in sample.geoms:
                 wavelengths = np.array(sample.data[label]["wavelength"])
                 reflectance = np.array(sample.data[label][self.y_axis])
-                e, i, g = self.plotter.get_e_i_g(label)
+                i, e, az = float(label[0]), float(label[1]), float(label[2])
+                g = utils.get_phase_angle(i, e, az)
                 if (
                     self.exclude_artifacts
                 ):  # If we are excluding artifacts, don't calculate slopes for anything in the range that is
@@ -777,7 +776,7 @@ class Tab:
                         avg = np.mean(sample.data[label]["difference"][index_left:index_right])
                 else:
                     avg = sample.data[label]["difference"][index_right]
-                avg_errs.append(label + ": " + str(avg))
+                avg_errs.append(str(label) + ": " + str(avg))
 
         self.plot.draw_vertical_lines([left, right])
 
@@ -854,7 +853,7 @@ class Tab:
                         recip = diff / np.mean(recip_sample.data[recip_label]["average reflectance"])
 
                 if diff is not None:
-                    avgs.append(label + ": " + str(recip))  # I don't think this is the average of anything
+                    avgs.append(str(label) + ": " + str(recip))  # I don't think this is the average of anything
             self.recip_samples.append(recip_sample)
 
         for sample in self.recip_samples:
@@ -1072,13 +1071,18 @@ class Tab:
             color_index = self.plot.color_names.index(color)
             hue = self.plot.hues[color_index]
         sample.set_colors(hue)
+        self.update_plot()
+
+    def update_plot(self):
         self.plot.draw()
+        self.plot.fig.canvas.draw()
+        self.plot.white_fig.canvas.draw()
 
     def set_linestyle(self, sample_name, linestyle):
         sample = self.get_sample(sample_name)
         linestyles = {"Solid": "-", "Dash": "--", "Dot": ":", "Dot-dash": "-."}
         sample.set_linestyle(linestyles[linestyle])
-        self.plot.draw()
+        self.update_plot()
 
     def set_markerstyle(self, sample_name, markerstyle):
         sample = self.get_sample(sample_name)
@@ -1086,7 +1090,7 @@ class Tab:
         sample.set_markerstyle(markerstyles[markerstyle])
         #         for sample in self.samples:
         #             sample.restart_color_cycle() #Makes sure that we start at the same point for replotting
-        self.plot.draw()
+        self.update_plot()
 
     def set_legend_style(self, legend_style):
         self.plot.draw_legend(legend_style)
@@ -1126,28 +1130,26 @@ class Tab:
         self.plotter.controller.open_plot_settings(self)
 
     def build_sample_lists(self):
-        # Sample options will be the list of strings to put in the listbox. It may include the sample title,
-        # depending on whether there is more than one title.
+        # Sample options will be the list of strings to put in the listbox.
+        # If the dataset name for the sample is not "" it will include the dataset name.
         self.sample_options_dict = {}
         self.sample_options_list = []
         self.existing_indices = []
 
-        # Each file got a title assigned to it when loaded, so each group of samples from a file will
-        # have a title associated with them.
-        # If there are multiple possible titles, list that in the listbox along with the sample name.
-        if len(self.plotter.titles) > 1:
-            for i, sample in enumerate(self.plotter.sample_objects):
-                for plotted_sample in self.samples:
-                    if sample.name == plotted_sample.name and sample.file == plotted_sample.file:
-                        self.existing_indices.append(i)
+        # Each file got a dataset name assigned to it when loaded, so each group of samples from a file will
+        # have a dataset name associated with them.
+        # If the dataset name is not "", show it in the listbox.
+        for i, sample in enumerate(self.plotter.sample_objects):
+            for plotted_sample in self.samples:
+                if sample.name == plotted_sample.name and sample.file == plotted_sample.file:
+                    self.existing_indices.append(i)
+            if sample.title.replace(" ", "") != "":
+                print("sample has a title!")
+                print(sample.title)
                 self.sample_options_dict[sample.title + ": " + sample.name] = sample
                 self.sample_options_list.append(sample.title + ": " + sample.name)
-        # Otherwise, the user knows what the title is (there is only one)
-        else:
-            for i, sample in enumerate(self.plotter.sample_objects):
-                for plotted_sample in self.samples:
-                    if sample.name == plotted_sample.name and sample.file == plotted_sample.file:
-                        self.existing_indices.append(i)
+            else:
+                print("sample has no title!")
                 self.sample_options_dict[sample.name] = sample
                 self.sample_options_list.append(sample.name)
 
@@ -1270,20 +1272,14 @@ class Tab:
 
         return good_i and good_e and good_az
 
-    def adjust_x(self, left, right):
-        left = float(left)
-        right = float(right)
+    def adjust_x(self, left: float, right: float):
         self.xlim = [left, right]
         self.plot.adjust_x(left, right)
 
-    def adjust_y(self, bottom, top):
-        bottom = float(bottom)
-        top = float(top)
+    def adjust_y(self, bottom: float, top: float):
         self.ylim = [bottom, top]
         self.plot.adjust_y(bottom, top)
 
-    def adjust_z(self, low, high):  # only gets called for contour plot
-        bottom = float(low)
-        top = float(high)
+    def adjust_z(self, low: float, high: float):  # only gets called for contour plot
         self.zlim = [low, high]
-        self.plot.adjust_z(bottom, top)
+        self.plot.adjust_z(low, high)

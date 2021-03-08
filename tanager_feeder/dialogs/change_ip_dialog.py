@@ -32,7 +32,7 @@ class ChangeIPDialog(Dialog):
             selectbackground=self.tk_format.selectbackground,
             selectforeground=self.tk_format.selectforeground,
         )
-        if which_compy == CompyTypes.SPEC_COMPY:
+        if which_compy == CompyTypes.SPEC_COMPY.value:
             print("spec ip")
             print(self.connection_manager.spec_ip)
             self.ip_entry.insert(0, self.connection_manager.spec_ip)

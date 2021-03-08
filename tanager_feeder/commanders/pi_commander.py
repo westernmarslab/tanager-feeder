@@ -58,6 +58,7 @@ class PiCommander(Commander):
         self.remove_from_listener_queue(["donemoving"])
         if unit == MovementUnits.POSITION.value:
             positions = {
+                "wr": "wr",
                 "WR": "wr",
                 "Sample 1": "one",
                 "Sample 2": "two",
@@ -68,7 +69,8 @@ class PiCommander(Commander):
             if pos in positions:
                 filename = self.encrypt("movetray", [positions[pos]])
             else:
-                print("ERROR: Invalid position")
+                print(filename)
+                raise Exception("Invalid position")
         else:
             filename = self.encrypt("movetray", [pos, "steps"])
         self.send(filename)

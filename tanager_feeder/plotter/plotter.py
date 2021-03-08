@@ -7,6 +7,7 @@ import numpy as np
 from tanager_feeder import utils
 from tanager_feeder.plotter.tab import Tab
 from tanager_feeder.plotter.sample import Sample
+from tanager_feeder.dialogs.error_dialog  import ErrorDialog
 
 
 class Plotter:
@@ -16,7 +17,8 @@ class Plotter:
         self.controller = controller
         self.notebook = self.controller.view_notebook
         self.dpi = dpi
-        self.titles = []
+        self.titles = [] # Tab titles
+        self.dataset_names = [] # 1 per file plotted
         self.style = style
         plt.style.use(style)
 
@@ -66,75 +68,57 @@ class Plotter:
         for tab in self.tabs:
             tab.top.configure(height=height)
 
-    def plot_spectra(self, title, file):
-        if title == "":
-            title = "Plot " + str(self.num + 1)
-            self.num += 1
-        elif title in self.titles:
-            j = 1
-            new = title + " (" + str(j) + ")"
-            while new in self.titles:
-                j += 1
-                new = title + " (" + str(j) + ")"
-            title = new
+    def load_samples(self, dataset_name, file):
+
         try:
-            wavelengths, reflectance, labels = self.load_data(file)
+            wavelengths, reflectance, labels = self.read_csv(file)
         except OSError:
+            ErrorDialog(self.controller, "Error", "Error: Could not load data.")
             print("Error: Could not load data.")
             return
+
+        if dataset_name not in self.samples:
+            self.samples[dataset_name] = {}
 
         for i, spectrum_label in enumerate(labels):
             sample_label = spectrum_label.split(" (i")[0]
 
-            # If we don't have any data from this file yet, add it to the samples dictionary, and place the
-            # first sample inside.
-            if file not in self.samples:
-                self.samples[file] = {}
-                new = Sample(sample_label, file, title)
-                self.samples[file][sample_label] = new
+            # Check if we've already got the sample in question in the dataset.
+            # If it doesn't exist, make it. If it does, just add this spectrum and label into its data
+            # dictionary.
+            sample_exists = False
+            for sample in self.samples[dataset_name]:
+                if self.samples[dataset_name][sample].name == sample_label:
+                    sample_exists = True
+
+            if not sample_exists:
+                new = Sample(sample_label, file, dataset_name)
+                self.samples[dataset_name][sample_label] = new
                 self.sample_objects.append(new)
 
-            # If there is already data associated with this file, check if we've already got the sample in question
-            # there. If it doesn't exist, make it. If it does, just add this spectrum and label into its data
-            # dictionary.
-            else:
-                sample_exists = False
-                for sample in self.samples[file]:
-                    if self.samples[file][sample].name == sample_label:
-                        sample_exists = True
-
-                if not sample_exists:
-                    new = Sample(sample_label, file, title)
-                    self.samples[file][sample_label] = new
-                    self.sample_objects.append(new)
-
-            # if spectrum_label not in self.samples[file][sample_label].geoms: #This should do better and actually
+            # if spectrum_label not in self.samples[dataset_name][sample_label].geoms: #This should do better and actually
             # check that all the data is an exact duplicate, but that seems hard. Just don't label things exactly the
             # same and save them in the same file with the same viewing geometry.
             spectrum_label = spectrum_label.replace(")", "").replace("(", "")
             if "i=" in spectrum_label.replace(" ", ""):
-                incidence = spectrum_label.split("i=")[1].split(" ")[0]
+                incidence = float(spectrum_label.split("i=")[1].split(" ")[0])
             else:
                 incidence = None
             if "e=" in spectrum_label.replace(" ", ""):
-                emission = spectrum_label.split("e=")[1].split(" ")[0]
+                emission = float(spectrum_label.split("e=")[1].split(" ")[0])
             else:
                 emission = None
             if "az=" in spectrum_label.replace(" ", ""):
-                azimuth = spectrum_label.split("az=")[1]
+                azimuth = float(spectrum_label.split("az=")[1])
             else:
                 azimuth = None
             geom = (incidence, emission, azimuth)
-            self.samples[file][sample_label].add_spectrum(geom, reflectance[i], wavelengths)
-
-        new_samples = []
-        for sample in self.samples[file]:
-            new_samples.append(self.samples[file][sample])
+            self.samples[dataset_name][sample_label].add_spectrum(geom, reflectance[i], wavelengths)
 
         self.new_tab()
 
     @staticmethod
-    def load_data(file, file_format="spectral_database_csv"):
+    def read_csv(file, file_format="spectral_database_csv"):
         labels = []
         # This is the format I was initially using. It is a simple .tsv file with a single row of headers
         # e.g. Wavelengths     Sample_1 (i=0 e=30)     Sample_2 (i=0 e=30).
@@ -181,10 +165,12 @@ class Plotter:
                             labels[-1] = labels[-1].strip("\n")
                     skip_header += 1
                     line = file2.readline()
-
+        try:
             data = np.genfromtxt(
                 file, skip_header=skip_header, dtype=float, delimiter=",", encoding=None, deletechars=""
             )
+        except ValueError as e:
+            raise e
 
         data = zip(*data)
         wavelengths = []
@@ -193,7 +179,7 @@ class Plotter:
             if i == 0 and len(d) > 500:
                 wavelengths = d[
                     60:
-                ]  # the first column in my .csv (now first row) was wavelength in nm. Exclude the first 100 values
+                ]  # the first column in my .csv (now first row) was wavelength in nm. Exclude the first 60 values
                 # because they are typically very noisy.
             elif i == 0:
                 wavelengths = d

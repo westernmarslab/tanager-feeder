@@ -13,9 +13,11 @@ from tkinter import (
     DISABLED,
     OptionMenu,
     IntVar,
+    TclError,
 )
 import tkinter
 from threading import Thread
+import time
 
 import numpy as np
 
@@ -71,13 +73,16 @@ class AnalysisToolsManager:
                 self.tab.reset: [],
                 self.uncheck_exclude_artifacts: [],
                 self.disable_plot: [],
-                utils.thread_lift_widget: [],
+                # utils.thread_lift_widget: [],
             },
             "close": {},
         }
         self.analysis_dialog = VerticalScrolledDialog(
             self.controller, "Analyze Data", "", buttons=buttons, button_width=13
         )
+        self.analysis_dialog.top.attributes("-topmost", True)
+
+
 
         outer_normalize_frame = Frame(
             self.analysis_dialog.interior, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=15, highlightthickness=1
@@ -554,7 +559,7 @@ class AnalysisToolsManager:
             self.slope_results_frame.pack(fill=BOTH, expand=True, pady=(10, 10))
             try:
                 self.slopes_listbox.delete(0, "end")
-            except AttributeError:
+            except (AttributeError, TclError):
                 self.slopes_listbox = utils.ScrollableListbox(
                     self.slope_results_frame,
                     self.tk_format.bg,
@@ -586,23 +591,31 @@ class AnalysisToolsManager:
                 x2 = float(self.right_slope_entry.get())
                 new.adjust_x(x1, x2)
 
-        utils.thread_lift_widget(self.analysis_dialog.top)
+        # utils.thread_lift_widget(self.analysis_dialog.top)
 
     def normalize(self):
         self.select_tab()
         try:
             self.slopes_listbox.delete(0, "end")
             self.plot_slope_button.configure(state="disabled")
-        except AttributeError:
+        except (AttributeError, TclError):
             pass
         self.tab.normalize(self.normalize_entry.get())
-        thread = Thread(target=utils.lift_widget, args=(self.analysis_dialog.top,))
-        thread.start()
+        # thread = Thread(target=utils.lift_widget, args=(self.analysis_dialog.top,))
+        # thread.start()
 
     def offset(self):
         self.tab.offset(self.offset_sample_var.get(), self.offset_entry.get())
-        thread = Thread(target=utils.lift_widget, args=(self.analysis_dialog.top,))
-        thread.start()
+
+        # This doesn't work - it hangs between thread.start() and thread.join(). Likely because of calls to canvas.draw()
+        # thread = Thread(target=self.tab.offset, args=(self.offset_sample_var.get(), self.offset_entry.get()))
+        # thread.start()
+        # thread.join()
+        # utils.lift_widget(self.analysis_dialog.top)
+
+    def remove_topmost(self):
+        print("removing!!")
+        self.analysis_dialog.top.attributes("-topmost", False)
 
     def apply_x(self):
         self.controller.view_notebook.select(self.tab.top)
@@ -611,9 +624,9 @@ class AnalysisToolsManager:
             x1 = float(self.left_zoom_entry.get())
             x2 = float(self.right_zoom_entry.get())
             self.tab.adjust_x(x1, x2)
-            utils.lift_widget(self.analysis_dialog.top)
+            # utils.lift_widget(self.analysis_dialog.top)
         except ValueError:
-            utils.lift_widget(self.analysis_dialog.top)
+            # utils.lift_widget(self.analysis_dialog.top)
             ErrorDialog(
                 self,
                 title="Invalid Zoom Range",
@@ -626,9 +639,9 @@ class AnalysisToolsManager:
             y1 = float(self.left_zoom_entry2.get())
             y2 = float(self.right_zoom_entry2.get())
             self.tab.adjust_y(y1, y2)
-            utils.lift_widget(self.analysis_dialog.top)
+            # utils.lift_widget(self.analysis_dialog.top)
         except ValueError:
-            utils.lift_widget(self.analysis_dialog.top)
+            # utils.lift_widget(self.analysis_dialog.top)
             ErrorDialog(
                 self,
                 title="Invalid Zoom Range",
@@ -638,16 +651,17 @@ class AnalysisToolsManager:
     def uncheck_exclude_artifacts(self):
         self.exclude_artifacts.set(0)
         self.exclude_artifacts_check.deselect()
-        utils.lift_widget(self.analysis_dialog.top)
+        # utils.lift_widget(self.analysis_dialog.top)
 
     def disable_plot(self, analyze_var="None"):
         try:
             self.slopes_listbox.delete(0, "end")
-        except AttributeError:
+        except (AttributeError, TclError):
             pass
         self.plot_slope_button.configure(state="disabled")
 
         if analyze_var == "difference":
+            self.analysis_dialog.frame.min_height = 800
             self.neg_depth_check.pack_forget()
             self.use_max_for_centers_check.pack_forget()
             self.use_delta_check.pack_forget()
@@ -655,6 +669,7 @@ class AnalysisToolsManager:
             self.extra_analysis_check_frame.pack()
 
         elif analyze_var == "band center":
+            self.analysis_dialog.frame.min_height = 1000
             self.neg_depth_check.pack_forget()
             self.abs_val_check.pack_forget()
             self.use_delta_check.pack_forget()
@@ -662,7 +677,9 @@ class AnalysisToolsManager:
             self.use_delta_check.pack()
             self.extra_analysis_check_frame.pack()
 
+
         elif analyze_var == "band depth":
+            self.analysis_dialog.frame.min_height = 1000
             self.abs_val_check.pack_forget()
             self.use_max_for_centers_check.pack_forget()
             self.use_delta_check.pack_forget()
@@ -671,6 +688,7 @@ class AnalysisToolsManager:
             self.extra_analysis_check_frame.pack()
 
         else:
+            self.analysis_dialog.frame.min_height = 800
             self.abs_val_check.pack_forget()
             self.neg_depth_check.pack_forget()
             self.use_max_for_centers_check.pack_forget()
@@ -680,8 +698,7 @@ class AnalysisToolsManager:
             self.extra_analysis_check_frame.configure(height=1)  # for some reason 0 doesn't work.
             self.extra_analysis_check_frame.pack()
             self.outer_slope_frame.pack()
-
-        utils.lift_widget(self.analysis_dialog.top)
+        # utils.lift_widget(self.analysis_dialog.top)
 
     # def calculate_photometric_variability(self):
     #     photo_var = self.tab.calculate_photometric_variability(
@@ -703,4 +720,4 @@ class AnalysisToolsManager:
 
     def select_tab(self):
         self.controller.view_notebook.select(self.tab.top)
-        utils.lift_widget(self.analysis_dialog.top)
+        # utils.lift_widget(self.analysis_dialog.top)

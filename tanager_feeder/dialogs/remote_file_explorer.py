@@ -110,7 +110,11 @@ class RemoteFileExplorer(Dialog):
                 self.controller, title="Error", label="Could not create directory:\n\n" + newdir + "\n\nFile exists."
             )
             self.expand(newparent=self.current_parent)
-        elif status == "mkdirfailed":
+        elif status == "mkdirfailedpermission":
+            ErrorDialog(self.controller, title="Error", label="Could not create directory:\n\n" + newdir + "\n\nPermission denied.")
+            self.expand(newparent=self.current_parent)
+
+        elif "mkdirfailed" in status:
             ErrorDialog(self.controller, title="Error", label="Could not create directory:\n\n" + newdir)
             self.expand(newparent=self.current_parent)
 

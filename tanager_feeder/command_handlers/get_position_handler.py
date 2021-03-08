@@ -34,7 +34,12 @@ class GetPositionHandler(CommandHandler):
                     self.i = int(np.round(float(params[0])))
                     self.e = int(np.round(float(params[1])))
                     self.az = int(np.round(float(params[2])))
-                    self.tray_pos = int(params[3])
+                    try:
+                        self.tray_pos = int(params[3])
+                    except ValueError:
+                        self.interrupt("Error: failed to get sample tray position.")
+                        self.controller.set_manual_automatic(0)
+                        return
                     self.success()
                     return
 
@@ -44,9 +49,9 @@ class GetPositionHandler(CommandHandler):
         self.timeout()
 
     def success(self):
-        self.controller.motor_i = self.i
-        self.controller.motor_e = self.e
-        self.controller.motor_az = self.az
+        self.controller.science_i = self.i
+        self.controller.science_e = self.e
+        self.controller.science_az = self.az
         self.controller.sample_tray_index = int(self.tray_pos)
 
         self.interrupt("Ready to use automatic mode.")
@@ -55,20 +60,20 @@ class GetPositionHandler(CommandHandler):
         else:
             tray_position_string = "WR"
 
-        self.controller.goniometer_view.set_azimuth(self.controller.motor_az, config=True)
-        self.controller.goniometer_view.set_incidence(self.controller.motor_i, config=True)
-        self.controller.goniometer_view.set_emission(self.controller.motor_e, config=True)
+        self.controller.goniometer_view.set_azimuth(self.controller.science_az, config=True)
+        self.controller.goniometer_view.set_incidence(self.controller.science_i, config=True)
+        self.controller.goniometer_view.set_emission(self.controller.science_e, config=True)
         self.controller.goniometer_view.set_current_sample(tray_position_string)
 
         self.controller.log(
             f"Current position:\ti = {self.i} \te = {self.e}\taz = {self.az}\ttray position: " + tray_position_string
         )
-        super().success()
+        super().success("Ready to use automatic mode.")
 
     def timeout(self):
         super().timeout("Error: Failed to get current goniometer position.")
-        self.controller.motor_i = None
-        self.controller.motor_e = None
-        self.controller.motor_az = None
+        self.controller.science_i = None
+        self.controller.science_e = None
+        self.controller.science_az = None
         self.controller.set_manual_automatic(force=0)
         self.controller.unfreeze()

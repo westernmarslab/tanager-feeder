@@ -70,5 +70,5 @@ class OptHandler(CommandHandler):
 
     def success(self):
         self.controller.opt_time = int(time.time())
-        self.controller.log("Instrument optimized.", write_to_file=True)
+        self.controller.log("Instrument optimized.")
         super().success()
