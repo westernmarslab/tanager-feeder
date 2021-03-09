@@ -1,2 +1,3 @@
 include README.txt
-include autospec/global_config/*
+include tanager_feeder/global_config/*
+include tanager_feeder/sounds/*

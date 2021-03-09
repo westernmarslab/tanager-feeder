@@ -1,9 +1,9 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='tanager-feeder',
     version='0.0.6',
-    packages=['tanager-feeder'],
+    packages=find_packages(),
     license='Creative Commons Attribution-Noncommercial-Share Alike license',
     description='Control software for spectroscopy using ASD RS3 and ViewSpec Pro',
     long_description=open('README.txt').read(),
@@ -13,7 +13,12 @@ setup(
     project_urls={
         'Source':'https://github.com/kathleenhoza/autospectroscopy'
     },
-    install_requires=['pygame','matplotlib','numpy','cython','colorutils','tanager-tcp','playsound'],
+    entry_points={
+        "console_scripts": [
+            "tanager-feeder = tanager_feeder.__main__:main",
+        ],
+    },
+    install_requires=["colorutils", "cython", "matplotlib", "numpy", "playsound", "psutil", "pygame", "tanager-tcp"],
     python_requires='>=3',
     include_package_data=True
 )
