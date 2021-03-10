@@ -6,7 +6,6 @@ import matplotlib.tri as mtri
 
 from tanager_feeder import utils
 
-
 class Plot:
     def __init__(
         self,
@@ -48,16 +47,16 @@ class Plot:
 
         if ylim is None and xlim is None:
             for i, sample in enumerate(self.samples):
-                for j, label in enumerate(sample.geoms):
-                    if self.y_axis not in sample.data[label] or self.x_axis not in sample.data[label]:
+                for j, geom in enumerate(sample.geoms):
+                    if self.y_axis not in sample.data[geom] or self.x_axis not in sample.data[geom]:
                         continue
                     if i == 0 and j == 0:
-                        self.ylim = [np.min(sample.data[label][self.y_axis]), np.max(sample.data[label][self.y_axis])]
+                        self.ylim = [np.min(sample.data[geom][self.y_axis]), np.max(sample.data[geom][self.y_axis])]
 
                     else:
 
-                        sample_min = np.min(sample.data[label][self.y_axis])
-                        sample_max = np.max(sample.data[label][self.y_axis])
+                        sample_min = np.min(sample.data[geom][self.y_axis])
+                        sample_max = np.max(sample.data[geom][self.y_axis])
                         self.ylim[0] = np.min([self.ylim[0], sample_min])
                         self.ylim[1] = np.max([self.ylim[1], sample_max])
 
@@ -71,27 +70,27 @@ class Plot:
 
         elif ylim is None:
             for i, sample in enumerate(self.samples):
-                for j, label in enumerate(sample.geoms):
-                    if self.y_axis not in sample.data[label] or self.x_axis not in sample.data[label]:
+                for j, geom in enumerate(sample.geoms):
+                    if self.y_axis not in sample.data[geom] or self.x_axis not in sample.data[geom]:
                         continue
 
                     index_left = (
-                        np.abs(np.array(sample.data[label][self.x_axis]) - xlim[0])
+                        np.abs(np.array(sample.data[geom][self.x_axis]) - xlim[0])
                     ).argmin()  # find index of min x
                     index_right = (
-                        np.abs(np.array(sample.data[label][self.x_axis]) - xlim[1])
+                        np.abs(np.array(sample.data[geom][self.x_axis]) - xlim[1])
                     ).argmin()  # find index of max x
                     if i == 0 and j == 0:
                         self.ylim = [
-                            np.min(sample.data[label][self.y_axis][index_left:index_right]),
-                            np.max(sample.data[label][self.y_axis][index_left:index_right]),
+                            np.min(sample.data[geom][self.y_axis][index_left:index_right]),
+                            np.max(sample.data[geom][self.y_axis][index_left:index_right]),
                         ]
                     else:
                         sample_min = np.min(
-                            sample.data[label][self.y_axis][index_left:index_right]
+                            sample.data[geom][self.y_axis][index_left:index_right]
                         )  # find min value between min and max x
                         sample_max = np.max(
-                            sample.data[label][self.y_axis][index_left:index_right]
+                            sample.data[geom][self.y_axis][index_left:index_right]
                         )  # find max value between min and max x
                         self.ylim[0] = np.min([self.ylim[0], sample_min])
                         self.ylim[1] = np.max([self.ylim[1], sample_max])
@@ -109,18 +108,18 @@ class Plot:
         # If x limits for plot not specified, make the plot wide enough to display min and max values for all samples.
         if xlim is None:
             for i, sample in enumerate(self.samples):
-                for j, label in enumerate(sample.geoms):
-                    if self.y_axis not in sample.data[label] or self.x_axis not in sample.data[label]:
+                for j, geom in enumerate(sample.geoms):
+                    if self.y_axis not in sample.data[geom] or self.x_axis not in sample.data[geom]:
                         continue
 
                     if i == 0 and j == 0:
-                        sample_min = np.min(sample.data[label][self.x_axis][0:10])
-                        sample_min = np.min(sample.data[label][self.x_axis])
-                        sample_max = np.max(sample.data[label][self.x_axis])
+                        sample_min = np.min(sample.data[geom][self.x_axis][0:10])
+                        sample_min = np.min(sample.data[geom][self.x_axis])
+                        sample_max = np.max(sample.data[geom][self.x_axis])
                         self.xlim = [sample_min, sample_max]
                     else:
-                        sample_min = np.min(sample.data[label][self.x_axis])
-                        sample_max = np.max(sample.data[label][self.x_axis])
+                        sample_min = np.min(sample.data[geom][self.x_axis])
+                        sample_max = np.max(sample.data[geom][self.x_axis])
                         self.xlim[0] = np.min([self.xlim[0], sample_min])
                         self.xlim[1] = np.max([self.xlim[1], sample_max])
 
@@ -232,22 +231,36 @@ class Plot:
         self.leg_ax.set_position(new_pos)
         self.white_leg_ax.set_position(new_pos)
 
-        if draw:
-            self.draw()
-
-        print("finished drawing")
-
+        print("setting stuff to none.")
+        print(self)
+        print(self.x_axis)
         self.contour = None
         self.colorbar = None
         self.white_contour = None
         self.white_colorbar = None
+
+        if draw:
+            self.draw()
+
 
     @staticmethod
     def geom_to_label(geom):
         i = geom[0]
         e = geom[1]
         az = geom[2]
-        label = f"(i={i} e={e} az={az})"
+        label = "()"
+        if az is not None:
+            label = f"(az={az})"
+        if e is not None:
+            if len(label) > 2:
+                label = f"{label[:1]}e={e} {label[1:]}"
+            else:
+                label = f"(e={e})"
+        if i is not None:
+            if len(label) > 2:
+                label = f"{label[:1]}i={i} {label[1:]}"
+            else:
+                label = f"(i={i})"
         return label
 
     def assign_legend_labels(self):
@@ -273,7 +286,7 @@ class Plot:
                 if self.repeats:
                     legend_label = sample.title + ": " + sample.name + " " + self.geom_to_label(geom)
                 if len(self.samples) == 1:
-                    legend_label = legend_label.replace(sample.name, "").replace("(i=", "i=").replace(")", "")
+                    legend_label = legend_label.replace(sample.name, "").replace("(i=", "i=").replace(")", "").replace("(e", "e").replace("(az", "az")
                 if len(legend_label) > self.max_legend_label_len:
                     self.max_legend_label_len = len(legend_label)
 
@@ -360,7 +373,8 @@ class Plot:
             self.contour_levels = np.arange(low, high + interval / 2, interval)
         else:
             raise Exception("Negative range")
-
+        print("ID while trying to remove:")
+        print(self)
         self.colorbar.remove()
         self.white_colorbar.remove()
 
@@ -498,7 +512,6 @@ class Plot:
                 self.contour_levels = np.append(self.contour_levels, np.max(z))
 
             self.contour = self.ax.tricontourf(triang, z, levels=self.contour_levels)
-
             self.colorbar = self.fig.colorbar(self.contour, ax=self.ax)
             self.ax.plot(x, y, "+", color="white", markersize=5, alpha=0.5)
 
@@ -709,7 +722,7 @@ class Plot:
                         theta = np.array(theta) * -1 * 3.14159 / 180 + 3.14159 / 2
                         r = sample.data[label][self.y_axis]
                         if (
-                            i == 0 and j == 0
+                            j == 0 and k == 0
                         ):  # If this is the first line we are plotting, we'll need to create the polar axis.
                             self.ax.plot(
                                 theta,
@@ -767,7 +780,7 @@ class Plot:
                                 max_r = np.max([max_r, np.max(r)])
 
                         if (
-                            i == len(sample.geoms) - 1 and j == len(self.samples) - 1
+                            j == len(sample.geoms) - 1 and k == len(self.samples) - 1
                         ):  # On the last sample, set the range of the value being plotted on the radial axis.
 
                             delta = max_r - min_r
@@ -778,7 +791,7 @@ class Plot:
                             )
 
                             with plt.style.context("default"):
-                                self.white_ax.set_ylim(min - delta / 10, max_r + delta / 10)
+                                self.white_ax.set_ylim(min_r - delta / 10, max_r + delta / 10)
                                 self.white_ax.set_rgrids(np.round(np.arange(min_r, max_r + delta / 10, delta / 2), 3))
                                 self.white_ax.set_yticks(np.round(np.arange(min_r, max_r + delta / 10, delta / 2), 3))
                                 self.white_ax.set_thetagrids(
@@ -810,9 +823,10 @@ class Plot:
                                     markersize=5,
                                 )
                             )
+        self.draw_labels()
 
+    def draw_labels(self):
         self.set_title(self.title, draw=False)
-
         if self.x_axis == "contour":
             self.ax.set_xlabel("Emission (degrees)", fontsize=18)
             self.ax.set_ylabel("Incidence (degrees)", fontsize=18)
@@ -877,6 +891,10 @@ class Plot:
             self.set_x_ticks()
             self.set_y_ticks()
 
+        if self.x_axis == "contour":
+            # without doing this, contour xlabel was getting cut off.
+            self.fig.subplots_adjust(bottom=0.2)
+            self.white_fig.subplots_adjust(bottom=0.2)
 
     def draw_legend(self, legend_style):
         self.legend_style = (
@@ -895,6 +913,7 @@ class Plot:
         if legend_style == "Full list":
             self.leg_ax.set_visible(False)
             self.white_leg_ax.set_visible(False)
+
             if self.x_axis != "theta":
                 self.ax.legend(bbox_to_anchor=(self.legend_anchor, 1), loc=1, borderaxespad=0.0)
                 with plt.style.context(("default")):
@@ -978,12 +997,12 @@ class Plot:
                 num_colors = len(self.legend_labels[sample])
 
                 height = sample_height / num_colors
-                for i in range(num_colors):
-                    if i == 0:
+                for k in range(num_colors):
+                    if k == 0:
                         self.leg_ax.text(
                             left + width,
                             bottom,
-                            self.legend_labels[sample][0].replace(sample.name, "").replace("(i", "i").strip(")"),
+                            self.legend_labels[sample][0].replace(sample.name, "").replace("(i", "i").strip(")").replace("(e", "e").replace("(az", "az"),
                             verticalalignment="bottom",
                             horizontalalignment="left",
                             transform=self.leg_ax.transAxes,
@@ -993,18 +1012,18 @@ class Plot:
                         self.white_leg_ax.text(
                             left + width,
                             bottom,
-                            self.legend_labels[sample][0].replace(sample.name, "").replace("(i", "i").strip(")"),
+                            self.legend_labels[sample][0].replace(sample.name, "").replace("(i", "i").strip(")").replace("(e", "e").replace("(az", "az"),
                             verticalalignment="bottom",
                             horizontalalignment="left",
                             transform=self.leg_ax.transAxes,
                             color="black",
                             fontsize=fontsize,
                         )
-                    elif i == num_colors - 1:
+                    elif k == num_colors - 1:
                         self.leg_ax.text(
                             left + width,
                             bottom + height,
-                            self.legend_labels[sample][-1].replace(sample.name, "").replace("(i", "i").strip(")"),
+                            self.legend_labels[sample][-1].replace(sample.name, "").replace("(i", "i").strip(")").replace("(e", "e").replace("(az", "az"),
                             verticalalignment="top",
                             horizontalalignment="left",
                             transform=self.leg_ax.transAxes,
@@ -1014,7 +1033,7 @@ class Plot:
                         self.white_leg_ax.text(
                             left + width,
                             bottom + height,
-                            self.legend_labels[sample][-1].replace(sample.name, "").replace("(i", "i").strip(")"),
+                            self.legend_labels[sample][-1].replace(sample.name, "").replace("(i", "i").strip(")").replace("(e", "e").replace("(az", "az"),
                             verticalalignment="top",
                             horizontalalignment="left",
                             transform=self.leg_ax.transAxes,

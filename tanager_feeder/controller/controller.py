@@ -2056,10 +2056,13 @@ class Controller(utils.ControllerType):
 
     def open_plot_settings(self, tab):
         self.close_plot_option_windows()
-        if len(tab.existing_indices) == 0:
+        if tab.x_axis == "contour":
+            self.plot_settings_manager.show(tab)
+        elif len(tab.existing_indices) == 0:
             ErrorDialog(self, "Error: Nothing plotted.", "Error: Nothing plotted.")
             return
-        self.plot_settings_manager.show(tab)
+        else:
+            self.plot_settings_manager.show(tab)
 
     # If the user already has analysis tools or a plot editing dialog open, close the extra to avoid confusion.
     def close_plot_option_windows(self):

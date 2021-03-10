@@ -553,3 +553,19 @@ def thread_lift_widget(widget: Widget):
     print("LIFTING")
     thread = Thread(target=lift_widget, args=(widget,))
     thread.start()
+
+def get_i_e_az(geom):
+    try:
+        i = float(geom[0])
+    except (ValueError, TypeError):
+        i = None
+    try:
+        e = float(geom[1])
+    except (ValueError, TypeError):
+        e = None
+    try:
+        az = float(geom[2])
+    except (ValueError, TypeError):
+        az = None
+
+    return i, e, az

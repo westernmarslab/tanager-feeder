@@ -308,7 +308,7 @@ class AnalysisToolsManager:
             "band depth",
             "band center",
             "reflectance",
-            "reciprocity",
+            # "reciprocity",
             "difference",
             command=self.disable_plot,
         )
@@ -425,7 +425,7 @@ class AnalysisToolsManager:
         )
         self.plot_slope_var = StringVar()
         self.plot_slope_var.set("e")
-        self.plot_slope_menu = OptionMenu(plot_slope_frame, self.plot_slope_var, "e", "i", "g", "e,i", "theta")
+        self.plot_slope_menu = OptionMenu(plot_slope_frame, self.plot_slope_var, "e", "i", "g", "e,i", "theta", "az, e")
         self.plot_slope_menu.configure(width=2, highlightbackground=self.tk_format.highlightbackgroundcolor)
         self.plot_slope_button = Button(
             plot_slope_frame,
@@ -470,7 +470,12 @@ class AnalysisToolsManager:
         self.analysis_dialog.interior.configure(highlightthickness=1, highlightcolor="white")
 
     def calculate(self):
-        self.controller.view_notebook.select(self.tab.top)
+        try:
+            self.controller.view_notebook.select(self.tab.top)
+        except TclError:
+            print("Error selecting tab in analysis_tools_manager.calculate().")
+            print(self.tab)
+            pass
         artifact_warning = False
 
         if self.analyze_var.get() == "slope":
@@ -479,7 +484,7 @@ class AnalysisToolsManager:
             )
             self.update_entries(left, right)
             self.populate_listbox(slopes)
-            self.update_plot_menu(["e", "i", "g", "e,i", "theta"])
+            self.update_plot_menu(["e", "i", "g", "e,i", "theta", "az, e"])
 
         elif self.analyze_var.get() == "band depth":
             left, right, depths, artifact_warning = self.tab.calculate_band_depths(
@@ -490,7 +495,7 @@ class AnalysisToolsManager:
             )
             self.update_entries(left, right)
             self.populate_listbox(depths)
-            self.update_plot_menu(["e", "i", "g", "e,i", "theta"])
+            self.update_plot_menu(["e", "i", "g", "e,i", "theta", "az, e"])
 
         elif self.analyze_var.get() == "band center":
             left, right, centers, artifact_warning = self.tab.calculate_band_centers(
@@ -501,7 +506,7 @@ class AnalysisToolsManager:
             )
             self.update_entries(left, right)
             self.populate_listbox(centers)
-            self.update_plot_menu(["e", "i", "g", "e,i", "theta"])
+            self.update_plot_menu(["e", "i", "g", "e,i", "theta", "az, e"])
 
         elif self.analyze_var.get() == "reflectance":
             left, right, reflectance, artifact_warning = self.tab.calculate_avg_reflectance(
@@ -509,7 +514,7 @@ class AnalysisToolsManager:
             )
             self.update_entries(left, right)
             self.populate_listbox(reflectance)
-            self.update_plot_menu(["e", "i", "g", "e,i", "theta"])
+            self.update_plot_menu(["e", "i", "g", "e,i", "theta", "az, e"])
 
         elif self.analyze_var.get() == "reciprocity":
             left, right, reciprocity, artifact_warning = self.tab.calculate_reciprocity(
@@ -590,6 +595,9 @@ class AnalysisToolsManager:
                 x1 = float(self.left_slope_entry.get())
                 x2 = float(self.right_slope_entry.get())
                 new.adjust_x(x1, x2)
+        # TODO: plots not always fully updating
+        #  (e.g. contour plot labels not showing up until you do a screen wiggle.
+
 
         # utils.thread_lift_widget(self.analysis_dialog.top)
 
@@ -661,7 +669,7 @@ class AnalysisToolsManager:
         self.plot_slope_button.configure(state="disabled")
 
         if analyze_var == "difference":
-            self.analysis_dialog.frame.min_height = 800
+            self.analysis_dialog.frame.min_height = 850
             self.neg_depth_check.pack_forget()
             self.use_max_for_centers_check.pack_forget()
             self.use_delta_check.pack_forget()
@@ -688,7 +696,7 @@ class AnalysisToolsManager:
             self.extra_analysis_check_frame.pack()
 
         else:
-            self.analysis_dialog.frame.min_height = 800
+            self.analysis_dialog.frame.min_height = 850
             self.abs_val_check.pack_forget()
             self.neg_depth_check.pack_forget()
             self.use_max_for_centers_check.pack_forget()

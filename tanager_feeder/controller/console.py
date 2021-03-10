@@ -83,8 +83,9 @@ class Console:
                 if len(info_string) > first_space:
                     i = first_space - 7
                     while True:
-                        if i ==0:
+                        if i == 0:
                             info_string = info_string[0:int(first_space/2)] + "\n" + info_string[int(first_space/2):]
+                            break
                         if info_string[i] == " ":
                             info_string = info_string[0:i] + "\n"+info_string[i+1:]
                             break
