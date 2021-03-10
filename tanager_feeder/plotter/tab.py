@@ -348,13 +348,14 @@ class Tab:
                 e_geom = (None, e, None)
 
                 if i_geom not in incidence_sample.data:
-                    incidence_sample.data[i_geom] = {"e": [], "theta": [], "g": [], "average reflectance": []}
+                    incidence_sample.data[i_geom] = {"e": [], "az": [], "theta": [], "g": [], "average reflectance": []}
                     incidence_sample.geoms.append(i_geom)
                 if e_geom not in emission_sample.data:
                     emission_sample.data[e_geom] = {"i": [], "average reflectance": []}
                     emission_sample.geoms.append(e_geom)
 
                 incidence_sample.data[i_geom]["e"].append(e)
+                incidence_sample.data[i_geom]["az"].append(az)
                 incidence_sample.data[i_geom]["theta"].append(e)
                 incidence_sample.data[i_geom]["g"].append(g)
                 incidence_sample.data[i_geom]["average reflectance"].append(avg)
@@ -945,8 +946,17 @@ class Tab:
             tab.plot.white_fig.canvas.draw()
 
         elif x_axis == "az, e":
-            print("hooray!")
-            self.hemisphere_plotter.plot(None, None)
+            for incidence_sample in self.incidence_samples:
+                for i_geom in incidence_sample.data:
+                    incidence = i_geom[0]
+                    title = str(i_geom[0])
+                    geoms = []
+                    data = []
+                    for j, emission in enumerate(incidence_sample.data[i_geom]["e"]):
+                        azimuth = incidence_sample.data[i_geom]["az"][j]
+                        geoms.append((incidence, emission, azimuth))
+                        data.append(incidence_sample.data[i_geom]["average reflectance"][j])
+            self.hemisphere_plotter.plot(geoms, data)
 
     def plot_band_centers(self, x_axis):
         if x_axis in ("e", "theta"):
