@@ -229,6 +229,8 @@ class EditPlotManager:
                             list_to_check.insert(n, k)
                             n+=1
                     list_to_check.remove(angle)
+                    n-=1
+                n+=1
 
             for n, angle in enumerate(list_to_check):
                 if angle is not None:

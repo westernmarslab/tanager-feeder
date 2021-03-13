@@ -19,6 +19,7 @@ from tkinter import (
     SINGLE,
     Widget,
     END,
+    TclError
 )
 from typing import Any, Optional, Union
 import time
@@ -395,8 +396,12 @@ class VerticalScrolledFrame(Frame):
                 self.scrollbar.pack_forget()
         else:
             self.interior.config(height=self.min_height)
-            self.scrollbar.pack(fill=Y, side=RIGHT, expand=FALSE)
-            # canvas.itemconfigure(interior_id, height=900)
+            try:
+                self.scrollbar.pack(fill=Y, side=RIGHT, expand=FALSE)
+            except TclError:
+                # Happens on shutdown if plots are open
+                print("TclError configuring scrollbar in VerticalScrolledFrame")
+                return
             self.canvas.config(scrollregion=self.canvas.bbox("all"))
         if self.interior.winfo_reqwidth() != self.canvas.winfo_width():
             # update the inner frame's width to fill the canvas
@@ -506,7 +511,9 @@ def get_lat1_lat2_delta_long(i: Union[int, float], e: Union[int, float], az: Uni
     return lat1, lat2, delta_long
 
 
-def get_phase_angle(i: int, e: int, az: int):
+def get_phase_angle(i: int, e: int, az: Optional[int]):
+    if az is None:
+        az = 0
     lat1, lat2, delta_long = get_lat1_lat2_delta_long(i, e, az)
     dist = np.abs(arccos(sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(delta_long)))
     return dist

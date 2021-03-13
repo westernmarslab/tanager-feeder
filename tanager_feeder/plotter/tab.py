@@ -437,17 +437,19 @@ class Tab:
                 e_geom = (None, e, None)
 
                 if i_geom not in incidence_sample.data:
-                    incidence_sample.data[i_geom] = {"e": [], "theta": [], "g": [], "band center": []}
+                    incidence_sample.data[i_geom] = {"e": [], "az": [], "theta": [], "g": [], "band center": []}
                     incidence_sample.geoms.append(i_geom)
                 if e_geom not in emission_sample.data:
-                    emission_sample.data[e_geom] = {"i": [], "band center": []}
+                    emission_sample.data[e_geom] = {"i": [], "az": [], "band center": []}
                     emission_sample.geoms.append(e_geom)
 
                 incidence_sample.data[i_geom]["e"].append(e)
+                incidence_sample.data[i_geom]["az"].append(az)
                 incidence_sample.data[i_geom]["theta"].append(e)
                 incidence_sample.data[i_geom]["g"].append(g)
                 incidence_sample.data[i_geom]["band center"].append(center)
                 emission_sample.data[e_geom]["i"].append(i)
+                emission_sample.data[e_geom]["az"].append(az)
                 emission_sample.data[e_geom]["band center"].append(center)
 
                 self.contour_sample.data["all samples"]["e"].append(e)
@@ -524,17 +526,19 @@ class Tab:
                 e_geom = (None, e, None)
 
                 if i_geom not in incidence_sample.data:
-                    incidence_sample.data[i_geom] = {"e": [], "theta": [], "g": [], "band depth": []}
+                    incidence_sample.data[i_geom] = {"e": [], "az": [], "theta": [], "g": [], "band depth": []}
                     incidence_sample.geoms.append(i_geom)
                 if e_geom not in emission_sample.data:
-                    emission_sample.data[e_geom] = {"i": [], "band depth": []}
+                    emission_sample.data[e_geom] = {"i": [], "az": [], "band depth": []}
                     emission_sample.geoms.append(e_geom)
 
                 incidence_sample.data[i_geom]["e"].append(e)
+                incidence_sample.data[i_geom]["az"].append(e)
                 incidence_sample.data[i_geom]["theta"].append(e)
                 incidence_sample.data[i_geom]["g"].append(g)
                 incidence_sample.data[i_geom]["band depth"].append(depth)
                 emission_sample.data[e_geom]["i"].append(i)
+                emission_sample.data[e_geom]["az"].append(az)
                 emission_sample.data[e_geom]["band depth"].append(depth)
 
                 self.contour_sample.data["all samples"]["e"].append(e)
@@ -895,6 +899,10 @@ class Tab:
                 x_axis="contour",
                 y_axis="difference",
             )
+
+        elif x_axis == "az, e":
+            self.plot_hemisphere_plots("difference")
+
         else:
             tab = Tab(
                 self.plotter,
@@ -946,17 +954,27 @@ class Tab:
             tab.plot.white_fig.canvas.draw()
 
         elif x_axis == "az, e":
-            for incidence_sample in self.incidence_samples:
-                for i_geom in incidence_sample.data:
-                    incidence = i_geom[0]
-                    title = str(i_geom[0])
-                    geoms = []
-                    data = []
-                    for j, emission in enumerate(incidence_sample.data[i_geom]["e"]):
-                        azimuth = incidence_sample.data[i_geom]["az"][j]
-                        geoms.append((incidence, emission, azimuth))
-                        data.append(incidence_sample.data[i_geom]["average reflectance"][j])
-            self.hemisphere_plotter.plot(geoms, data)
+            self.plot_hemisphere_plots("average reflectance")
+
+    def plot_hemisphere_plots(self, key):
+        for incidence_sample in self.incidence_samples:
+            for i_geom in incidence_sample.data:
+                incidence = i_geom[0]
+                sample_name = incidence_sample.name
+                geoms = []
+                data = []
+                for j, emission in enumerate(incidence_sample.data[i_geom]["e"]):
+                    azimuth = incidence_sample.data[i_geom]["az"][j]
+                    geoms.append((incidence, emission, azimuth))
+                    data.append(incidence_sample.data[i_geom][key][j])
+                if len(data) > 7:
+                    try:
+                        self.hemisphere_plotter.plot(geoms, data, incidence, sample_name)
+                    except Exception as e:
+                        print("Failed to create hemisphere plot")
+                        raise e
+                else:
+                    self.plotter.controller.log(f"Not creating hemisphere plot for i = {incidence} (Not enough datapoints).")
 
     def plot_band_centers(self, x_axis):
         if x_axis in ("e", "theta"):
@@ -967,6 +985,8 @@ class Tab:
             Tab(self.plotter, "Band center vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band center")
         elif x_axis == "e,i":
             Tab(self.plotter, "Band center", [self.contour_sample], x_axis="contour", y_axis="band center")
+        elif x_axis == "az, e":
+            self.plot_hemisphere_plots("band center")
 
     def plot_band_depths(self, x_axis):
         if x_axis in ("e", "theta"):
@@ -977,6 +997,8 @@ class Tab:
             Tab(self.plotter, "Band depth vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band depth")
         elif x_axis == "e,i":
             Tab(self.plotter, "Band depth", [self.contour_sample], x_axis="contour", y_axis="band depth")
+        elif x_axis == "az, e":
+            self.plot_hemisphere_plots("band depth")
 
     def plot_slopes(self, x_axis):
         if x_axis == "e,i":
@@ -989,9 +1011,12 @@ class Tab:
             Tab(self.plotter, "Slope vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="slope")
         elif x_axis == "i,e":
             Tab(self.plotter, "Slope", [self.contour_sample], x_axis="contour", y_axis="slope")
+        elif x_axis == "az, e":
+            self.plot_hemisphere_plots("slope")
 
     # not implemented
     def calculate_photometric_variability(self, left, right):
+        raise NotImplementedError
         left = float(left)
         right = float(right)
         photo_var = []
@@ -1170,12 +1195,9 @@ class Tab:
                 if sample.name == plotted_sample.name and sample.file == plotted_sample.file:
                     self.existing_indices.append(i)
             if sample.title.replace(" ", "") != "":
-                print("sample has a title!")
-                print(sample.title)
                 self.sample_options_dict[sample.title + ": " + sample.name] = sample
                 self.sample_options_list.append(sample.title + ": " + sample.name)
             else:
-                print("sample has no title!")
                 self.sample_options_dict[sample.name] = sample
                 self.sample_options_list.append(sample.name)
 

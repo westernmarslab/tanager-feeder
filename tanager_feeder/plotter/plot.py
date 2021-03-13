@@ -4,6 +4,7 @@ import matplotlib.patches as patches
 import matplotlib as mpl
 import matplotlib.tri as mtri
 
+from tanager_feeder.dialogs.error_dialog import ErrorDialog
 from tanager_feeder import utils
 
 class Plot:
@@ -44,6 +45,8 @@ class Plot:
         self.markers_drawn = False  # Referenced to decide whether to display markerstyle options in open_options
         self.lines_drawn = False  # Referenced to decide whether to display linestyle options in open_options
         # If y limits for plot not specified, make the plot wide enough to display min and max values for all samples.
+
+        self.axis_label_size = 17
 
         if ylim is None and xlim is None:
             for i, sample in enumerate(self.samples):
@@ -168,7 +171,7 @@ class Plot:
             self.legend_anchor = 1.05
         else:
             ratio = int(plot_width / self.max_legend_label_len) + 0.1
-            self.legend_anchor = 1.12 + 1.0 / ratio * 1.3
+            self.legend_anchor = 1.14 + 1.0 / ratio * 1.3
 
         self.gs = mpl.gridspec.GridSpec(1, 2, width_ratios=[ratio, 1])
 
@@ -211,10 +214,7 @@ class Plot:
             height = pos1.height * self.plot_scale / self.legend_len
             y0 = 1 - self.plot_scale / self.legend_len + pos1.y0 * self.plot_scale / (self.legend_len) * 0.5
 
-        if self.x_axis != "theta" or True:
-            pos2 = [pos1.x0 - 0.02, y0, pos1.width, height]
-        else:
-            pos2 = [pos1.x0 - 0.1, y0 * 0.6, pos1.width * 1.4, pos1.height * (1.4 + 0.006 * self.legend_len)]
+        pos2 = [pos1.x0 - 0.017, y0, pos1.width, height]
 
         self.ax.set_position(pos2)
 
@@ -231,9 +231,6 @@ class Plot:
         self.leg_ax.set_position(new_pos)
         self.white_leg_ax.set_position(new_pos)
 
-        print("setting stuff to none.")
-        print(self)
-        print(self.x_axis)
         self.contour = None
         self.colorbar = None
         self.white_contour = None
@@ -373,8 +370,7 @@ class Plot:
             self.contour_levels = np.arange(low, high + interval / 2, interval)
         else:
             raise Exception("Negative range")
-        print("ID while trying to remove:")
-        print(self)
+
         self.colorbar.remove()
         self.white_colorbar.remove()
 
@@ -386,7 +382,12 @@ class Plot:
         x = self.samples[0].data["all samples"]["e"]
         y = self.samples[0].data["all samples"]["i"]
         z = self.samples[0].data["all samples"][self.y_axis]
-        triang = mtri.Triangulation(x, y)
+        try:
+            triang = mtri.Triangulation(x, y)
+        except RuntimeError:
+            print("Error creating contour plot.")
+            ErrorDialog(self.plotter.controller, "Error", "Error creating contour plot")
+            return
 
         self.contour = self.ax.tricontourf(triang, z, levels=self.contour_levels)
         self.ax.plot(x, y, "+", color="white", markersize=5, alpha=0.5)
@@ -502,8 +503,12 @@ class Plot:
             self.visible_data.append(y)
             self.visible_data_headers.append(self.y_axis)
             self.visible_data.append(z)
-
-            triang = mtri.Triangulation(x, y)
+            try:
+                triang = mtri.Triangulation(x, y)
+            except RuntimeError:
+                print("Error creating contour plot.")
+                ErrorDialog(self.plotter.controller, "Error", "Error creating contour plot")
+                return
             if (
                 len(self.contour_levels) == 0
             ):  # contour levels are set here, and also in adjust z if the user does it manually
@@ -828,50 +833,50 @@ class Plot:
     def draw_labels(self):
         self.set_title(self.title, draw=False)
         if self.x_axis == "contour":
-            self.ax.set_xlabel("Emission (degrees)", fontsize=18)
-            self.ax.set_ylabel("Incidence (degrees)", fontsize=18)
+            self.ax.set_xlabel("Emission (degrees)", fontsize=self.axis_label_size)
+            self.ax.set_ylabel("Incidence (degrees)", fontsize=self.axis_label_size)
             with plt.style.context(("default")):
-                self.white_ax.set_xlabel("Emission (degrees)", fontsize=18)
-                self.white_ax.set_ylabel("Incidence (degrees)", fontsize=18)
+                self.white_ax.set_xlabel("Emission (degrees)", fontsize=self.axis_label_size)
+                self.white_ax.set_ylabel("Incidence (degrees)", fontsize=self.axis_label_size)
         elif self.y_axis == "reflectance":
-            self.ax.set_ylabel("Reflectance", fontsize=18)
+            self.ax.set_ylabel("Reflectance", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.white_ax.set_ylabel("Reflectance", fontsize=18)
+                self.white_ax.set_ylabel("Reflectance", fontsize=self.axis_label_size)
         elif self.y_axis == "normalized reflectance":
-            self.ax.set_ylabel("Normalized Reflectance", fontsize=18)
+            self.ax.set_ylabel("Normalized Reflectance", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.white_ax.set_ylabel("Normalized Reflectance", fontsize=18)
+                self.white_ax.set_ylabel("Normalized Reflectance", fontsize=self.axis_label_size)
         elif self.y_axis == "difference":
             # pylint: disable = anomalous-backslash-in-string
-            self.ax.set_ylabel("$\Delta$R", fontsize=18)
+            self.ax.set_ylabel("$\Delta$R", fontsize=self.axis_label_size)
             with plt.style.context("default"):
                 # pylint: disable = anomalous-backslash-in-string
-                self.white_ax.set_ylabel("$\Delta$R", fontsize=18)
+                self.white_ax.set_ylabel("$\Delta$R", fontsize=self.axis_label_size)
         elif self.y_axis == "slope":
-            self.ax.set_ylabel("Slope", fontsize=18)
+            self.ax.set_ylabel("Slope", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.white_ax.set_ylabel("Slope", fontsize=18)
+                self.white_ax.set_ylabel("Slope", fontsize=self.axis_label_size)
         elif self.y_axis == "band depth":
-            self.ax.set_ylabel("Band Depth", fontsize=18)
+            self.ax.set_ylabel("Band Depth", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.white_ax.set_ylabel("Band Depth", fontsize=18)
+                self.white_ax.set_ylabel("Band Depth", fontsize=self.axis_label_size)
 
         if self.x_axis == "wavelength":
-            self.ax.set_xlabel("Wavelength (nm)", fontsize=18)
+            self.ax.set_xlabel("Wavelength (nm)", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.white_ax.set_xlabel("Wavelength (nm)", fontsize=18)
+                self.white_ax.set_xlabel("Wavelength (nm)", fontsize=self.axis_label_size)
         elif self.x_axis == "i":
-            self.ax.set_xlabel("Incidence (degrees)", fontsize=18)
+            self.ax.set_xlabel("Incidence (degrees)", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.white_ax.set_xlabel("Incidence (degrees)", fontsize=18)
+                self.white_ax.set_xlabel("Incidence (degrees)", fontsize=self.axis_label_size)
         elif self.x_axis == "e":
-            self.ax.set_xlabel("Emission (degrees)", fontsize=18)
+            self.ax.set_xlabel("Emission (degrees)", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.ax.set_xlabel("Emission (degrees)", fontsize=18)
+                self.ax.set_xlabel("Emission (degrees)", fontsize=self.axis_label_size)
         elif self.x_axis == "g":
-            self.ax.set_xlabel("Phase angle (degrees)", fontsize=18)
+            self.ax.set_xlabel("Phase angle (degrees)", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.white_ax.set_xlabel("Phase angle (degrees)", fontsize=18)
+                self.white_ax.set_xlabel("Phase angle (degrees)", fontsize=self.axis_label_size)
 
         self.ax.tick_params(labelsize=14)
         with plt.style.context(("default")):

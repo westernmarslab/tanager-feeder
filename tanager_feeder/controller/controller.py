@@ -146,6 +146,7 @@ class Controller(utils.ControllerType):
         self.az_interval = None
 
         self.required_angular_separation = 10
+        self.required_angular_separation_for_fiber = 10
 
         # cmds the user has entered into the console. Allows scrolling back
         # and forth through commands by using up and down arrows.
@@ -1807,8 +1808,16 @@ class Controller(utils.ControllerType):
             return False
         if i >= 10:  # If incidence is positive, light won't hit the detector arm.
             return True
-        # Next define a list of positions of the emission arm.
+        # Next check if the light will hit the detector arm
+        if not self.check_light_misses_arc(i, e, az, self.required_angular_separation):
+            return False
+        # And finally check if the light will hit the fiber optic cable, which has az = az -35
+        print("checking fiber optic!")
+        if not self.check_light_misses_arc(i, e, az+25, self.required_angular_separation_for_fiber, print_me=True):
+            return False
+        return True
 
+    def check_light_misses_arc(self, i, e, az, required_sep, print_me=False):
         # This is the azimuthal distance between the arc the light source travels
         # and the detector arm. -90 to 90 because i is negative.
         arm_bottom_az = az - 90
@@ -1837,7 +1846,9 @@ class Controller(utils.ControllerType):
             dist = utils.get_phase_angle(i, -1 * arm_e, arm_azes[num])
             if dist < closest_dist:
                 closest_dist = dist
-        if closest_dist >= self.required_angular_separation:
+        if print_me:
+            print(closest_dist)
+        if closest_dist >= required_sep:
             return True
         return False
 

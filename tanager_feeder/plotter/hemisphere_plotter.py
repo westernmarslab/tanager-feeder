@@ -2,6 +2,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib as mpl
+import matplotlib.cm as cm
 
 from tanager_feeder.utils import cos, sin
 
@@ -9,7 +10,11 @@ class HemispherePlotter:
     def __init__(self):
         pass
 
-    def plot(self, geoms, data):
+    def plot(self, geoms, data, incidence, sample_name):
+        if np.min(data) < 0:
+            offset = -1*2*np.min(data)
+            data = np.array(data)
+            data = data + offset
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
 
@@ -26,14 +31,17 @@ class HemispherePlotter:
 
         for i, tup in enumerate(geoms):
             e = int(tup[1])
-            az = int(tup[2])
-            if e < 0:
+            try:
+                az = int(tup[2])
+            except (ValueError, TypeError):
+                az = 0
+            if e < 0 or (e == 0 and az + 180 in R):
                 az = az + 180
                 e = np.abs(e)
             if az not in R:
                 R[az] = {}
-            else:
-                R[az][e] = data[i]
+
+            R[az][e] = data[i]
 
         data = np.array(data)
         avg = np.mean(data)
@@ -158,35 +166,44 @@ class HemispherePlotter:
         # back_y = np.outer(np.sin(u), np.sin(v))
         # back_z = np.outer(np.ones(np.size(u)), 0)
         # backdrop = ax.plot_surface(back_x, back_y, back_z, alpha=0.8, zorder=0)
+        rline = 1.5*np.max(data)
+        azline = 0
+        iline = incidence
+        xline = [0, cos(azline) * sin(iline) * rline]
+        yline = [0, sin(azline) * sin(iline) * rline]
+        zline = [0, cos(iline) * rline]
+        ax.plot3D(xline, yline, zline, 'darkorange', linewidth=4, zorder=0)
 
         # Plot the surface
-        ax.plot_surface(x, y, z,
+        surf = ax.plot_surface(x, y, z,
                         linewidth=1, alpha=1, facecolors=colors, zorder=100)
         ax.scatter(scatter_x, scatter_y, scatter_z, s=1, c='black', zorder=200)
 
-        x = []
-        y = []
-        z = []
-        for az in winnowed_az:
-            x.append([])
-            y.append([])
-            z.append([])
-            for e in winnowed_e:
-                x[-1].append(cos(az) * sin(e))
-                y[-1].append(sin(az) * sin(e))
-                z[-1].append(0)
-
-        x, y, z = np.array(x), np.array(y), np.array(z)
-
-        ax.plot_surface(x, y, z,
-                        linewidth=1, alpha=1, zorder=0)
-
-        ax.set_ylabel("y")
-        ax.set_xlabel("x")
         ax.grid(False)
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_zticks([])
         ax.axis("off")
-        ax.auto_scale_xyz([-0.8, 0.8], [-0.8, 0.8], [0, 1.6])
-        plt.show(block=False)
+        ax.text2D(0.15, 0.85, f"{sample_name} (i={incidence})", fontsize=18, transform=ax.transAxes)
+
+        max_r = np.max(data)
+        ax.auto_scale_xyz([-0.5*max_r, 0.5*max_r], [-0.5*max_r, 0.5*max_r], [0, max_r])
+
+        m = cm.ScalarMappable(cmap=jet, norm=norm)
+
+        cbar_ax = fig.add_axes([0.75, 0.3, 0.035, 0.45])
+        colorbar = fig.colorbar(m, cax=cbar_ax)
+
+        pos1 = ax.get_position()  # get the original position
+        pos2 = [pos1.x0 - 0.1, pos1.y0, pos1.width, pos1.height]
+        ax.set_position(pos2)
+
+        ax.text2D(1, 0.35, f"Reflectance", fontsize=18, transform=ax.transAxes, rotation=90)
+        labels = colorbar.ax.get_yticklabels()
+        print(labels)
+        labels = colorbar.ax.get_xticklabels()
+        print(labels)
+        # colorbar.ax.set_yticklabels(labels)
+
+        plt.show(block=False) #Need block = False in order for loop to continue
+

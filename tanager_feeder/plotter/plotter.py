@@ -2,17 +2,14 @@
 from tkinter import filedialog, TclError
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 from tanager_feeder import utils
 from tanager_feeder.plotter.tab import Tab
-from tanager_feeder.plotter.sample import Sample
-from tanager_feeder.dialogs.error_dialog  import ErrorDialog
+from tanager_data_io.data_io import DataIO
 
-
-class Plotter:
+class Plotter(DataIO):
     def __init__(self, controller, dpi, style):
-
+        super().__init__()
         self.num = 0
         self.controller = controller
         self.notebook = self.controller.view_notebook
@@ -34,26 +31,21 @@ class Plotter:
         # if the user saves a plot so that the next time they click save plot, the save dialog opens into the same
         # directory where they just saved.
 
-    def get_path(self):
-        initialdir = self.save_dir
-        if initialdir is not None:
-            print("initial dir set to " + self.save_dir)
-            path = filedialog.asksaveasfilename(initialdir=initialdir)
-        else:
-            path = filedialog.asksaveasfilename()
-
-        self.save_dir = path
-        if "\\" in path:
-            self.save_dir = "\\".join(path.split("\\")[0:-1])
-        elif "/" in path:
-            self.save_dir = "/".join(path.split("/")[0:-1])
-        print("return")
-        return path
-
-    @staticmethod
-    def get_index(array, val):
-        index = (np.abs(array - val)).argmin()
-        return index
+    # def get_path(self):
+    #     initialdir = self.save_dir
+    #     if initialdir is not None:
+    #         print("initial dir set to " + self.save_dir)
+    #         path = filedialog.asksaveasfilename(initialdir=initialdir)
+    #     else:
+    #         path = filedialog.asksaveasfilename()
+    #
+    #     self.save_dir = path
+    #     if "\\" in path:
+    #         self.save_dir = "\\".join(path.split("\\")[0:-1])
+    #     elif "/" in path:
+    #         self.save_dir = "/".join(path.split("/")[0:-1])
+    #     print("return")
+    #     return path
 
     def notebook_click(self, event):
         self.close_right_click_menus(event)
@@ -67,129 +59,6 @@ class Plotter:
     def set_height(self, height):
         for tab in self.tabs:
             tab.top.configure(height=height)
-
-    def load_samples(self, dataset_name, file):
-
-        try:
-            wavelengths, reflectance, labels = self.read_csv(file)
-        except OSError:
-            ErrorDialog(self.controller, "Error", "Error: Could not load data.")
-            print("Error: Could not load data.")
-            return
-
-        if dataset_name not in self.samples:
-            self.samples[dataset_name] = {}
-
-        for i, spectrum_label in enumerate(labels):
-            sample_label = spectrum_label.split(" (i")[0]
-
-            # Check if we've already got the sample in question in the dataset.
-            # If it doesn't exist, make it. If it does, just add this spectrum and label into its data
-            # dictionary.
-            sample_exists = False
-            for sample in self.samples[dataset_name]:
-                if self.samples[dataset_name][sample].name == sample_label:
-                    sample_exists = True
-
-            if not sample_exists:
-                new = Sample(sample_label, file, dataset_name)
-                self.samples[dataset_name][sample_label] = new
-                self.sample_objects.append(new)
-
-            # if spectrum_label not in self.samples[dataset_name][sample_label].geoms: #This should do better and actually
-            # check that all the data is an exact duplicate, but that seems hard. Just don't label things exactly the
-            # same and save them in the same file with the same viewing geometry.
-            spectrum_label = spectrum_label.replace(")", "").replace("(", "")
-            if "i=" in spectrum_label.replace(" ", ""):
-                incidence = float(spectrum_label.split("i=")[1].split(" ")[0])
-            else:
-                incidence = None
-            if "e=" in spectrum_label.replace(" ", ""):
-                emission = float(spectrum_label.split("e=")[1].split(" ")[0])
-            else:
-                emission = None
-            if "az=" in spectrum_label.replace(" ", ""):
-                azimuth = float(spectrum_label.split("az=")[1])
-            else:
-                azimuth = None
-            geom = (incidence, emission, azimuth)
-            self.samples[dataset_name][sample_label].add_spectrum(geom, reflectance[i], wavelengths)
-
-        self.new_tab()
-
-    @staticmethod
-    def read_csv(file, file_format="spectral_database_csv"):
-        labels = []
-        # This is the format I was initially using. It is a simple .tsv file with a single row of headers
-        # e.g. Wavelengths     Sample_1 (i=0 e=30)     Sample_2 (i=0 e=30).
-        if file_format == "simple_tsv":
-            data = np.genfromtxt(file, names=True, dtype=float, encoding=None, delimiter="\t", deletechars="")
-            labels = list(data.dtype.names)[1:]  # the first label is wavelengths
-            for i, label in enumerate(labels):
-                labels[i] = label.replace("_(i=", " (i=").replace("_e=", " e=").replace("( i", "(i")
-        # This is the current format, which is compatible with the WWU spectral library format.
-        elif file_format == "spectral_database_csv":
-            skip_header = 1
-
-            labels_found = False  # We want to use the Sample Name field for labels, but if we haven't found
-            # that yet we may use Data ID, Sample ID, or mineral name instead.
-            with open(file, "r") as file2:
-                line = file2.readline()
-                i = 0
-                while (
-                    line.split(",")[0].lower() != "wavelength" and line != "" and line.lower() != "wavelength\n"
-                ):  # Formatting can change slightly if you edit your .csv in libreoffice or some other editor,
-                    # this captures different options. line will be '' only at the end of the file (it is \n for
-                    # empty lines)
-                    i += 1
-                    if line[0:11].lower() == "sample name":
-                        labels = line.split(",")[1:]
-                        labels[-1] = labels[-1].strip("\n")
-                        labels_found = True  #
-                    elif line[0:16].lower() == "viewing geometry":
-                        for i, geom in enumerate(line.split(",")[1:]):
-                            geom = geom.strip("\n").replace(" i", "i")
-                            labels[i] += " (" + geom + ")"
-                    elif line[0:7].lower() == "data id":
-                        if not labels_found:  # Only use Data ID for labels if we haven't found the Sample Name field.
-                            labels = line.split(",")[1:]
-                            labels[-1] = labels[-1].strip("\n")
-                    elif line[0:9].lower() == "sample id":
-                        if not labels_found:  # Only use Sample ID for labels if we haven't found the Sample Name field.
-                            labels = line.split(",")[1:]
-                            labels[-1] = labels[-1].strip("\n")
-                    elif line[0:12].lower() == "mineral name":
-                        if not labels_found:  # Only use mineral ID for labels if we haven't found
-                            # the Sample Name field.
-                            labels = line.split(",")[1:]
-                            labels[-1] = labels[-1].strip("\n")
-                    skip_header += 1
-                    line = file2.readline()
-        try:
-            data = np.genfromtxt(
-                file, skip_header=skip_header, dtype=float, delimiter=",", encoding=None, deletechars=""
-            )
-        except ValueError as e:
-            raise e
-
-        data = zip(*data)
-        wavelengths = []
-        reflectance = []
-        for i, d in enumerate(data):
-            if i == 0 and len(d) > 500:
-                wavelengths = d[
-                    60:
-                ]  # the first column in my .csv (now first row) was wavelength in nm. Exclude the first 60 values
-                # because they are typically very noisy.
-            elif i == 0:
-                wavelengths = d
-            elif len(d) > 500:  # the other columns are all reflectance values
-                d = np.array(d)
-                reflectance.append(d[60:])
-            else:
-                d = np.array(d)
-                reflectance.append(d)
-        return wavelengths, reflectance, labels
 
     def maybe_close_tab(self, event):
         dist_to_edge = self.dist_to_edge(event)
@@ -254,14 +123,13 @@ class Plotter:
 
         return dist_to_edge
 
-    @staticmethod
-    def get_e_i_g(label):  # Extract e, i, and g from a label.
-        i = int(label.split("i=")[1].split(" ")[0])
-        e = int(label.split("e=")[1].strip(")"))
-        az = int(label.split("az=")[1].strip(")"))
-        # TODO: make this work for both 2D and 3D geometries.
-        g = utils.get_phase_angle(i, e, az)
-        return e, i, g
+    # @staticmethod
+    # def get_e_i_g(label):  # Extract e, i, and g from a label.
+    #     i = int(label.split("i=")[1].split(" ")[0])
+    #     e = int(label.split("e=")[1].strip(")"))
+    #     az = int(label.split("az=")[1].strip(")"))
+    #     g = utils.get_phase_angle(i, e, az)
+    #     return e, i, g
 
     @staticmethod
     def artifact_danger(g, left=0, right=100000000000000000000):

@@ -54,7 +54,6 @@ class GetPositionHandler(CommandHandler):
         self.controller.science_az = self.az
         self.controller.sample_tray_index = int(self.tray_pos)
 
-        self.interrupt("Ready to use automatic mode.")
         if self.tray_pos != -1:
             tray_position_string = self.controller.available_sample_positions[int(self.tray_pos)]
         else:
