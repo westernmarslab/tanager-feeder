@@ -10,14 +10,17 @@ class HemispherePlotter:
     def __init__(self):
         pass
 
-    def plot(self, geoms, data, incidence, sample_name):
+    def plot(self, geoms, data, incidence, sample_name, data_label):
+        offset = 0
         if np.min(data) < 0:
-            offset = -1*2*np.min(data)
+            offset = -1*4*np.min(data)
+            print("adding offset!")
+            print(offset)
             data = np.array(data)
             data = data + offset
+            print(data)
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-
         # Make data
         azimuths = np.linspace(0, 359, 360)
         emissions = np.linspace(0, 89, 90)
@@ -42,6 +45,10 @@ class HemispherePlotter:
                 R[az] = {}
 
             R[az][e] = data[i]
+
+        for az in R:
+            print(az)
+            print(R[az])
 
         data = np.array(data)
         avg = np.mean(data)
@@ -187,23 +194,44 @@ class HemispherePlotter:
         ax.text2D(0.15, 0.85, f"{sample_name} (i={incidence})", fontsize=18, transform=ax.transAxes)
 
         max_r = np.max(data)
+        min_r = np.min(data)
         ax.auto_scale_xyz([-0.5*max_r, 0.5*max_r], [-0.5*max_r, 0.5*max_r], [0, max_r])
 
         m = cm.ScalarMappable(cmap=jet, norm=norm)
 
         cbar_ax = fig.add_axes([0.75, 0.3, 0.035, 0.45])
-        colorbar = fig.colorbar(m, cax=cbar_ax)
+        delta = (max_r-min_r)/5
+        ticks = np.arange(min_r, max_r, delta)
+        ticks = list(ticks)
+        ticks.append(max_r)
+
+        colorbar = fig.colorbar(m, cax=cbar_ax, ticks=ticks)
 
         pos1 = ax.get_position()  # get the original position
         pos2 = [pos1.x0 - 0.1, pos1.y0, pos1.width, pos1.height]
         ax.set_position(pos2)
 
-        ax.text2D(1, 0.35, f"Reflectance", fontsize=18, transform=ax.transAxes, rotation=90)
-        labels = colorbar.ax.get_yticklabels()
-        print(labels)
-        labels = colorbar.ax.get_xticklabels()
-        print(labels)
-        # colorbar.ax.set_yticklabels(labels)
+        ypos = 0.5
+        if len(data_label) > 14:
+            ypos = 0.25
+        elif len(data_label) > 8:
+            ypos = 0.4
+        ax.text2D(1, ypos, data_label, fontsize=16, transform=ax.transAxes, rotation=90)
 
-        plt.show(block=False) #Need block = False in order for loop to continue
+        labels = []
+        for tick in ticks:
+            if tick - offset > 1:
+                labels.append(np.around(tick - offset, 2))
+            elif tick - offset > .01:
+                labels.append(np.around(tick - offset, 3))
+            elif tick - offset > .00001:
+                labels.append(np.around(tick - offset, 6))
+            elif tick - offset > .00000001:
+                labels.append(np.around(tick - offset, 9))
+            else:
+                labels.append(tick - offset)
+
+        colorbar.ax.set_yticklabels(labels)
+
+        plt.show(block=False)  # Need block = False in order for loop to continue
 

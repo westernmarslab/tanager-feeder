@@ -533,7 +533,7 @@ class Tab:
                     emission_sample.geoms.append(e_geom)
 
                 incidence_sample.data[i_geom]["e"].append(e)
-                incidence_sample.data[i_geom]["az"].append(e)
+                incidence_sample.data[i_geom]["az"].append(az)
                 incidence_sample.data[i_geom]["theta"].append(e)
                 incidence_sample.data[i_geom]["g"].append(g)
                 incidence_sample.data[i_geom]["band depth"].append(depth)
@@ -603,17 +603,19 @@ class Tab:
                 e_geom = (None, e, None)
 
                 if i_geom not in incidence_sample.data:
-                    incidence_sample.data[i_geom] = {"e": [], "theta": [], "g": [], "slope": []}
+                    incidence_sample.data[i_geom] = {"e": [], "az": [], "theta": [], "g": [], "slope": []}
                     incidence_sample.geoms.append(i_geom)
                 if e_geom not in emission_sample.data:
-                    emission_sample.data[e_geom] = {"i": [], "slope": []}
+                    emission_sample.data[e_geom] = {"i": [], "az": [], "slope": []}
                     emission_sample.geoms.append(e_geom)
 
                 incidence_sample.data[i_geom]["e"].append(e)
+                incidence_sample.data[i_geom]["az"].append(az)
                 incidence_sample.data[i_geom]["theta"].append(e)
                 incidence_sample.data[i_geom]["g"].append(g)
                 incidence_sample.data[i_geom]["slope"].append(slope)
                 emission_sample.data[e_geom]["i"].append(i)
+                emission_sample.data[e_geom]["az"].append(az)
                 emission_sample.data[e_geom]["slope"].append(slope)
 
                 self.contour_sample.data["all samples"]["e"].append(e)
@@ -901,7 +903,7 @@ class Tab:
             )
 
         elif x_axis == "az, e":
-            self.plot_hemisphere_plots("difference")
+            self.plot_hemisphere_plots("difference", "Difference")
 
         else:
             tab = Tab(
@@ -954,9 +956,9 @@ class Tab:
             tab.plot.white_fig.canvas.draw()
 
         elif x_axis == "az, e":
-            self.plot_hemisphere_plots("average reflectance")
+            self.plot_hemisphere_plots("average reflectance", "Reflectance")
 
-    def plot_hemisphere_plots(self, key):
+    def plot_hemisphere_plots(self, key, data_label):
         for incidence_sample in self.incidence_samples:
             for i_geom in incidence_sample.data:
                 incidence = i_geom[0]
@@ -969,7 +971,7 @@ class Tab:
                     data.append(incidence_sample.data[i_geom][key][j])
                 if len(data) > 7:
                     try:
-                        self.hemisphere_plotter.plot(geoms, data, incidence, sample_name)
+                        self.hemisphere_plotter.plot(geoms, data, incidence, sample_name, data_label)
                     except Exception as e:
                         print("Failed to create hemisphere plot")
                         raise e
@@ -986,7 +988,7 @@ class Tab:
         elif x_axis == "e,i":
             Tab(self.plotter, "Band center", [self.contour_sample], x_axis="contour", y_axis="band center")
         elif x_axis == "az, e":
-            self.plot_hemisphere_plots("band center")
+            self.plot_hemisphere_plots("band center", "Band center [nm]")
 
     def plot_band_depths(self, x_axis):
         if x_axis in ("e", "theta"):
@@ -998,7 +1000,7 @@ class Tab:
         elif x_axis == "e,i":
             Tab(self.plotter, "Band depth", [self.contour_sample], x_axis="contour", y_axis="band depth")
         elif x_axis == "az, e":
-            self.plot_hemisphere_plots("band depth")
+            self.plot_hemisphere_plots("band depth", "Band depth")
 
     def plot_slopes(self, x_axis):
         if x_axis == "e,i":
@@ -1012,7 +1014,7 @@ class Tab:
         elif x_axis == "i,e":
             Tab(self.plotter, "Slope", [self.contour_sample], x_axis="contour", y_axis="slope")
         elif x_axis == "az, e":
-            self.plot_hemisphere_plots("slope")
+            self.plot_hemisphere_plots("slope", "Slope")
 
     # not implemented
     def calculate_photometric_variability(self, left, right):
