@@ -14,14 +14,12 @@ class HemispherePlotter:
         offset = 0
         if np.min(data) < 0:
             offset = -1*4*np.min(data)
-            print("adding offset!")
-            print(offset)
             data = np.array(data)
             data = data + offset
-            print(data)
+
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-        # Make data
+
         azimuths = np.linspace(0, 359, 360)
         emissions = np.linspace(0, 89, 90)
 
@@ -31,7 +29,6 @@ class HemispherePlotter:
             emissions[j] = int(e)
 
         R = {}
-
         for i, tup in enumerate(geoms):
             e = int(tup[1])
             try:
@@ -173,7 +170,8 @@ class HemispherePlotter:
         # back_y = np.outer(np.sin(u), np.sin(v))
         # back_z = np.outer(np.ones(np.size(u)), 0)
         # backdrop = ax.plot_surface(back_x, back_y, back_z, alpha=0.8, zorder=0)
-        rline = 1.5*np.max(data)
+
+        rline = 1.2*np.max(data)
         azline = 0
         iline = incidence
         xline = [0, cos(azline) * sin(iline) * rline]
