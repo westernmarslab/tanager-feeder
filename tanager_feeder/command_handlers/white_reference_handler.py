@@ -89,7 +89,7 @@ class WhiteReferenceHandler(CommandHandler):
             self.timeout_s -= utils.INTERVAL
         # Before timing out, set override to True so that if the user decides to retry they aren't reminded about
         # optimizing, etc again.
-        if self.controller.wr in self.controller.queue[0]:
+        if len(self.controller.queue) > 0 and self.controller.wr in self.controller.queue[0]:
             self.controller.queue[0][self.controller.wr][0] = True
         self.timeout()
 

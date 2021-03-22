@@ -83,8 +83,9 @@ class Console:
                 if len(info_string) > first_space:
                     i = first_space - 7
                     while True:
-                        if i ==0:
+                        if i == 0:
                             info_string = info_string[0:int(first_space/2)] + "\n" + info_string[int(first_space/2):]
+                            break
                         if info_string[i] == " ":
                             info_string = info_string[0:i] + "\n"+info_string[i+1:]
                             break
@@ -94,17 +95,15 @@ class Console:
             if "\n" in info_string:
                 lines = info_string.split("\n")
                 lines[0] = ("{1:" + first_space + "}{0}").format(datestring, lines[0])
-                for i, _ in enumerate(lines):
-                    if i == 0:
-                        continue
-                    lines[i] = ("{1:" + str(space) + "}{0}").format("", lines[i])
                 info_string = "\n".join(lines)
             else:
                 info_string = ("{1:" + first_space + "}{0}").format(datestring, info_string)
 
             if info_string[-2:-1] != "\n" and newline:
                 info_string += "\n"
-            self.console_log.insert(END, info_string + "\n")
+
+            self.console_log.insert(END, info_string)
+            self.console_log.insert(END, "\n")
         else:
             self.console_log.insert(END, info_string)
         self.console_log.see(END)

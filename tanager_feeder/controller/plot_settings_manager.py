@@ -50,11 +50,17 @@ class PlotSettingsManager:
         self.tab = tab
         self.tab.freeze()  # You have to finish dealing with this before, say, opening another analysis box.
         buttons = {"close": {}}
+        if tab.x_axis != "contour":
+            self.plot_settings_dialog = VerticalScrolledDialog(
+                self.controller, "Plot Settings", "", buttons=buttons, button_width=13, min_height=715, width=360
+            )
+            self.plot_settings_dialog.top.wm_geometry("360x600")
+        else:
+            self.plot_settings_dialog = VerticalScrolledDialog(
+                self.controller, "Plot Settings", "", buttons=buttons, button_width=13, min_height=300, width=300
+            )
+            self.plot_settings_dialog.top.wm_geometry("300x370")
 
-        self.plot_settings_dialog = VerticalScrolledDialog(
-            self.controller, "Plot Settings", "", buttons=buttons, button_width=13, min_height=715, width=360
-        )
-        self.plot_settings_dialog.top.wm_geometry("360x600")
         self.plot_settings_dialog.top.attributes("-topmost", True)
 
         outer_title_frame = Frame(
@@ -241,101 +247,27 @@ class PlotSettingsManager:
             zoom_label_z2.pack(side=RIGHT, padx=self.tk_format.padx)
             self.left_zoom_entry_z.pack(side=RIGHT, padx=self.tk_format.padx)
             zoom_label_z1.pack(side=RIGHT, padx=self.tk_format.padx)
-
-        outer_color_frame = Frame(
-            self.plot_settings_dialog.interior,
-            bg=self.tk_format.bg,
-            padx=self.tk_format.padx,
-            pady=15,
-            highlightthickness=1,
-        )
-        outer_color_frame.pack(expand=True, fill=BOTH)
-        color_label = Label(outer_color_frame, text="Color settings", bg=self.tk_format.bg, fg=self.tk_format.textcolor)
-        color_label.pack()
-
-        color_frame = Frame(outer_color_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=15)
-        color_frame.pack(fill=BOTH, expand=True)
-        color_sample_frame = Frame(color_frame, bg=self.tk_format.bg, padx=30, pady=0)
-        color_sample_frame.pack(fill=BOTH, expand=True)
-
-        color_sample_label = Label(
-            color_sample_frame, text="Sample: ", bg=self.tk_format.bg, fg=self.tk_format.textcolor
-        )
-        color_sample_label.pack(side=LEFT)
-
-        sample_names = []
-        repeats = False
-        max_len = 0
-        for sample in self.tab.samples:
-            if sample.name in sample_names:
-                repeats = True
-            else:
-                sample_names.append(sample.name)
-                max_len = np.max([max_len, len(sample.name)])
-        if repeats:
-            sample_names = []
-            for sample in self.tab.samples:
-                sample_names.append(sample.title + ": " + sample.name)
-                max_len = np.max([max_len, len(sample_names[-1])])
-        self.color_sample_var.set(sample_names[0])
-
-        # pylint: disable = no-value-for-parameter
-        color_menu = OptionMenu(color_sample_frame, self.color_sample_var, *sample_names)
-        color_menu.configure(width=max_len, highlightbackground=self.tk_format.highlightbackgroundcolor)
-        color_menu.pack(side=LEFT)
-
-        color_color_frame = Frame(color_frame, bg=self.tk_format.bg, padx=40, pady=0)
-        color_color_frame.pack(fill=BOTH, expand=True)
-        color_sample_label = Label(color_color_frame, text="Color: ", bg=self.tk_format.bg, fg=self.tk_format.textcolor)
-        color_sample_label.pack(side=LEFT)
-
-        color_names = self.tab.plot.color_names
-
-        self.color_color_var.set(color_names[0])
-
-        # pylint: disable = no-value-for-parameter
-        color_menu = OptionMenu(color_color_frame, self.color_color_var, *color_names)
-        color_menu.configure(width=max_len, highlightbackground=self.tk_format.highlightbackgroundcolor)
-        color_menu.pack(side=LEFT)
-        color_button = Button(
-            color_frame,
-            text="Apply",
-            command=self.set_color,
-            width=6,
-            fg=self.tk_format.buttontextcolor,
-            bg=self.tk_format.buttonbackgroundcolor,
-            bd=self.tk_format.bd,
-        )
-        color_button.config(
-            fg=self.tk_format.buttontextcolor,
-            highlightbackground=self.tk_format.highlightbackgroundcolor,
-            bg=self.tk_format.buttonbackgroundcolor,
-        )
-        color_button.pack()
-
-        if self.tab.plot.lines_drawn:
-            outer_linestyle_frame = Frame(
+        if tab.x_axis != "contour":
+            outer_color_frame = Frame(
                 self.plot_settings_dialog.interior,
                 bg=self.tk_format.bg,
                 padx=self.tk_format.padx,
                 pady=15,
                 highlightthickness=1,
             )
-            outer_linestyle_frame.pack(expand=True, fill=BOTH)
-            linestyle_label = Label(
-                outer_linestyle_frame, text="Linestyle settings", bg=self.tk_format.bg, fg=self.tk_format.textcolor
-            )
-            linestyle_label.pack()
+            outer_color_frame.pack(expand=True, fill=BOTH)
+            color_label = Label(outer_color_frame, text="Color settings", bg=self.tk_format.bg, fg=self.tk_format.textcolor)
+            color_label.pack()
 
-            linestyle_frame = Frame(outer_linestyle_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=15)
-            linestyle_frame.pack(fill=BOTH, expand=True)
-            linestyle_sample_frame = Frame(linestyle_frame, bg=self.tk_format.bg, padx=30, pady=0)
-            linestyle_sample_frame.pack(fill=BOTH, expand=True)
+            color_frame = Frame(outer_color_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=15)
+            color_frame.pack(fill=BOTH, expand=True)
+            color_sample_frame = Frame(color_frame, bg=self.tk_format.bg, padx=30, pady=0)
+            color_sample_frame.pack(fill=BOTH, expand=True)
 
-            linestyle_sample_label = Label(
-                linestyle_sample_frame, text="Sample: ", bg=self.tk_format.bg, fg=self.tk_format.textcolor
+            color_sample_label = Label(
+                color_sample_frame, text="Sample: ", bg=self.tk_format.bg, fg=self.tk_format.textcolor
             )
-            linestyle_sample_label.pack(side=LEFT)
+            color_sample_label.pack(side=LEFT)
 
             sample_names = []
             repeats = False
@@ -351,167 +283,241 @@ class PlotSettingsManager:
                 for sample in self.tab.samples:
                     sample_names.append(sample.title + ": " + sample.name)
                     max_len = np.max([max_len, len(sample_names[-1])])
-            self.linestyle_sample_var.set(sample_names[0])
+            self.color_sample_var.set(sample_names[0])
 
             # pylint: disable = no-value-for-parameter
-            linestyle_menu = OptionMenu(linestyle_sample_frame, self.linestyle_sample_var, *sample_names)
-            linestyle_menu.configure(width=max_len, highlightbackground=self.tk_format.highlightbackgroundcolor)
-            linestyle_menu.pack(side=LEFT)
+            color_menu = OptionMenu(color_sample_frame, self.color_sample_var, *sample_names)
+            color_menu.configure(width=max_len, highlightbackground=self.tk_format.highlightbackgroundcolor)
+            color_menu.pack(side=LEFT)
 
-            linestyle_linestyle_frame = Frame(linestyle_frame, bg=self.tk_format.bg, padx=44, pady=0)
-            linestyle_linestyle_frame.pack(fill=BOTH, expand=True)
-            linestyle_sample_label = Label(
-                linestyle_linestyle_frame, text="Style: ", bg=self.tk_format.bg, fg=self.tk_format.textcolor
-            )
-            linestyle_sample_label.pack(side=LEFT)
+            color_color_frame = Frame(color_frame, bg=self.tk_format.bg, padx=40, pady=0)
+            color_color_frame.pack(fill=BOTH, expand=True)
+            color_sample_label = Label(color_color_frame, text="Color: ", bg=self.tk_format.bg, fg=self.tk_format.textcolor)
+            color_sample_label.pack(side=LEFT)
 
-            linestyle_names = ["Solid", "Dash", "Dot", "Dot-dash"]
+            color_names = self.tab.plot.color_names
 
-            self.linestyle_linestyle_var.set(linestyle_names[0])
+            self.color_color_var.set(color_names[0])
 
             # pylint: disable = no-value-for-parameter
-            linestyle_menu = OptionMenu(linestyle_linestyle_frame, self.linestyle_linestyle_var, *linestyle_names)
-            linestyle_menu.configure(width=max_len, highlightbackground=self.tk_format.highlightbackgroundcolor)
-            linestyle_menu.pack(side=LEFT)
-            linestyle_button = Button(
-                linestyle_frame,
+            color_menu = OptionMenu(color_color_frame, self.color_color_var, *color_names)
+            color_menu.configure(width=max_len, highlightbackground=self.tk_format.highlightbackgroundcolor)
+            color_menu.pack(side=LEFT)
+            color_button = Button(
+                color_frame,
                 text="Apply",
-                command=self.set_linestyle,
+                command=self.set_color,
                 width=6,
                 fg=self.tk_format.buttontextcolor,
                 bg=self.tk_format.buttonbackgroundcolor,
                 bd=self.tk_format.bd,
             )
-            linestyle_button.config(
+            color_button.config(
                 fg=self.tk_format.buttontextcolor,
                 highlightbackground=self.tk_format.highlightbackgroundcolor,
                 bg=self.tk_format.buttonbackgroundcolor,
             )
-            linestyle_button.pack()
+            color_button.pack()
 
-        if self.tab.plot.markers_drawn:
-            outer_markerstyle_frame = Frame(
+            if self.tab.plot.lines_drawn:
+                outer_linestyle_frame = Frame(
+                    self.plot_settings_dialog.interior,
+                    bg=self.tk_format.bg,
+                    padx=self.tk_format.padx,
+                    pady=15,
+                    highlightthickness=1,
+                )
+                outer_linestyle_frame.pack(expand=True, fill=BOTH)
+                linestyle_label = Label(
+                    outer_linestyle_frame, text="Linestyle settings", bg=self.tk_format.bg, fg=self.tk_format.textcolor
+                )
+                linestyle_label.pack()
+
+                linestyle_frame = Frame(outer_linestyle_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=15)
+                linestyle_frame.pack(fill=BOTH, expand=True)
+                linestyle_sample_frame = Frame(linestyle_frame, bg=self.tk_format.bg, padx=30, pady=0)
+                linestyle_sample_frame.pack(fill=BOTH, expand=True)
+
+                linestyle_sample_label = Label(
+                    linestyle_sample_frame, text="Sample: ", bg=self.tk_format.bg, fg=self.tk_format.textcolor
+                )
+                linestyle_sample_label.pack(side=LEFT)
+
+                sample_names = []
+                repeats = False
+                max_len = 0
+                for sample in self.tab.samples:
+                    if sample.name in sample_names:
+                        repeats = True
+                    else:
+                        sample_names.append(sample.name)
+                        max_len = np.max([max_len, len(sample.name)])
+                if repeats:
+                    sample_names = []
+                    for sample in self.tab.samples:
+                        sample_names.append(sample.title + ": " + sample.name)
+                        max_len = np.max([max_len, len(sample_names[-1])])
+                self.linestyle_sample_var.set(sample_names[0])
+
+                # pylint: disable = no-value-for-parameter
+                linestyle_menu = OptionMenu(linestyle_sample_frame, self.linestyle_sample_var, *sample_names)
+                linestyle_menu.configure(width=max_len, highlightbackground=self.tk_format.highlightbackgroundcolor)
+                linestyle_menu.pack(side=LEFT)
+
+                linestyle_linestyle_frame = Frame(linestyle_frame, bg=self.tk_format.bg, padx=44, pady=0)
+                linestyle_linestyle_frame.pack(fill=BOTH, expand=True)
+                linestyle_sample_label = Label(
+                    linestyle_linestyle_frame, text="Style: ", bg=self.tk_format.bg, fg=self.tk_format.textcolor
+                )
+                linestyle_sample_label.pack(side=LEFT)
+
+                linestyle_names = ["Solid", "Dash", "Dot", "Dot-dash"]
+
+                self.linestyle_linestyle_var.set(linestyle_names[0])
+
+                # pylint: disable = no-value-for-parameter
+                linestyle_menu = OptionMenu(linestyle_linestyle_frame, self.linestyle_linestyle_var, *linestyle_names)
+                linestyle_menu.configure(width=max_len, highlightbackground=self.tk_format.highlightbackgroundcolor)
+                linestyle_menu.pack(side=LEFT)
+                linestyle_button = Button(
+                    linestyle_frame,
+                    text="Apply",
+                    command=self.set_linestyle,
+                    width=6,
+                    fg=self.tk_format.buttontextcolor,
+                    bg=self.tk_format.buttonbackgroundcolor,
+                    bd=self.tk_format.bd,
+                )
+                linestyle_button.config(
+                    fg=self.tk_format.buttontextcolor,
+                    highlightbackground=self.tk_format.highlightbackgroundcolor,
+                    bg=self.tk_format.buttonbackgroundcolor,
+                )
+                linestyle_button.pack()
+
+            if self.tab.plot.markers_drawn:
+                outer_markerstyle_frame = Frame(
+                    self.plot_settings_dialog.interior,
+                    bg=self.tk_format.bg,
+                    padx=self.tk_format.padx,
+                    pady=15,
+                    highlightthickness=1,
+                )
+                outer_markerstyle_frame.pack(expand=True, fill=BOTH)
+                markerstyle_label = Label(
+                    outer_markerstyle_frame,
+                    text="Markerstyle settings",
+                    bg=self.tk_format.bg,
+                    fg=self.tk_format.textcolor,
+                )
+                markerstyle_label.pack()
+
+                markerstyle_frame = Frame(outer_markerstyle_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=15)
+                markerstyle_frame.pack(fill=BOTH, expand=True)
+                markerstyle_sample_frame = Frame(markerstyle_frame, bg=self.tk_format.bg, padx=30, pady=0)
+                markerstyle_sample_frame.pack(fill=BOTH, expand=True)
+
+                markerstyle_sample_label = Label(
+                    markerstyle_sample_frame, text="Sample: ", bg=self.tk_format.bg, fg=self.tk_format.textcolor
+                )
+                markerstyle_sample_label.pack(side=LEFT)
+
+                sample_names = []
+                repeats = False
+                max_len = 0
+                for sample in self.tab.samples:
+                    if sample.name in sample_names:
+                        repeats = True
+                    else:
+                        sample_names.append(sample.name)
+                        max_len = np.max([max_len, len(sample.name)])
+                if repeats:
+                    sample_names = []
+                    for sample in self.tab.samples:
+                        sample_names.append(sample.title + ": " + sample.name)
+                        max_len = np.max([max_len, len(sample_names[-1])])
+                self.markerstyle_sample_var.set(sample_names[0])
+
+                # pylint: disable = no-value-for-parameter
+                markerstyle_menu = OptionMenu(markerstyle_sample_frame, self.markerstyle_sample_var, *sample_names)
+                markerstyle_menu.configure(width=max_len, highlightbackground=self.tk_format.highlightbackgroundcolor)
+                markerstyle_menu.pack(side=LEFT)
+
+                markerstyle_markerstyle_frame = Frame(markerstyle_frame, bg=self.tk_format.bg, padx=44, pady=0)
+                markerstyle_markerstyle_frame.pack(fill=BOTH, expand=True)
+                markerstyle_sample_label = Label(
+                    markerstyle_markerstyle_frame, text="Style: ", bg=self.tk_format.bg, fg=self.tk_format.textcolor
+                )
+                markerstyle_sample_label.pack(side=LEFT)
+
+                markerstyle_names = ["Circle", "X", "Diamond", "Triangle"]
+
+                self.markerstyle_markerstyle_var.set(markerstyle_names[0])
+
+                # pylint: disable = no-value-for-parameter
+                markerstyle_menu = OptionMenu(
+                    markerstyle_markerstyle_frame, self.markerstyle_markerstyle_var, *markerstyle_names
+                )
+                markerstyle_menu.configure(width=max_len, highlightbackground=self.tk_format.highlightbackgroundcolor)
+                markerstyle_menu.pack(side=LEFT)
+                markerstyle_button = Button(
+                    markerstyle_frame,
+                    text="Apply",
+                    command=self.set_markerstyle,
+                    width=6,
+                    fg=self.tk_format.buttontextcolor,
+                    bg=self.tk_format.buttonbackgroundcolor,
+                    bd=self.tk_format.bd,
+                )
+                markerstyle_button.config(
+                    fg=self.tk_format.buttontextcolor,
+                    highlightbackground=self.tk_format.highlightbackgroundcolor,
+                    bg=self.tk_format.buttonbackgroundcolor,
+                )
+                markerstyle_button.pack()
+
+            outer_legend_frame = Frame(
                 self.plot_settings_dialog.interior,
                 bg=self.tk_format.bg,
                 padx=self.tk_format.padx,
                 pady=15,
                 highlightthickness=1,
             )
-            outer_markerstyle_frame.pack(expand=True, fill=BOTH)
-            markerstyle_label = Label(
-                outer_markerstyle_frame,
-                text="Markerstyle settings",
-                bg=self.tk_format.bg,
-                fg=self.tk_format.textcolor,
+            outer_legend_frame.pack(expand=True, fill=BOTH)
+
+            legend_frame = Frame(outer_legend_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=15)
+            legend_frame.pack(fill=BOTH, expand=True)
+
+            legend_legend_frame = Frame(legend_frame, bg=self.tk_format.bg, padx=20, pady=0)
+            legend_legend_frame.pack(fill=BOTH, expand=True)
+            legend_sample_label = Label(
+                legend_legend_frame, text="Legend style: ", bg=self.tk_format.bg, fg=self.tk_format.textcolor
             )
-            markerstyle_label.pack()
+            legend_sample_label.pack(side=LEFT)
 
-            markerstyle_frame = Frame(outer_markerstyle_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=15)
-            markerstyle_frame.pack(fill=BOTH, expand=True)
-            markerstyle_sample_frame = Frame(markerstyle_frame, bg=self.tk_format.bg, padx=30, pady=0)
-            markerstyle_sample_frame.pack(fill=BOTH, expand=True)
+            legend_names = ["Full list", "Gradient"]
 
-            markerstyle_sample_label = Label(
-                markerstyle_sample_frame, text="Sample: ", bg=self.tk_format.bg, fg=self.tk_format.textcolor
-            )
-            markerstyle_sample_label.pack(side=LEFT)
-
-            sample_names = []
-            repeats = False
-            max_len = 0
-            for sample in self.tab.samples:
-                if sample.name in sample_names:
-                    repeats = True
-                else:
-                    sample_names.append(sample.name)
-                    max_len = np.max([max_len, len(sample.name)])
-            if repeats:
-                sample_names = []
-                for sample in self.tab.samples:
-                    sample_names.append(sample.title + ": " + sample.name)
-                    max_len = np.max([max_len, len(sample_names[-1])])
-            self.markerstyle_sample_var.set(sample_names[0])
+            self.legend_legend_var.set(legend_names[0])
 
             # pylint: disable = no-value-for-parameter
-            markerstyle_menu = OptionMenu(markerstyle_sample_frame, self.markerstyle_sample_var, *sample_names)
-            markerstyle_menu.configure(width=max_len, highlightbackground=self.tk_format.highlightbackgroundcolor)
-            markerstyle_menu.pack(side=LEFT)
-
-            markerstyle_markerstyle_frame = Frame(markerstyle_frame, bg=self.tk_format.bg, padx=44, pady=0)
-            markerstyle_markerstyle_frame.pack(fill=BOTH, expand=True)
-            markerstyle_sample_label = Label(
-                markerstyle_markerstyle_frame, text="Style: ", bg=self.tk_format.bg, fg=self.tk_format.textcolor
-            )
-            markerstyle_sample_label.pack(side=LEFT)
-
-            markerstyle_names = ["Circle", "X", "Diamond", "Triangle"]
-
-            self.markerstyle_markerstyle_var.set(markerstyle_names[0])
-
-            # pylint: disable = no-value-for-parameter
-            markerstyle_menu = OptionMenu(
-                markerstyle_markerstyle_frame, self.markerstyle_markerstyle_var, *markerstyle_names
-            )
-            markerstyle_menu.configure(width=max_len, highlightbackground=self.tk_format.highlightbackgroundcolor)
-            markerstyle_menu.pack(side=LEFT)
-            markerstyle_button = Button(
-                markerstyle_frame,
+            legend_menu = OptionMenu(legend_legend_frame, self.legend_legend_var, *legend_names)
+            legend_menu.configure(width=max_len, highlightbackground=self.tk_format.highlightbackgroundcolor)
+            legend_menu.pack(side=LEFT)
+            legend_button = Button(
+                legend_legend_frame,
                 text="Apply",
-                command=self.set_markerstyle,
+                command=self.set_legend,
                 width=6,
                 fg=self.tk_format.buttontextcolor,
                 bg=self.tk_format.buttonbackgroundcolor,
                 bd=self.tk_format.bd,
             )
-            markerstyle_button.config(
+            legend_button.config(
                 fg=self.tk_format.buttontextcolor,
                 highlightbackground=self.tk_format.highlightbackgroundcolor,
                 bg=self.tk_format.buttonbackgroundcolor,
             )
-            markerstyle_button.pack()
-
-        outer_legend_frame = Frame(
-            self.plot_settings_dialog.interior,
-            bg=self.tk_format.bg,
-            padx=self.tk_format.padx,
-            pady=15,
-            highlightthickness=1,
-        )
-        outer_legend_frame.pack(expand=True, fill=BOTH)
-
-        legend_frame = Frame(outer_legend_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=15)
-        legend_frame.pack(fill=BOTH, expand=True)
-
-        legend_legend_frame = Frame(legend_frame, bg=self.tk_format.bg, padx=20, pady=0)
-        legend_legend_frame.pack(fill=BOTH, expand=True)
-        legend_sample_label = Label(
-            legend_legend_frame, text="Legend style: ", bg=self.tk_format.bg, fg=self.tk_format.textcolor
-        )
-        legend_sample_label.pack(side=LEFT)
-
-        legend_names = ["Full list", "Gradient"]
-
-        self.legend_legend_var.set(legend_names[0])
-
-        # pylint: disable = no-value-for-parameter
-        legend_menu = OptionMenu(legend_legend_frame, self.legend_legend_var, *legend_names)
-        legend_menu.configure(width=max_len, highlightbackground=self.tk_format.highlightbackgroundcolor)
-        legend_menu.pack(side=LEFT)
-        legend_button = Button(
-            legend_legend_frame,
-            text="Apply",
-            command=self.set_legend,
-            width=6,
-            fg=self.tk_format.buttontextcolor,
-            bg=self.tk_format.buttonbackgroundcolor,
-            bd=self.tk_format.bd,
-        )
-        legend_button.config(
-            fg=self.tk_format.buttontextcolor,
-            highlightbackground=self.tk_format.highlightbackgroundcolor,
-            bg=self.tk_format.buttonbackgroundcolor,
-        )
-        legend_button.pack(side=LEFT, padx=(5, 5), pady=(5, 3))
+            legend_button.pack(side=LEFT, padx=(5, 5), pady=(5, 3))
 
     def select_tab(self) -> None:
         self.controller.view_notebook.select(self.tab.top)

@@ -7,6 +7,7 @@ import numpy as np
 
 from tanager_feeder.plotter.sample import Sample
 from tanager_feeder.plotter.plot import Plot
+from tanager_feeder.plotter.hemisphere_plotter import HemispherePlotter
 
 from tanager_feeder import utils
 
@@ -31,6 +32,7 @@ class Tab:
         specularity_tolerance=None,
         draw=False,
     ):
+        self.hemisphere_plotter = HemispherePlotter()
         if geoms is None:
             geoms = {"i": [], "e": [], "az": []}
         self.plotter = plotter
@@ -89,6 +91,7 @@ class Tab:
             self.plotter.notebook.insert(tab_index, self.plotter.notebook.tabs()[-1])
             self.plotter.notebook.select(self.plotter.notebook.tabs()[tab_index])
             self.index = tab_index
+
 
         self.fig = mpl.figure.Figure(
             figsize=(self.width / self.plotter.dpi, self.height / self.plotter.dpi), dpi=self.plotter.dpi
@@ -316,13 +319,13 @@ class Tab:
 
         self.contour_sample = Sample("all samples", "file", "title")
         self.contour_sample.data = {"all samples": {"i": [], "e": [], "average reflectance": []}}
-        self.contour_sample.geoms = ["all samples"]
+        self.contour_sample.geoms = []
 
         for i, sample in enumerate(self.samples):
             incidence_sample = Sample(sample.name, sample.file, sample.title)
             emission_sample = Sample(sample.name, sample.file, sample.title)
             for geom in sample.geoms:
-                i, e, az = int(geom[0]), int(geom[1]), int(geom[2])
+                i, e, az = utils.get_i_e_az(geom)
                 g = utils.get_phase_angle(i, e, az)
 
                 if (
@@ -341,22 +344,23 @@ class Tab:
 
                 avg = np.mean(reflectance[index_left:index_right])
 
-                incidence = sample.name + " (i=" + str(i) + ")"
-                emission = sample.name + " (e=" + str(e) + ")"
+                i_geom = (i, None, None)
+                e_geom = (None, e, None)
 
-                if incidence not in incidence_sample.data:
-                    incidence_sample.data[incidence] = {"e": [], "theta": [], "g": [], "average reflectance": []}
-                    incidence_sample.geoms.append(incidence)
-                if emission not in emission_sample.data:
-                    emission_sample.data[emission] = {"i": [], "average reflectance": []}
-                    emission_sample.geoms.append(emission)
+                if i_geom not in incidence_sample.data:
+                    incidence_sample.data[i_geom] = {"e": [], "az": [], "theta": [], "g": [], "average reflectance": []}
+                    incidence_sample.geoms.append(i_geom)
+                if e_geom not in emission_sample.data:
+                    emission_sample.data[e_geom] = {"i": [], "average reflectance": []}
+                    emission_sample.geoms.append(e_geom)
 
-                incidence_sample.data[incidence]["e"].append(e)
-                incidence_sample.data[incidence]["theta"].append(e)
-                incidence_sample.data[incidence]["g"].append(g)
-                incidence_sample.data[incidence]["average reflectance"].append(avg)
-                emission_sample.data[emission]["i"].append(i)
-                emission_sample.data[emission]["average reflectance"].append(avg)
+                incidence_sample.data[i_geom]["e"].append(e)
+                incidence_sample.data[i_geom]["az"].append(az)
+                incidence_sample.data[i_geom]["theta"].append(e)
+                incidence_sample.data[i_geom]["g"].append(g)
+                incidence_sample.data[i_geom]["average reflectance"].append(avg)
+                emission_sample.data[e_geom]["i"].append(i)
+                emission_sample.data[e_geom]["average reflectance"].append(avg)
 
                 self.contour_sample.data["all samples"]["e"].append(e)
                 self.contour_sample.data["all samples"]["i"].append(i)
@@ -378,13 +382,13 @@ class Tab:
 
         self.contour_sample = Sample("all samples", "file", "title")
         self.contour_sample.data = {"all samples": {"i": [], "e": [], "band center": []}}
-        self.contour_sample.geoms = ["all samples"]
+        self.contour_sample.geoms = []
 
         for i, sample in enumerate(self.samples):
             incidence_sample = Sample(sample.name, sample.file, sample.title)
             emission_sample = Sample(sample.name, sample.file, sample.title)
-            for label in sample.geoms:
-                i, e, az = float(label[0]), float(label[1]), float(label[2])
+            for geom in sample.geoms:
+                i, e, az = utils.get_i_e_az(geom)
                 g = utils.get_phase_angle(i, e, az)
 
                 if (
@@ -395,8 +399,8 @@ class Tab:
                         artifact_warning = True
                         continue
 
-                wavelengths = np.array(sample.data[label]["wavelength"])
-                reflectance = np.array(sample.data[label][self.y_axis])
+                wavelengths = np.array(sample.data[geom]["wavelength"])
+                reflectance = np.array(sample.data[geom][self.y_axis])
 
                 # find reflectance at left and right wavelengths.
                 # if we're on the edges, average out a few values.
@@ -429,28 +433,30 @@ class Tab:
                 else:
                     center = wavelengths[index_trough + index_left]
 
-                incidence = sample.name + " (i=" + str(i) + ")"
-                emission = sample.name + " (e=" + str(e) + ")"
+                i_geom = (i, None, None)
+                e_geom = (None, e, None)
 
-                if incidence not in incidence_sample.data:
-                    incidence_sample.data[incidence] = {"e": [], "theta": [], "g": [], "band center": []}
-                    incidence_sample.geoms.append(incidence)
-                if emission not in emission_sample.data:
-                    emission_sample.data[emission] = {"i": [], "band center": []}
-                    emission_sample.geoms.append(emission)
+                if i_geom not in incidence_sample.data:
+                    incidence_sample.data[i_geom] = {"e": [], "az": [], "theta": [], "g": [], "band center": []}
+                    incidence_sample.geoms.append(i_geom)
+                if e_geom not in emission_sample.data:
+                    emission_sample.data[e_geom] = {"i": [], "az": [], "band center": []}
+                    emission_sample.geoms.append(e_geom)
 
-                incidence_sample.data[incidence]["e"].append(e)
-                incidence_sample.data[incidence]["theta"].append(e)
-                incidence_sample.data[incidence]["g"].append(g)
-                incidence_sample.data[incidence]["band center"].append(center)
-                emission_sample.data[emission]["i"].append(i)
-                emission_sample.data[emission]["band center"].append(center)
+                incidence_sample.data[i_geom]["e"].append(e)
+                incidence_sample.data[i_geom]["az"].append(az)
+                incidence_sample.data[i_geom]["theta"].append(e)
+                incidence_sample.data[i_geom]["g"].append(g)
+                incidence_sample.data[i_geom]["band center"].append(center)
+                emission_sample.data[e_geom]["i"].append(i)
+                emission_sample.data[e_geom]["az"].append(az)
+                emission_sample.data[e_geom]["band center"].append(center)
 
                 self.contour_sample.data["all samples"]["e"].append(e)
                 self.contour_sample.data["all samples"]["i"].append(i)
                 self.contour_sample.data["all samples"]["band center"].append(center)
 
-                centers.append(str(label) + ": " + str(center))
+                centers.append(str(geom) + ": " + str(center))
             self.emission_samples.append(emission_sample)
             self.incidence_samples.append(incidence_sample)
         self.plot.draw_vertical_lines([left, right])
@@ -471,8 +477,8 @@ class Tab:
         for i, sample in enumerate(self.samples):
             incidence_sample = Sample(sample.name, sample.file, sample.title)
             emission_sample = Sample(sample.name, sample.file, sample.title)
-            for label in sample.geoms:
-                i, e, az = float(label[0]), float(label[1]), float(label[2])
+            for geom in sample.geoms:
+                i, e, az = utils.get_i_e_az(geom)
                 g = utils.get_phase_angle(i, e, az)
                 if (
                     self.exclude_artifacts
@@ -482,8 +488,8 @@ class Tab:
                         artifact_warning = True
                         continue
 
-                wavelengths = np.array(sample.data[label]["wavelength"])
-                reflectance = np.array(sample.data[label][self.y_axis])
+                wavelengths = np.array(sample.data[geom]["wavelength"])
+                reflectance = np.array(sample.data[geom][self.y_axis])
 
                 # find reflectance at left and right wavelengths.
                 # if we're on the edges, average out a few values.
@@ -516,28 +522,30 @@ class Tab:
                 else:
                     depth = diff[index_trough]
 
-                incidence = sample.name + " (i=" + str(i) + ")"
-                emission = sample.name + " (e=" + str(e) + ")"
+                i_geom = (i, None, None)
+                e_geom = (None, e, None)
 
-                if incidence not in incidence_sample.data:
-                    incidence_sample.data[incidence] = {"e": [], "theta": [], "g": [], "band depth": []}
-                    incidence_sample.geoms.append(incidence)
-                if emission not in emission_sample.data:
-                    emission_sample.data[emission] = {"i": [], "band depth": []}
-                    emission_sample.geoms.append(emission)
+                if i_geom not in incidence_sample.data:
+                    incidence_sample.data[i_geom] = {"e": [], "az": [], "theta": [], "g": [], "band depth": []}
+                    incidence_sample.geoms.append(i_geom)
+                if e_geom not in emission_sample.data:
+                    emission_sample.data[e_geom] = {"i": [], "az": [], "band depth": []}
+                    emission_sample.geoms.append(e_geom)
 
-                incidence_sample.data[incidence]["e"].append(e)
-                incidence_sample.data[incidence]["theta"].append(e)
-                incidence_sample.data[incidence]["g"].append(g)
-                incidence_sample.data[incidence]["band depth"].append(depth)
-                emission_sample.data[emission]["i"].append(i)
-                emission_sample.data[emission]["band depth"].append(depth)
+                incidence_sample.data[i_geom]["e"].append(e)
+                incidence_sample.data[i_geom]["az"].append(az)
+                incidence_sample.data[i_geom]["theta"].append(e)
+                incidence_sample.data[i_geom]["g"].append(g)
+                incidence_sample.data[i_geom]["band depth"].append(depth)
+                emission_sample.data[e_geom]["i"].append(i)
+                emission_sample.data[e_geom]["az"].append(az)
+                emission_sample.data[e_geom]["band depth"].append(depth)
 
                 self.contour_sample.data["all samples"]["e"].append(e)
                 self.contour_sample.data["all samples"]["i"].append(i)
                 self.contour_sample.data["all samples"]["band depth"].append(depth)
 
-                depths.append(str(label) + ": " + str(depth))
+                depths.append(str(geom) + ": " + str(depth))
             self.emission_samples.append(emission_sample)
             self.incidence_samples.append(incidence_sample)
         self.plot.draw_vertical_lines([left, right])
@@ -567,8 +575,8 @@ class Tab:
         for i, sample in enumerate(self.samples):
             incidence_sample = Sample(sample.name, sample.file, sample.title)
             emission_sample = Sample(sample.name, sample.file, sample.title)
-            for label in sample.geoms:
-                i, e, az = float(label[0]), float(label[1]), float(label[2])
+            for geom in sample.geoms:
+                i, e, az = utils.get_i_e_az(geom)
                 g = utils.get_phase_angle(i, e, az)
                 if (
                     self.exclude_artifacts
@@ -579,9 +587,9 @@ class Tab:
                         # warning the user that we are skipping some spectra.
                         continue
 
-                wavelengths = np.array(sample.data[label]["wavelength"])
+                wavelengths = np.array(sample.data[geom]["wavelength"])
                 reflectance = np.array(
-                    sample.data[label][self.y_axis]
+                    sample.data[geom][self.y_axis]
                 )  # y_axis is either reflectance or normalized reflectance
 
                 # find reflectance at left and right wavelengths.
@@ -591,28 +599,30 @@ class Tab:
 
                 slope = (r_right - r_left) / (w_right - w_left)
 
-                incidence = sample.name + " (i=" + str(i) + ")"
-                emission = sample.name + " (e=" + str(e) + ")"
+                i_geom = (i, None, None)
+                e_geom = (None, e, None)
 
-                if incidence not in incidence_sample.data:
-                    incidence_sample.data[incidence] = {"e": [], "theta": [], "g": [], "slope": []}
-                    incidence_sample.geoms.append(incidence)
-                if emission not in emission_sample.data:
-                    emission_sample.data[emission] = {"i": [], "slope": []}
-                    emission_sample.geoms.append(emission)
+                if i_geom not in incidence_sample.data:
+                    incidence_sample.data[i_geom] = {"e": [], "az": [], "theta": [], "g": [], "slope": []}
+                    incidence_sample.geoms.append(i_geom)
+                if e_geom not in emission_sample.data:
+                    emission_sample.data[e_geom] = {"i": [], "az": [], "slope": []}
+                    emission_sample.geoms.append(e_geom)
 
-                incidence_sample.data[incidence]["e"].append(e)
-                incidence_sample.data[incidence]["theta"].append(e)
-                incidence_sample.data[incidence]["g"].append(g)
-                incidence_sample.data[incidence]["slope"].append(slope)
-                emission_sample.data[emission]["i"].append(i)
-                emission_sample.data[emission]["slope"].append(slope)
+                incidence_sample.data[i_geom]["e"].append(e)
+                incidence_sample.data[i_geom]["az"].append(az)
+                incidence_sample.data[i_geom]["theta"].append(e)
+                incidence_sample.data[i_geom]["g"].append(g)
+                incidence_sample.data[i_geom]["slope"].append(slope)
+                emission_sample.data[e_geom]["i"].append(i)
+                emission_sample.data[e_geom]["az"].append(az)
+                emission_sample.data[e_geom]["slope"].append(slope)
 
                 self.contour_sample.data["all samples"]["e"].append(e)
                 self.contour_sample.data["all samples"]["i"].append(i)
                 self.contour_sample.data["all samples"]["slope"].append(slope)
 
-                slopes.append(str(label) + ": " + str(slope))
+                slopes.append(str(geom) + ": " + str(slope))
             self.emission_samples.append(emission_sample)
             self.incidence_samples.append(incidence_sample)
         self.plot.draw_vertical_lines([left, right])
@@ -624,8 +634,8 @@ class Tab:
             left = float(left)
         except ValueError:
             for sample in self.samples:
-                for i, label in enumerate(sample.geoms):
-                    wavelengths = np.array(sample.data[label]["wavelength"])
+                for i, geom in enumerate(sample.geoms):
+                    wavelengths = np.array(sample.data[geom]["wavelength"])
                     if i == 0:
                         left = np.min(wavelengths)
                     else:
@@ -634,9 +644,9 @@ class Tab:
             right = float(right)
         except ValueError:
             for sample in self.samples:
-                for i, label in enumerate(sample.geoms):
+                for i, geom in enumerate(sample.geoms):
 
-                    wavelengths = np.array(sample.data[label]["wavelength"])
+                    wavelengths = np.array(sample.data[geom]["wavelength"])
                     if i == 0:
                         right = np.max(wavelengths)
                     else:
@@ -665,16 +675,16 @@ class Tab:
                 i = int(len(sample.geoms) / 2)
                 self.base_spectrum_label = sample.geoms[i]
                 self.base_sample = Sample(
-                    self.base_spectrum_label, "file", "title"
+                    str(self.base_spectrum_label), "file", "title"
                 )  # This is used for putting the title onto the new plot (delta R compared to sample (i=x, e=y))
 
             error_sample = Sample(sample.name, sample.file, sample.title)
             self.error_samples.append(error_sample)
 
-            for label in sample.geoms:
-                wavelengths = np.array(sample.data[label]["wavelength"])
-                reflectance = np.array(sample.data[label][self.y_axis])
-                i, e, az = float(label[0]), float(label[1]), float(label[2])
+            for geom in sample.geoms:
+                wavelengths = np.array(sample.data[geom]["wavelength"])
+                reflectance = np.array(sample.data[geom][self.y_axis])
+                i, e, az = utils.get_i_e_az(geom)
                 g = utils.get_phase_angle(i, e, az)
                 if (
                     self.exclude_artifacts
@@ -689,12 +699,12 @@ class Tab:
                 index_right = self.get_index(wavelengths, right)
 
                 if len(self.samples) == 1:
-                    error_sample.data[label] = {}
-                    error_sample.data[label]["difference"] = (
+                    error_sample.data[geom] = {}
+                    error_sample.data[geom]["difference"] = (
                         reflectance - sample.data[self.base_spectrum_label]["reflectance"]
                     )
-                    error_sample.data[label]["wavelength"] = wavelengths
-                    error_sample.geoms.append(label)
+                    error_sample.data[geom]["wavelength"] = wavelengths
+                    error_sample.geoms.append(geom)
 
                     self.contour_sample.data["all samples"]["e"].append(e)
                     self.contour_sample.data["all samples"]["i"].append(i)
@@ -719,12 +729,12 @@ class Tab:
                     for existing_label in self.base_sample.geoms:
                         e_old, i_old, _ = self.plotter.get_e_i_g(existing_label)
                         if e == e_old and i == i_old:
-                            error_sample.data[label] = {}
-                            error_sample.data[label]["difference"] = (
+                            error_sample.data[geom] = {}
+                            error_sample.data[geom]["difference"] = (
                                 reflectance - self.base_sample.data[existing_label]["reflectance"]
                             )
-                            error_sample.data[label]["wavelength"] = wavelengths
-                            error_sample.geoms.append(label)
+                            error_sample.data[geom]["wavelength"] = wavelengths
+                            error_sample.geoms.append(geom)
 
                             self.contour_sample.data["all samples"]["e"].append(e)
                             self.contour_sample.data["all samples"]["i"].append(i)
@@ -750,11 +760,11 @@ class Tab:
                     if not found:
                         if error == "":
                             error = "Error: No corresponding spectrum found.\n"
-                        error += "\n" + label
-                        error_sample.data[label] = {}
-                        error_sample.data[label]["difference"] = reflectance
-                        error_sample.data[label]["wavelength"] = wavelengths
-                        error_sample.geoms.append(label)
+                        error += "\n" + str(geom)
+                        error_sample.data[geom] = {}
+                        error_sample.data[geom]["difference"] = reflectance
+                        error_sample.data[geom]["wavelength"] = wavelengths
+                        error_sample.geoms.append(geom)
 
                         self.contour_sample.data["all samples"]["e"].append(e)
                         self.contour_sample.data["all samples"]["i"].append(i)
@@ -764,19 +774,19 @@ class Tab:
 
         avg_errs = []
         for sample in self.error_samples:
-            for label in sample.geoms:
-                wavelengths = np.array(sample.data[label]["wavelength"])
-                reflectance = np.array(sample.data[label]["difference"])
+            for geom in sample.geoms:
+                wavelengths = np.array(sample.data[geom]["wavelength"])
+                reflectance = np.array(sample.data[geom]["difference"])
                 index_left = self.get_index(wavelengths, left)
                 index_right = self.get_index(wavelengths, right)
                 if index_right != index_left:
                     if abs_val:
-                        avg = np.mean(np.abs(sample.data[label]["difference"][index_left:index_right]))
+                        avg = np.mean(np.abs(sample.data[geom]["difference"][index_left:index_right]))
                     else:
-                        avg = np.mean(sample.data[label]["difference"][index_left:index_right])
+                        avg = np.mean(sample.data[geom]["difference"][index_left:index_right])
                 else:
-                    avg = sample.data[label]["difference"][index_right]
-                avg_errs.append(str(label) + ": " + str(avg))
+                    avg = sample.data[geom]["difference"][index_right]
+                avg_errs.append(str(geom) + ": " + str(avg))
 
         self.plot.draw_vertical_lines([left, right])
 
@@ -796,10 +806,11 @@ class Tab:
         self.contour_sample.data = {"all samples": {"i": [], "e": [], "delta R": []}}
         self.contour_sample.geoms = ["all samples"]
 
-        for i, sample in enumerate(self.samples):
+        for j, sample in enumerate(self.samples):
             recip_sample = Sample(sample.name, sample.file, sample.title)
-            for label in sample.geoms:
-                e, i, g = self.plotter.get_e_i_g(label)
+            for geom in sample.geoms:
+                i, e, az = utils.get_i_e_az(geom)
+                g = utils.get_phase_angle(i, e, az)
 
                 if (
                     self.exclude_artifacts
@@ -810,8 +821,8 @@ class Tab:
                         # dialog warning the user that we are skipping some spectra.
                         continue
 
-                wavelengths = np.array(sample.data[label]["wavelength"])
-                reflectance = np.array(sample.data[label][self.y_axis])
+                wavelengths = np.array(sample.data[geom]["wavelength"])
+                reflectance = np.array(sample.data[geom][self.y_axis])
 
                 index_left = self.get_index(wavelengths, left)
                 index_right = self.get_index(wavelengths, right)
@@ -823,20 +834,20 @@ class Tab:
                 recip_label = sample.name + " (i=" + str(-1 * e) + " e=" + str(-1 * i) + ")"
 
                 diff = None
-                if label not in recip_sample.data and recip_label not in recip_sample.data:
-                    recip_sample.data[label] = {"e": [], "g": [], "i": [], "average reflectance": []}
-                    recip_sample.geoms.append(label)
+                if geom not in recip_sample.data and recip_label not in recip_sample.data:
+                    recip_sample.data[geom] = {"e": [], "g": [], "i": [], "average reflectance": []}
+                    recip_sample.geoms.append(geom)
 
-                if label in recip_sample.data:
-                    recip_sample.data[label]["e"].append(e)
-                    recip_sample.data[label]["i"].append(i)
-                    recip_sample.data[label]["g"].append(g)
-                    recip_sample.data[label]["average reflectance"].append(avg)
+                if geom in recip_sample.data:
+                    recip_sample.data[geom]["e"].append(e)
+                    recip_sample.data[geom]["i"].append(i)
+                    recip_sample.data[geom]["g"].append(g)
+                    recip_sample.data[geom]["average reflectance"].append(avg)
 
-                    if len(recip_sample.data[label]["average reflectance"]) > 1:
+                    if len(recip_sample.data[geom]["average reflectance"]) > 1:
                         diff = np.abs(
-                            np.max(recip_sample.data[label]["average reflectance"])
-                            - np.min(recip_sample.data[label]["average reflectance"])
+                            np.max(recip_sample.data[geom]["average reflectance"])
+                            - np.min(recip_sample.data[geom]["average reflectance"])
                         )
 
                 elif recip_label in recip_sample.data:
@@ -853,20 +864,21 @@ class Tab:
                         recip = diff / np.mean(recip_sample.data[recip_label]["average reflectance"])
 
                 if diff is not None:
-                    avgs.append(str(label) + ": " + str(recip))  # I don't think this is the average of anything
+                    avgs.append(str(geom) + ": " + str(recip))  # I don't think this is the average of anything
             self.recip_samples.append(recip_sample)
 
         for sample in self.recip_samples:
             for label in sample.data:
                 if len(sample.data[label]["average reflectance"]) > 1:
-                    e, i, g = self.get_e_i_g(label)
+                    i, e, az = utils.get_i_e_az(geom)
+                    g = utils.get_phase_angle(i, e, az)
 
                     diff = np.abs(
-                        np.max(sample.data[label]["average reflectance"])
-                        - np.min(sample.data[label]["average reflectance"])
+                        np.max(sample.data[geom]["average reflectance"])
+                        - np.min(sample.data[geom]["average reflectance"])
                     )  # This works fine if for some reason there are multiple measurements for the same sample
                     # at the same geometry. It just takes the min and max.
-                    recip = diff / np.mean(sample.data[label]["average reflectance"])
+                    recip = diff / np.mean(sample.data[geom]["average reflectance"])
 
                     self.contour_sample.data["all samples"]["e"].append(e)
                     self.contour_sample.data["all samples"]["i"].append(i)
@@ -889,6 +901,10 @@ class Tab:
                 x_axis="contour",
                 y_axis="difference",
             )
+
+        elif x_axis == "az, e":
+            self.plot_hemisphere_plots("difference", "Difference")
+
         else:
             tab = Tab(
                 self.plotter,
@@ -933,7 +949,34 @@ class Tab:
                 y_axis="average reflectance",
             )
         elif x_axis == "e,i":
-            Tab(self.plotter, "Reflectance", [self.contour_sample], x_axis="contour", y_axis="average reflectance")
+            tab = Tab(self.plotter, "Reflectance", [self.contour_sample], x_axis="contour", y_axis="average reflectance")
+            #For whatever reason, x and y labels don't show up
+            # unless these update functions are called.
+            tab.plot.fig.canvas.draw()
+            tab.plot.white_fig.canvas.draw()
+
+        elif x_axis == "az, e":
+            self.plot_hemisphere_plots("average reflectance", "Reflectance")
+
+    def plot_hemisphere_plots(self, key, data_label):
+        for incidence_sample in self.incidence_samples:
+            for i_geom in incidence_sample.data:
+                incidence = i_geom[0]
+                sample_name = incidence_sample.name
+                geoms = []
+                data = []
+                for j, emission in enumerate(incidence_sample.data[i_geom]["e"]):
+                    azimuth = incidence_sample.data[i_geom]["az"][j]
+                    geoms.append((incidence, emission, azimuth))
+                    data.append(incidence_sample.data[i_geom][key][j])
+                if len(data) > 7:
+                    try:
+                        self.hemisphere_plotter.plot(geoms, data, incidence, sample_name, data_label)
+                    except Exception as e:
+                        print("Failed to create hemisphere plot")
+                        raise e
+                else:
+                    self.plotter.controller.log(f"Not creating hemisphere plot for i = {incidence} (Not enough datapoints).")
 
     def plot_band_centers(self, x_axis):
         if x_axis in ("e", "theta"):
@@ -944,6 +987,8 @@ class Tab:
             Tab(self.plotter, "Band center vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band center")
         elif x_axis == "e,i":
             Tab(self.plotter, "Band center", [self.contour_sample], x_axis="contour", y_axis="band center")
+        elif x_axis == "az, e":
+            self.plot_hemisphere_plots("band center", "Band center [nm]")
 
     def plot_band_depths(self, x_axis):
         if x_axis in ("e", "theta"):
@@ -954,6 +999,8 @@ class Tab:
             Tab(self.plotter, "Band depth vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band depth")
         elif x_axis == "e,i":
             Tab(self.plotter, "Band depth", [self.contour_sample], x_axis="contour", y_axis="band depth")
+        elif x_axis == "az, e":
+            self.plot_hemisphere_plots("band depth", "Band depth")
 
     def plot_slopes(self, x_axis):
         if x_axis == "e,i":
@@ -966,9 +1013,12 @@ class Tab:
             Tab(self.plotter, "Slope vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="slope")
         elif x_axis == "i,e":
             Tab(self.plotter, "Slope", [self.contour_sample], x_axis="contour", y_axis="slope")
+        elif x_axis == "az, e":
+            self.plot_hemisphere_plots("slope", "Slope")
 
     # not implemented
     def calculate_photometric_variability(self, left, right):
+        raise NotImplementedError
         left = float(left)
         right = float(right)
         photo_var = []
@@ -976,25 +1026,25 @@ class Tab:
         for sample in self.samples:
             min_slope = None
             max_slope = None
-            for i, label in enumerate(sample.geoms):
+            for i, geom in enumerate(sample.geoms):
 
-                wavelengths = np.array(sample.data[label]["wavelength"])
-                reflectance = np.array(sample.data[label]["reflectance"])
+                wavelengths = np.array(sample.data[geom]["wavelength"])
+                reflectance = np.array(sample.data[geom]["reflectance"])
                 index_left = (np.abs(wavelengths - left)).argmin()  # find index of wavelength
                 index_right = (np.abs(wavelengths - right)).argmin()  # find index of wavelength
                 slope = (reflectance[index_right] - reflectance[index_left]) / (index_right - index_left)
                 if i == 0:
                     min_slope = slope
-                    min_slope_label = label.split("(")[1].strip(")") + " (" + str(slope) + ")"
+                    min_slope_label = geom.split("(")[1].strip(")") + " (" + str(slope) + ")"
                     max_slope = slope
-                    max_slope_label = label.split("(")[1].strip(")") + " (" + str(slope) + ")"
+                    max_slope_label = geom.split("(")[1].strip(")") + " (" + str(slope) + ")"
                 else:
                     if slope < min_slope:
                         min_slope = slope
-                        min_slope_label = label.split("(")[1].strip(")") + " (" + str(slope) + ")"
+                        min_slope_geom = geom.split("(")[1].strip(")") + " (" + str(slope) + ")"
                     if slope > max_slope:
                         max_slope = slope
-                        max_slope_label = label.split("(")[1].strip(")") + " (" + str(slope) + ")"
+                        max_slope_label = geom.split("(")[1].strip(")") + " (" + str(slope) + ")"
 
             var = max_slope - min_slope
             photo_var.append(sample.name + ": " + str(var))
@@ -1015,12 +1065,12 @@ class Tab:
                 sample.name, sample.file, sample.title
             )  # Note that we aren't editing the original samples list, we're making entirely new objects.
             # This way we can reset later.
-            for label in sample.geoms:
-                wavelengths = np.array(sample.data[label]["wavelength"])
-                if "reflectance" in sample.data[label]:
-                    reflectance = np.array(sample.data[label]["reflectance"])
+            for geom in sample.geoms:
+                wavelengths = np.array(sample.data[geom]["wavelength"])
+                if "reflectance" in sample.data[geom]:
+                    reflectance = np.array(sample.data[geom]["reflectance"])
                 else:
-                    reflectance = np.array(sample.data[label]["normalized reflectance"])
+                    reflectance = np.array(sample.data[geom]["normalized reflectance"])
                 index = (
                     np.abs(wavelengths - wavelength)
                 ).argmin()  # find index of wavelength closest to wavelength we want to normalize to
@@ -1030,13 +1080,13 @@ class Tab:
                 reflectance = reflectance * multiplier
                 reflectance = list(reflectance)
                 # if label not in normalized_sample.data:
-                normalized_sample.data[label] = {"wavelength": [], "normalized reflectance": []}
+                normalized_sample.data[geom] = {"wavelength": [], "normalized reflectance": []}
 
-                normalized_sample.geoms.append(label)
-                normalized_sample.data[label]["wavelength"] = wavelengths
-                normalized_sample.data[label]["normalized reflectance"] = reflectance
+                normalized_sample.geoms.append(geom)
+                normalized_sample.data[geom]["wavelength"] = wavelengths
+                normalized_sample.data[geom]["normalized reflectance"] = reflectance
 
-                # normalized_sample.add_spectrum(label, reflectance,sample.data[label]['wavelength'])
+                # normalized_sample.add_spectrum(geom, reflectance,sample.data[geom]['wavelength'])
             normalized_samples.append(normalized_sample)
         self.samples = normalized_samples
 
@@ -1049,6 +1099,9 @@ class Tab:
     def lift_widget(widget):
         widget.focus_set()
         widget.lift()
+
+    def draw_labels(self):
+        self.plot.draw_labels()
 
     def get_sample(self, sample_name):
         if ":" in sample_name:
@@ -1144,12 +1197,9 @@ class Tab:
                 if sample.name == plotted_sample.name and sample.file == plotted_sample.file:
                     self.existing_indices.append(i)
             if sample.title.replace(" ", "") != "":
-                print("sample has a title!")
-                print(sample.title)
                 self.sample_options_dict[sample.title + ": " + sample.name] = sample
                 self.sample_options_list.append(sample.title + ": " + sample.name)
             else:
-                print("sample has no title!")
                 self.sample_options_dict[sample.name] = sample
                 self.sample_options_list.append(sample.name)
 
@@ -1196,9 +1246,7 @@ class Tab:
                 # check if it is for a geometry we are going to plot.
                 # if it is, attach that spectrum to the winnowed sample data
                 try:  # If there is no geometry information for this sample, this will throw an exception.
-                    i = geom[0]
-                    e = geom[1]
-                    az = geom[2]
+                    i, e, az = utils.get_i_e_az(geom)
                     if self.check_geom(
                         i, e, az, exclude_specular, self.specularity_tolerance
                     ):  # If this is a geometry we are supposed to plot
@@ -1283,3 +1331,4 @@ class Tab:
     def adjust_z(self, low: float, high: float):  # only gets called for contour plot
         self.zlim = [low, high]
         self.plot.adjust_z(low, high)
+

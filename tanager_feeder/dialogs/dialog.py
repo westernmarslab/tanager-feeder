@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import Frame, Button, Tk
+from tkinter import Frame, Button, Tk, TclError
 from typing import Dict, Optional
 
 from tanager_feeder import utils
@@ -71,7 +71,10 @@ class Dialog:
         self.top.wm_title(newtitle)
 
     def set_label_text(self, newlabel: str, log_string: Optional[str] = None):
-        self.__label.config(fg=self.tk_format.textcolor, text=newlabel)
+        try:
+            self.__label.config(fg=self.tk_format.textcolor, text=newlabel)
+        except TclError:
+            print("Could not set label.")
         if log_string is not None and self.controller is not None:
             self.controller.log(log_string)
 

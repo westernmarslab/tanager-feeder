@@ -146,6 +146,7 @@ class Controller(utils.ControllerType):
         self.az_interval = None
 
         self.required_angular_separation = 10
+        self.required_angular_separation_for_fiber = 10
 
         # cmds the user has entered into the console. Allows scrolling back
         # and forth through commands by using up and down arrows.
@@ -1374,24 +1375,46 @@ class Controller(utils.ControllerType):
 
         # For each (i, e, az), opt, white reference, save the white reference, move the tray, take a  spectrum, then
         # move the tray back, then update geom to next.
+        next_emission = self.science_e # Define this here so as not to get an
+        # error if len(self.active_emission_entries) == 0 (not sure if this is a real case).
 
-        for index, _ in enumerate(self.active_incidence_entries):
+        for index, entry in enumerate(self.active_emission_entries):
             # This is one for each geometry when geometries are specified individually. When a range is specified,
             # we actually quietly create pretend entry objects for each pair, so it works then too.
             if index == 0:
-                self.queue.append({self.next_geom: [False]})  # For the first, don't complete anything
+                # Params to next geom:
+                # For the first, don't complete anything.
+                # Do keep the emission arm above -50 to avoid danger of running oversized samples into the arm.
+                # For emission angles < -50, complete the movement later. Don't have to worry about it
+                # for first movement if if we're already at wr position
+                print(self.sample_tray_index)
+                if self.sample_tray_index > -1:
+                    self.queue.append({self.next_geom: [False, True]})
+                else:
+                    self.queue.append({self.next_geom: [False, False]})
             else:
-                self.queue.append({self.next_geom: []})
+                self.queue.append({self.next_geom: [True, True]})
+
+            next_emission = int(entry.get())
             self.queue.append({self.move_tray: ["wr"]})
+            if next_emission < -50:
+                self.queue.append({self.set_emission: [next_emission, MovementUnits.ANGLE.value]})
             self.queue.append({self.opt: [True, True]})
             self.queue.append({self.wr: [True, True]})
             self.queue.append({self.take_spectrum: [True, True, False]})
             for pos in self.taken_sample_positions:  # e.g. 'Sample 1'
-                self.queue.append({self.move_tray: [pos]})
+                if next_emission < -50:
+                    self.queue.append({self.set_emission: [-50, MovementUnits.ANGLE.value]})
+                    self.queue.append({self.move_tray: [pos]})
+                    self.queue.append({self.set_emission: [next_emission, MovementUnits.ANGLE.value]})
+                else:
+                    self.queue.append({self.move_tray: [pos]})
                 self.queue.append({self.take_spectrum: [True, True, True]})  # Save and delete a garbage spectrum
                 self.queue.append({self.take_spectrum: [True, True, False]})  # Save a real spectrum
 
         # Return tray to wr position when finished
+        if next_emission < -50:
+            self.queue.append({self.set_emission: [-50, MovementUnits.ANGLE.value]})
         self.queue.append({self.move_tray: ["wr"]})
 
         # Now append the script queue we saved at the beginning. But check if acquire is the first command in the
@@ -1498,7 +1521,7 @@ class Controller(utils.ControllerType):
                     movement_order = [{"i": -60}, {"e": next_science_e}, {"az": next_science_az}, {"i": next_science_i}]
         return movement_order
 
-    def next_geom(self, complete_last: bool = True) -> None:
+    def next_geom(self, complete_last: bool = True, cap_at_minus_50 = False) -> None:
         self.complete_queue_item()
         if complete_last:
             self.active_incidence_entries.pop(0)
@@ -1509,6 +1532,9 @@ class Controller(utils.ControllerType):
 
         next_i = int(self.active_incidence_entries[0].get())
         next_e = int(self.active_emission_entries[0].get())
+        if cap_at_minus_50:  # This is to prevent accidentally running oversized samples into the fiber optic.
+            if next_e < -50:
+                next_e = -50
         next_az = int(self.active_azimuth_entries[0].get())
 
         # Update goniometer position. Don't run the arms into each other
@@ -1807,8 +1833,16 @@ class Controller(utils.ControllerType):
             return False
         if i >= 10:  # If incidence is positive, light won't hit the detector arm.
             return True
-        # Next define a list of positions of the emission arm.
+        # Next check if the light will hit the detector arm
+        if not self.check_light_misses_arc(i, e, az, self.required_angular_separation):
+            return False
+        # And finally check if the light will hit the fiber optic cable, which has az = az -35
+        print("checking fiber optic!")
+        if not self.check_light_misses_arc(i, e, az+25, self.required_angular_separation_for_fiber, print_me=True):
+            return False
+        return True
 
+    def check_light_misses_arc(self, i, e, az, required_sep, print_me=False):
         # This is the azimuthal distance between the arc the light source travels
         # and the detector arm. -90 to 90 because i is negative.
         arm_bottom_az = az - 90
@@ -1837,7 +1871,9 @@ class Controller(utils.ControllerType):
             dist = utils.get_phase_angle(i, -1 * arm_e, arm_azes[num])
             if dist < closest_dist:
                 closest_dist = dist
-        if closest_dist >= self.required_angular_separation:
+        if print_me:
+            print(closest_dist)
+        if closest_dist >= required_sep:
             return True
         return False
 
@@ -2056,10 +2092,13 @@ class Controller(utils.ControllerType):
 
     def open_plot_settings(self, tab):
         self.close_plot_option_windows()
-        if len(tab.existing_indices) == 0:
+        if tab.x_axis == "contour":
+            self.plot_settings_manager.show(tab)
+        elif len(tab.existing_indices) == 0:
             ErrorDialog(self, "Error: Nothing plotted.", "Error: Nothing plotted.")
             return
-        self.plot_settings_manager.show(tab)
+        else:
+            self.plot_settings_manager.show(tab)
 
     # If the user already has analysis tools or a plot editing dialog open, close the extra to avoid confusion.
     def close_plot_option_windows(self):

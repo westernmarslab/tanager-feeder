@@ -3,6 +3,7 @@ from tkinter import Entry, Button, Label, Checkbutton, Toplevel, Frame, LEFT, RI
 from tkinter.filedialog import askopenfilename
 
 from tanager_feeder.dialogs.dialog import Dialog
+from tanager_feeder.dialogs.error_dialog import ErrorDialog
 from tanager_feeder.dialogs.remote_file_explorer import RemoteFileExplorer
 from tanager_feeder import utils
 
@@ -261,8 +262,10 @@ class PlotManager:
                 self.controller.wait_dialog.top.destroy()
 
         try:
-            self.plotter.load_samples(self.dataset_name, plot_input_file)
-
+            data_loaded = self.plotter.load_samples(self.dataset_name, plot_input_file)
+            if not data_loaded:
+                ErrorDialog(self.controller, "Error", "Error: Could not load data.")
+                print("Error: Could not load data.")
         except (IndexError, KeyError, Exception) as e:
             Dialog(
                 self.controller,
@@ -271,4 +274,5 @@ class PlotManager:
                 " is the server accessible?",
                 {"ok": {}},
             )
-            raise e
+            return
+        self.plotter.new_tab()
