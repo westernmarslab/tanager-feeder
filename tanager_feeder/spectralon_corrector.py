@@ -11,11 +11,10 @@ class SpectralonCorrector:
         self.spectralon_data_loc = spectralon_data_loc
 
     def correct(self, data_to_correct_loc):
-        self.data_io.load_samples("spectralon", self.spectralon_data_loc)
-        self.data_io.load_samples("data to correct", data_to_correct_loc)
+        self.data_io.load_samples("spectralon", self.spectralon_data_loc, 0)
+        self.data_io.load_samples("data to correct", data_to_correct_loc, 0)
 
         samples_to_write = []
-        print(self.data_io.samples['spectralon'])
         spectralon = self.data_io.samples["spectralon"][" Spectralon"]
         for sample_name in self.data_io.samples["data to correct"]:
             sample = self.data_io.samples["data to correct"][sample_name]

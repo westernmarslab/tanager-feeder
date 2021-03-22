@@ -7,9 +7,9 @@ class DataIO:
         self.samples = {}
         self.sample_objects = []
 
-    def load_samples(self, dataset_name, file):
+    def load_samples(self, dataset_name, file, skip_vals=60):
         try:
-            wavelengths, reflectance, labels = self.read_csv(file)
+            wavelengths, reflectance, labels = self.read_csv(file, skip_vals)
         except OSError:
             return False
 
@@ -54,59 +54,52 @@ class DataIO:
         return True
 
     @staticmethod
-    def read_csv(file, file_format="spectral_database_csv", skip_vals = 60):
+    def read_csv(file, skip_vals=60):
         labels = []
-        # This is the format I was initially using. It is a simple .tsv file with a single row of headers
-        # e.g. Wavelengths     Sample_1 (i=0 e=30)     Sample_2 (i=0 e=30).
-        if file_format == "simple_tsv":
-            data = np.genfromtxt(file, names=True, dtype=float, encoding=None, delimiter="\t", deletechars="")
-            labels = list(data.dtype.names)[1:]  # the first label is wavelengths
-            for i, label in enumerate(labels):
-                labels[i] = label.replace("_(i=", " (i=").replace("_e=", " e=").replace("( i", "(i")
-        # This is the current format, which is compatible with the WWU spectral library format.
-        elif file_format == "spectral_database_csv":
-            skip_header = 1
+        
+        # Format is compatible with the WWU spectral library format.
+        skip_header = 1
 
-            labels_found = False  # We want to use the Sample Name field for labels, but if we haven't found
-            # that yet we may use Data ID, Sample ID, or mineral name instead.
-            with open(file, "r") as file2:
-                line = file2.readline()
-                i = 0
-                while (
-                    line.split(",")[0].lower() != "wavelength" and line != "" and line.lower() != "wavelength\n"
-                ):  # Formatting can change slightly if you edit your .csv in libreoffice or some other editor,
-                    # this captures different options. line will be '' only at the end of the file (it is \n for
-                    # empty lines)
-                    i += 1
-                    if line[0:11].lower() == "sample name":
+        labels_found = False  # We want to use the Sample Name field for labels, but if we haven't found
+        # that yet we may use Data ID, Sample ID, or mineral name instead.
+        with open(file, "r") as file2:
+            line = file2.readline()
+            i = 0
+            while (
+                line.split(",")[0].lower() != "wavelength" and line != "" and line.lower() != "wavelength\n"
+            ):  # Formatting can change slightly if you edit your .csv in libreoffice or some other editor,
+                # this captures different options. line will be '' only at the end of the file (it is \n for
+                # empty lines)
+                i += 1
+                if line[0:11].lower() == "sample name":
+                    labels = line.split(",")[1:]
+                    labels[-1] = labels[-1].strip("\n")
+                    labels_found = True  #
+                elif line[0:16].lower() == "viewing geometry":
+                    for i, geom in enumerate(line.split(",")[1:]):
+                        geom = geom.strip("\n").replace(" i", "i")
+                        labels[i] += " (" + geom + ")"
+                elif line[0:7].lower() == "data id":
+                    if not labels_found:  # Only use Data ID for labels if we haven't found the Sample Name field.
                         labels = line.split(",")[1:]
                         labels[-1] = labels[-1].strip("\n")
-                        labels_found = True  #
-                    elif line[0:16].lower() == "viewing geometry":
-                        for i, geom in enumerate(line.split(",")[1:]):
-                            geom = geom.strip("\n").replace(" i", "i")
-                            labels[i] += " (" + geom + ")"
-                    elif line[0:7].lower() == "data id":
-                        if not labels_found:  # Only use Data ID for labels if we haven't found the Sample Name field.
-                            labels = line.split(",")[1:]
-                            labels[-1] = labels[-1].strip("\n")
-                    elif line[0:9].lower() == "sample id":
-                        if not labels_found:  # Only use Sample ID for labels if we haven't found the Sample Name field.
-                            labels = line.split(",")[1:]
-                            labels[-1] = labels[-1].strip("\n")
-                    elif line[0:12].lower() == "mineral name":
-                        if not labels_found:  # Only use mineral ID for labels if we haven't found
-                            # the Sample Name field.
-                            labels = line.split(",")[1:]
-                            labels[-1] = labels[-1].strip("\n")
-                    skip_header += 1
-                    line = file2.readline()
-        try:
-            data = np.genfromtxt(
-                file, skip_header=skip_header, dtype=float, delimiter=",", encoding=None, deletechars=""
-            )
-        except ValueError as e:
-            raise e
+                elif line[0:9].lower() == "sample id":
+                    if not labels_found:  # Only use Sample ID for labels if we haven't found the Sample Name field.
+                        labels = line.split(",")[1:]
+                        labels[-1] = labels[-1].strip("\n")
+                elif line[0:12].lower() == "mineral name":
+                    if not labels_found:  # Only use mineral ID for labels if we haven't found
+                        # the Sample Name field.
+                        labels = line.split(",")[1:]
+                        labels[-1] = labels[-1].strip("\n")
+                skip_header += 1
+                line = file2.readline()
+            try:
+                data = np.genfromtxt(
+                    file, skip_header=skip_header, dtype=float, delimiter=",", encoding=None, deletechars=""
+                )
+            except ValueError as e:
+                raise e
 
         data = zip(*data)
         wavelengths = []
@@ -171,6 +164,7 @@ class DataIO:
         with open(file, "w+") as f:
             for line in headers:
                 f.write(line+"\n")
+            f.write("Wavelength\n")
             data_lines = zip(*corrected_data)
             for line in data_lines:
                 line = [str(val) for val in line]
