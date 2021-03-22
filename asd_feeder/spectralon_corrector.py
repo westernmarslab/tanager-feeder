@@ -1,11 +1,9 @@
-import os
-
 import numpy as np
 
 from tanager_data_io.data_io import DataIO
 
-class SpectralonCorrector:
 
+class SpectralonCorrector:
     def __init__(self, spectralon_data_loc):
         self.data_io = DataIO()
         self.spectralon_data_loc = spectralon_data_loc
@@ -49,9 +47,3 @@ class SpectralonCorrector:
                         geom[2] = geom[2] - 360
         dist = np.sqrt((geom1[0]-geom2[0])**2 + (geom1[1]-geom2[1])**2 + (geom1[2]-geom2[2])**2)
         return dist
-
-data_loc = os.path.join(os.path.split(os.path.split(__file__)[0])[0], "data")
-spectralon_data_loc = os.path.join(data_loc, "spectralon.csv")
-data_to_correct_loc = os.path.join(data_loc, "processed_data\\basalt_3_10.csv")
-spectralon_corrector = SpectralonCorrector(spectralon_data_loc)
-spectralon_corrector.correct(data_to_correct_loc)

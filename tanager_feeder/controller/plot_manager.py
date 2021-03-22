@@ -1,5 +1,5 @@
 import os
-from tkinter import Entry, Button, Label, Checkbutton, Toplevel, Frame, LEFT, RIGHT, IntVar, END, TclError
+from tkinter import Entry, Button, Label, Checkbutton, Toplevel, Frame, LEFT, RIGHT, IntVar, END
 from tkinter.filedialog import askopenfilename
 
 from tanager_feeder.dialogs.dialog import Dialog

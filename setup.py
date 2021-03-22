@@ -1,24 +1,41 @@
 from setuptools import setup, find_packages
+import platform
+import io
+
+def is_raspberrypi():
+    try:
+        with io.open('/sys/firmware/devicetree/base/model', 'r') as m:
+            if 'raspberry pi' in m.read().lower(): return True
+    except Exception:
+        pass
+    return False
+
+opsys: str = platform.system()
+if opsys == "Windows":
+    print("windows!")
+    install_requires = ["pywinauto", "pyautogui", "tanager_tcp", "numpy", "matplotlib","colorutils", "cython", "numpy", "playsound", "psutil", "pygame", "tanager-tcp"]
+else:
+    install_requires = ["colorutils", "cython", "matplotlib", "numpy", "playsound", "psutil", "pygame", "tanager-tcp"]
 
 setup(
     name='tanager-feeder',
-    version='0.0.6',
+    version='1.0',
     packages=find_packages(),
     license='Creative Commons Attribution-Noncommercial-Share Alike license',
     description='Control software for spectroscopy using ASD RS3 and ViewSpec Pro',
     long_description=open('README.txt').read(),
-    url='https://github.com/kathleenhoza/autospectroscopy',
+    url='https://github.com/westernmarslab/tanager-feeder',
     author='Kathleen Hoza',
-    author_email='kathleenhoza@gmail.com',
-    project_urls={
-        'Source':'https://github.com/kathleenhoza/autospectroscopy'
-    },
+    author_email='kathleen@firstmode.com',
     entry_points={
         "console_scripts": [
             "tanager-feeder = tanager_feeder.__main__:main",
+            "asd-feeder = asd_feeder.__main__:main",
+            "pi-feeder = pi_feeder.pi_controller:main",
         ],
     },
-    install_requires=["colorutils", "cython", "matplotlib", "numpy", "playsound", "psutil", "pygame", "tanager-tcp"],
+    install_requires=install_requires,
     python_requires='>=3',
     include_package_data=True
 )
+

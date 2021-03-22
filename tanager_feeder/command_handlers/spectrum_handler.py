@@ -7,7 +7,7 @@ from tanager_feeder import utils
 class SpectrumHandler(CommandHandler):
     def __init__(self, controller, title: str = "Saving Spectrum...", label: str = "Saving spectrum..."):
         timeout: int = (
-            controller.spec_config_count / 8 + utils.BUFFER
+                controller.spec_config_count / 8 + utils.BUFFER
         )  # This timeout grows faster than the actual time to take a spectrum grows, which would be numspectra/9
         self.listener = controller.spec_listener
         super().__init__(controller, title, label, timeout=timeout)

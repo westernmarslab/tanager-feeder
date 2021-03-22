@@ -1,5 +1,4 @@
 import time
-from typing import Optional
 
 from tanager_feeder.command_handlers.command_handler import CommandHandler
 from tanager_feeder import utils

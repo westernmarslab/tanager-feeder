@@ -63,7 +63,7 @@ class RemoteDirectoryWorker:
 
     def mkdir(self, newdir):
         self.spec_commander.mkdir(newdir)
-        timeout = 2*utils.BUFFER
+        timeout = 2 * utils.BUFFER
         t = 0
         while t < timeout:
             for item in self.listener.queue:
@@ -81,5 +81,5 @@ class RemoteDirectoryWorker:
                     return "mkdirfailed"
 
             time.sleep(utils.INTERVAL)
-            t+=utils.INTERVAL
+            t+= utils.INTERVAL
         return "mkdirfailed"

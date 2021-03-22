@@ -1,5 +1,5 @@
 # Plotter takes a Tk root object and uses it as a base to spawn Tk Toplevel plot windows.
-from tkinter import filedialog, TclError
+from tkinter import TclError
 
 import matplotlib.pyplot as plt
 
