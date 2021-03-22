@@ -1,5 +1,4 @@
 import time
-from typing import Optional
 
 from tanager_feeder.command_handlers.command_handler import CommandHandler
 from tanager_feeder import utils
@@ -38,7 +37,7 @@ class DataHandler(CommandHandler):
 
                     data.append(item[len(batch_string):])
                     next_batch += 1
-                    self.timeout_s = 2*utils.BUFFER
+                    self.timeout_s = 2 * utils.BUFFER
 
             if f"datatransfercomplete{next_batch}" in self.listener.queue:
                 self.listener.queue.remove(f"datatransfercomplete{next_batch}")

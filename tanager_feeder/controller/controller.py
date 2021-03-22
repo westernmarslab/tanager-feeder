@@ -2,7 +2,7 @@ import os
 import time
 from threading import Thread
 from tkinter.filedialog import askopenfilename
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any
 
 import tkinter as tk
 from tkinter import (
