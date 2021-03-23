@@ -265,6 +265,7 @@ class RS3Controller:
         self.opt_complete = True
 
     def instrument_config(self, numspectra):
+        return True #TODO: take this out
         pauseafter = False
         if self.numspectra == None or int(self.numspectra) < 20 or True:
             pauseafter = True
