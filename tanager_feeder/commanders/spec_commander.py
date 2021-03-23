@@ -34,6 +34,18 @@ class SpecCommander(Commander):
         self.send(filename)
         return filename
 
+    def restart_computer(self):
+        self.remove_from_listener_queue(["restarting"])
+        filename = self.encrypt("restartcomputer")
+        self.send(filename)
+        return filename
+
+    def restart_rs3(self):
+        self.remove_from_listener_queue(["rs3restarted"])
+        filename = self.encrypt("restartrs3")
+        self.send(filename)
+        return filename
+
     def set_save_path(self, path: str, basename: str, startnum: int):
         self.remove_from_listener_queue(
             [

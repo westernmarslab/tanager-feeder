@@ -5,13 +5,14 @@ from tanager_feeder import utils
 
 
 class WhiteReferenceHandler(CommandHandler):
-    def __init__(self, controller, title: str = "White referencing...", label: str = "White referencing..."):
+    def __init__(
+        self, controller, title: str = "White referencing...", label: str = "White referencing..."):
 
         timeout_s: int = controller.spec_config_count / 9 + 40 + utils.BUFFER
         self.listener = controller.spec_listener
-        self.first_try = True
         super().__init__(controller, title, label, timeout=timeout_s)
         self.controller.white_referencing = True
+        self.attempt = self.controller.white_reference_attempt
 
     def wait(self):
         while self.timeout_s > 0:
@@ -37,26 +38,38 @@ class WhiteReferenceHandler(CommandHandler):
             if "wrfailed" in self.listener.queue:
                 self.listener.queue.remove("wrfailed")
 
-                if (
-                    self.first_try and not self.cancel
-                ):  # Actually this is always true since a new OptHandler gets created for each attempt
-                    self.controller.log("Error: Failed to take white reference. Retrying.")
-                    self.first_try = False
-                    time.sleep(15)  # Might improve the odds that the second attempt will succeed (not sure).
+                if not self.cancel and not self.pause:
+                    if self.attempt == 0:
+                        self.controller.white_reference_attempt = 1
+                        self.controller.log("Error: Failed to take white reference. Retrying.")
+                    elif self.attempt == 1:
+                        self.controller.white_reference_attempt = 2
+                        self.controller.log(
+                            "Error: Failed to take white reference. Restarting RS3 and retrying."
+                        )
+                        self.controller.queue.insert(0, {self.controller.restart_rs3: []})
+                    else:
+                        self.controller.white_reference_attempt += 1
+                        self.controller.log(
+                            f"Error: Failed to take white reference. Restarting spectrometer computer and retrying"
+                            f" ({self.controller.white_reference_attempt-2})."
+                        )
+                        self.controller.queue.insert(0, {self.controller.restart_computer: []})
                     self.controller.next_in_queue()
                 elif self.pause:
                     self.interrupt("Error: Failed to take white reference.\n\nPaused.", retry=True)
                     self.wait_dialog.top.geometry("376x175")
                     self.controller.log("Error: Failed to take white reference.")
-                elif not self.cancel:
-                    self.interrupt("Error: Failed to take white reference.", retry=True)
-                    utils.set_text(
-                        self.controller.sample_label_entries[self.controller.current_sample_gui_index],
-                        self.controller.current_label,
-                    )
+                # elif not self.cancel:
+                #     self.interrupt("Error: Failed to take white reference.", retry=True)
+                #     utils.set_text(
+                #         self.controller.sample_label_entries[self.controller.current_sample_gui_index],
+                #         self.controller.current_label,
+                #     )
                 else:  # You can't retry if you already clicked cancel because we already cleared out the queue
                     self.interrupt("Error: Failed to take white reference.\n\nData acquisition canceled.", retry=False)
                     self.wait_dialog.top.geometry("376x175")
+                    self.controller.white_reference_attempt = 0
                     # Does nothing in automatic mode
                     self.controller.clear()
 
@@ -91,8 +104,10 @@ class WhiteReferenceHandler(CommandHandler):
         # optimizing, etc again.
         if len(self.controller.queue) > 0 and self.controller.wr in self.controller.queue[0]:
             self.controller.queue[0][self.controller.wr][0] = True
+        self.controller.white_reference_attempt = 0
         self.timeout()
 
     def success(self):
         self.controller.wr_time = int(time.time())
+        self.controller.white_reference_attempt = 0
         super().success()

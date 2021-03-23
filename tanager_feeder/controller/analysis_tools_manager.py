@@ -80,8 +80,6 @@ class AnalysisToolsManager:
         )
         self.analysis_dialog.top.attributes("-topmost", True)
 
-
-
         outer_normalize_frame = Frame(
             self.analysis_dialog.interior, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=15, highlightthickness=1
         )
@@ -596,7 +594,6 @@ class AnalysisToolsManager:
         # TODO: plots not always fully updating
         #  (e.g. contour plot labels not showing up until you do a screen wiggle.
 
-
         # utils.thread_lift_widget(self.analysis_dialog.top)
 
     def normalize(self):
@@ -682,7 +679,6 @@ class AnalysisToolsManager:
             self.use_max_for_centers_check.pack()
             self.use_delta_check.pack()
             self.extra_analysis_check_frame.pack()
-
 
         elif analyze_var == "band depth":
             self.analysis_dialog.frame.min_height = 1000

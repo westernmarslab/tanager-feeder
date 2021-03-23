@@ -120,7 +120,7 @@ class SpecListener(Listener):
                     self.unexpected_files.append(params[0])
 
             else:
-                self.queue.append(cmd+"&".join(params))
+                self.queue.append(cmd + "&".join(params))
 
     def set_alert_lostconnection(self, val: bool):
         self.alert_lostconnection = val

@@ -86,7 +86,10 @@ class CommandHandler:
         else:
             self.controller.log(log_string)
         if dialog:
-            self.wait_dialog.interrupt(dialog_string)
+            try:
+                self.wait_dialog.interrupt(dialog_string)
+            except TclError:
+                pass
             if retry:
                 buttons = {"retry": {self.controller.next_in_queue: []}, "cancel": {self.finish: []}}
                 self.wait_dialog.set_buttons(buttons)

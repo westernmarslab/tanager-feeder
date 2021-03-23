@@ -256,7 +256,9 @@ class PlotSettingsManager:
                 highlightthickness=1,
             )
             outer_color_frame.pack(expand=True, fill=BOTH)
-            color_label = Label(outer_color_frame, text="Color settings", bg=self.tk_format.bg, fg=self.tk_format.textcolor)
+            color_label = Label(
+                outer_color_frame, text="Color settings", bg=self.tk_format.bg, fg=self.tk_format.textcolor
+            )
             color_label.pack()
 
             color_frame = Frame(outer_color_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=15)
@@ -292,7 +294,9 @@ class PlotSettingsManager:
 
             color_color_frame = Frame(color_frame, bg=self.tk_format.bg, padx=40, pady=0)
             color_color_frame.pack(fill=BOTH, expand=True)
-            color_sample_label = Label(color_color_frame, text="Color: ", bg=self.tk_format.bg, fg=self.tk_format.textcolor)
+            color_sample_label = Label(
+                color_color_frame, text="Color: ", bg=self.tk_format.bg, fg=self.tk_format.textcolor
+            )
             color_sample_label.pack(side=LEFT)
 
             color_names = self.tab.plot.color_names
@@ -412,7 +416,9 @@ class PlotSettingsManager:
                 )
                 markerstyle_label.pack()
 
-                markerstyle_frame = Frame(outer_markerstyle_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=15)
+                markerstyle_frame = Frame(
+                    outer_markerstyle_frame, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=15
+                )
                 markerstyle_frame.pack(fill=BOTH, expand=True)
                 markerstyle_sample_frame = Frame(markerstyle_frame, bg=self.tk_format.bg, padx=30, pady=0)
                 markerstyle_sample_frame.pack(fill=BOTH, expand=True)

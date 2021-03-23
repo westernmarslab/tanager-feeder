@@ -49,6 +49,8 @@ from tanager_feeder.command_handlers.process_handler import ProcessHandler
 from tanager_feeder.command_handlers.save_config_handler import SaveConfigHandler
 from tanager_feeder.command_handlers.spectrum_handler import SpectrumHandler
 from tanager_feeder.command_handlers.white_reference_handler import WhiteReferenceHandler
+from tanager_feeder.command_handlers.restart_rs3_handler import RestartRS3Handler
+from tanager_feeder.command_handlers.restart_computer_handler import RestartComputerHandler
 
 from tanager_feeder.commanders.spec_commander import SpecCommander
 from tanager_feeder.commanders.pi_commander import PiCommander
@@ -156,6 +158,7 @@ class Controller(utils.ControllerType):
         self.text_only = False  # for running scripts.
 
         self.white_referencing = False
+        self.white_reference_attempt = 0
         self.overwrite_all = False  # User can say yes to all for overwriting files.
 
         self.audio_signals = False
@@ -1375,7 +1378,7 @@ class Controller(utils.ControllerType):
 
         # For each (i, e, az), opt, white reference, save the white reference, move the tray, take a  spectrum, then
         # move the tray back, then update geom to next.
-        next_emission = self.science_e # Define this here so as not to get an
+        next_emission = self.science_e  # Define this here so as not to get an
         # error if len(self.active_emission_entries) == 0 (not sure if this is a real case).
 
         for index, entry in enumerate(self.active_emission_entries):
@@ -1521,7 +1524,7 @@ class Controller(utils.ControllerType):
                     movement_order = [{"i": -60}, {"e": next_science_e}, {"az": next_science_az}, {"i": next_science_i}]
         return movement_order
 
-    def next_geom(self, complete_last: bool = True, cap_at_minus_50 = False) -> None:
+    def next_geom(self, complete_last: bool = True, cap_at_minus_50=False) -> None:
         self.complete_queue_item()
         if complete_last:
             self.active_incidence_entries.pop(0)
@@ -1838,7 +1841,7 @@ class Controller(utils.ControllerType):
             return False
         # And finally check if the light will hit the fiber optic cable, which has az = az -35
         print("checking fiber optic!")
-        if not self.check_light_misses_arc(i, e, az+25, self.required_angular_separation_for_fiber, print_me=True):
+        if not self.check_light_misses_arc(i, e, az + 25, self.required_angular_separation_for_fiber, print_me=True):
             return False
         return True
 
@@ -1917,6 +1920,14 @@ class Controller(utils.ControllerType):
 
     def take_spectrum(self, override: bool, setup_complete: bool, garbage: bool) -> None:
         self.acquire(override=override, setup_complete=setup_complete, action=self.take_spectrum, garbage=garbage)
+
+    def restart_computer(self):
+        self.spec_commander.restart_computer()
+        self.connection_manager.spec_offline = True
+        RestartComputerHandler(self)
+    def restart_rs3(self):
+        self.spec_commander.restart_rs3()
+        RestartRS3Handler(self)
 
     def configure_instrument(self) -> None:
         self.spec_commander.configure_instrument(self.instrument_config_entry.get())
@@ -2044,7 +2055,12 @@ class Controller(utils.ControllerType):
         except ValueError:
             return
 
-    def process_cmd(self, input_directory: Optional[str] = None, output_directory: Optional[str] = None, output_file: Optional[str] = None) -> None:
+    def process_cmd(
+        self,
+        input_directory: Optional[str] = None,
+        output_directory: Optional[str] = None,
+        output_file: Optional[str] = None,
+    ) -> None:
         if input_directory is None or output_directory is None or output_file is None:
             try:
                 input_directory, output_directory, output_file = self.process_manager.setup_process()
@@ -2054,7 +2070,15 @@ class Controller(utils.ControllerType):
         if self.process_manager.proc_local.get() == 1:
             self.spec_commander.process(input_directory, "spec_temp_data_loc", output_file)
             self.queue.insert(0, {self.process_cmd: [input_directory, output_directory, output_file]})
-            self.queue.insert(1, {self.finish_process: [os.path.join("spec_temp_data_loc", output_file), os.path.join(output_directory, output_file)]})
+            self.queue.insert(
+                1,
+                {
+                    self.finish_process: [
+                        os.path.join("spec_temp_data_loc", output_file),
+                        os.path.join(output_directory, output_file),
+                    ]
+                },
+            )
         else:
             self.spec_commander.process(input_directory, output_directory, output_file)
             self.queue.insert(0, {self.process_cmd: [input_directory, output_directory, output_file]})
@@ -2074,8 +2098,6 @@ class Controller(utils.ControllerType):
         # decide on a name to call it. This will be based on the dat file name. E.g. foo.csv would have foo_log.txt
         # associated with it.
         final_data_destination, final_log_destination = self.process_manager.finish_processing()
-
-
 
     # This gets called when the user clicks 'Edit plot' from the right-click menu on a plot.
     # Pops up a scrollable listbox with sample options.
@@ -2133,7 +2155,6 @@ class Controller(utils.ControllerType):
                 continue
             self.view_notebook.forget(tab)
         self.plot_manager = PlotManager(self)
-
 
     def choose_spec_save_dir(self):
         RemoteFileExplorer(

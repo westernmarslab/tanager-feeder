@@ -7,6 +7,7 @@ import matplotlib.tri as mtri
 from tanager_feeder.dialogs.error_dialog import ErrorDialog
 from tanager_feeder import utils
 
+
 class Plot:
     def __init__(
         self,
@@ -69,7 +70,6 @@ class Plot:
             delta_y = self.ylim[1] - self.ylim[0]
             self.ylim[0] = self.ylim[0] - delta_y * 0.02
             self.ylim[1] = self.ylim[1] + delta_y * 0.02
-
 
         elif ylim is None:
             for i, sample in enumerate(self.samples):
@@ -205,7 +205,6 @@ class Plot:
         self.leg_ax.tick_params(axis="both", which="both", colors="0.2")
         self.white_leg_ax.tick_params(axis="both", which="both", colors="1")
 
-
         pos1 = self.ax.get_position()  # get the original position
         y0 = pos1.y0 * 1.5  # This is all just magic to tweak the exact position.
         height = pos1.height * 0.9
@@ -238,7 +237,6 @@ class Plot:
 
         if draw:
             self.draw()
-
 
     @staticmethod
     def geom_to_label(geom):
@@ -283,7 +281,13 @@ class Plot:
                 if self.repeats:
                     legend_label = sample.title + ": " + sample.name + " " + self.geom_to_label(geom)
                 if len(self.samples) == 1:
-                    legend_label = legend_label.replace(sample.name, "").replace("(i=", "i=").replace(")", "").replace("(e", "e").replace("(az", "az")
+                    legend_label = (
+                        legend_label.replace(sample.name, "")
+                        .replace("(i=", "i=")
+                        .replace(")", "")
+                        .replace("(e", "e")
+                        .replace("(az", "az")
+                    )
                 if len(legend_label) > self.max_legend_label_len:
                     self.max_legend_label_len = len(legend_label)
 
@@ -1007,7 +1011,12 @@ class Plot:
                         self.leg_ax.text(
                             left + width,
                             bottom,
-                            self.legend_labels[sample][0].replace(sample.name, "").replace("(i", "i").strip(")").replace("(e", "e").replace("(az", "az"),
+                            self.legend_labels[sample][0]
+                            .replace(sample.name, "")
+                            .replace("(i", "i")
+                            .strip(")")
+                            .replace("(e", "e")
+                            .replace("(az", "az"),
                             verticalalignment="bottom",
                             horizontalalignment="left",
                             transform=self.leg_ax.transAxes,
@@ -1017,7 +1026,12 @@ class Plot:
                         self.white_leg_ax.text(
                             left + width,
                             bottom,
-                            self.legend_labels[sample][0].replace(sample.name, "").replace("(i", "i").strip(")").replace("(e", "e").replace("(az", "az"),
+                            self.legend_labels[sample][0]
+                            .replace(sample.name, "")
+                            .replace("(i", "i")
+                            .strip(")")
+                            .replace("(e", "e")
+                            .replace("(az", "az"),
                             verticalalignment="bottom",
                             horizontalalignment="left",
                             transform=self.leg_ax.transAxes,
@@ -1028,7 +1042,12 @@ class Plot:
                         self.leg_ax.text(
                             left + width,
                             bottom + height,
-                            self.legend_labels[sample][-1].replace(sample.name, "").replace("(i", "i").strip(")").replace("(e", "e").replace("(az", "az"),
+                            self.legend_labels[sample][-1]
+                            .replace(sample.name, "")
+                            .replace("(i", "i")
+                            .strip(")")
+                            .replace("(e", "e")
+                            .replace("(az", "az"),
                             verticalalignment="top",
                             horizontalalignment="left",
                             transform=self.leg_ax.transAxes,
@@ -1038,7 +1057,12 @@ class Plot:
                         self.white_leg_ax.text(
                             left + width,
                             bottom + height,
-                            self.legend_labels[sample][-1].replace(sample.name, "").replace("(i", "i").strip(")").replace("(e", "e").replace("(az", "az"),
+                            self.legend_labels[sample][-1]
+                            .replace(sample.name, "")
+                            .replace("(i", "i")
+                            .strip(")")
+                            .replace("(e", "e")
+                            .replace("(az", "az"),
                             verticalalignment="top",
                             horizontalalignment="left",
                             transform=self.leg_ax.transAxes,

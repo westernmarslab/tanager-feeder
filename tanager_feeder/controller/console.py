@@ -67,7 +67,7 @@ class Console:
             space = self.console_log.winfo_width()
             space = int(space / 8.5)
             current_position = self.console_log.index(INSERT)
-            line_char= current_position.split(".")
+            line_char = current_position.split(".")
             current_char = int(line_char[1])
             space = str(space - current_char)
             datestring = ""
@@ -78,16 +78,18 @@ class Console:
             while info_string[0] == "\n":
                 info_string = info_string[1:]
 
-            first_space = int(space)-15
+            first_space = int(space) - 15
             if "\n" not in info_string:
                 if len(info_string) > first_space:
                     i = first_space - 7
                     while True:
                         if i == 0:
-                            info_string = info_string[0:int(first_space/2)] + "\n" + info_string[int(first_space/2):]
+                            info_string = (
+                                info_string[0 : int(first_space / 2)] + "\n" + info_string[int(first_space / 2) :]
+                            )
                             break
                         if info_string[i] == " ":
-                            info_string = info_string[0:i] + "\n"+info_string[i+1:]
+                            info_string = info_string[0:i] + "\n" + info_string[i + 1 :]
                             break
                         i -= 1
 
@@ -108,9 +110,9 @@ class Console:
             self.console_log.insert(END, info_string)
         self.console_log.see(END)
 
-    # when the focus is on the console entry box, the user can scroll through past commands.
-    # these are stored in user_cmds with the index of the most recent command at 0
-    # Every time the user enters a command, the user_cmd_index is changed to -1
+        # when the focus is on the console entry box, the user can scroll through past commands.
+        # these are stored in user_cmds with the index of the most recent command at 0
+        # Every time the user enters a command, the user_cmd_index is changed to -1
         self.console_log.see(END)
 
     # when the focus is on the console entry box, the user can scroll through past commands.

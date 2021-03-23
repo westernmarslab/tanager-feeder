@@ -92,7 +92,6 @@ class Tab:
             self.plotter.notebook.select(self.plotter.notebook.tabs()[tab_index])
             self.index = tab_index
 
-
         self.fig = mpl.figure.Figure(
             figsize=(self.width / self.plotter.dpi, self.height / self.plotter.dpi), dpi=self.plotter.dpi
         )
@@ -949,8 +948,10 @@ class Tab:
                 y_axis="average reflectance",
             )
         elif x_axis == "e,i":
-            tab = Tab(self.plotter, "Reflectance", [self.contour_sample], x_axis="contour", y_axis="average reflectance")
-            #For whatever reason, x and y labels don't show up
+            tab = Tab(
+                self.plotter, "Reflectance", [self.contour_sample], x_axis="contour", y_axis="average reflectance"
+            )
+            # For whatever reason, x and y labels don't show up
             # unless these update functions are called.
             tab.plot.fig.canvas.draw()
             tab.plot.white_fig.canvas.draw()
@@ -976,7 +977,9 @@ class Tab:
                         print("Failed to create hemisphere plot")
                         raise e
                 else:
-                    self.plotter.controller.log(f"Not creating hemisphere plot for i = {incidence} (Not enough datapoints).")
+                    self.plotter.controller.log(
+                        f"Not creating hemisphere plot for i = {incidence} (Not enough datapoints)."
+                    )
 
     def plot_band_centers(self, x_axis):
         if x_axis in ("e", "theta"):
@@ -1331,4 +1334,3 @@ class Tab:
     def adjust_z(self, low: float, high: float):  # only gets called for contour plot
         self.zlim = [low, high]
         self.plot.adjust_z(low, high)
-
