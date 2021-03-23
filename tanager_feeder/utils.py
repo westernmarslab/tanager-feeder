@@ -19,7 +19,7 @@ from tkinter import (
     SINGLE,
     Widget,
     END,
-    TclError
+    TclError,
 )
 from typing import Any, Optional, Union
 import time
@@ -120,10 +120,12 @@ class ConfigInfo:
         self.opsys = opsys
         self.num_len = num_len
 
+
 class ControllerType:
     """This class, which is extended by Controller, is defined so as to avoid
-      circular imports when adding type hints to classes that are imported by
-      Controller and also reference an instance of Controller"""
+    circular imports when adding type hints to classes that are imported by
+    Controller and also reference an instance of Controller"""
+
     def __init__(self, connection_tracker, config_info):
         self.connection_tracker = connection_tracker
         self.config_info = config_info
@@ -167,7 +169,7 @@ class ControllerType:
 
         # for console
         self.execute_cmd = None
-        self.control_frame= None
+        self.control_frame = None
         self.view_frame = None
 
         # for cli_manager
@@ -220,7 +222,6 @@ class ControllerType:
         self.set_azimuth = None
         self.get_movements = None
         self.console = None
-
 
 
 # Which spectrometer computer are you using? This should probably be desktop, but could be 'new' for the new lappy or
@@ -443,7 +444,7 @@ class ScrollableListbox(Listbox):
             exportselection=0,
         )
         self.pack(side=LEFT, expand=True, fill=BOTH, padx=(10, 0))
-        self.bind('<Control-c>', self.copy)
+        self.bind("<Control-c>", self.copy)
 
     def destroy(self):
         self.scrollbar.destroy()
@@ -457,8 +458,8 @@ class ScrollableListbox(Listbox):
         sel_list = [all_items[item] for item in sel_idx]  # list with text of all selected items
 
         for i, text in enumerate(sel_list):
-            if i < len(sel_list) -1:
-                self.clipboard_append(text+',\n')
+            if i < len(sel_list) - 1:
+                self.clipboard_append(text + ",\n")
             else:
                 self.clipboard_append(text)
 
@@ -560,6 +561,7 @@ def thread_lift_widget(widget: Widget):
     print("LIFTING")
     thread = Thread(target=lift_widget, args=(widget,))
     thread.start()
+
 
 def get_i_e_az(geom):
     try:

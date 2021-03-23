@@ -5,6 +5,7 @@ import matplotlib.cm as cm
 
 from tanager_feeder.utils import cos, sin
 
+
 class HemispherePlotter:
     def __init__(self):
         pass
@@ -12,12 +13,12 @@ class HemispherePlotter:
     def plot(self, geoms, data, incidence, sample_name, data_label):
         offset = 0
         if np.min(data) < 0:
-            offset = -1*4*np.min(data)
+            offset = -1 * 4 * np.min(data)
             data = np.array(data)
             data = data + offset
 
         fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
+        ax = fig.add_subplot(111, projection="3d")
 
         azimuths = np.linspace(0, 359, 360)
         emissions = np.linspace(0, 89, 90)
@@ -170,18 +171,17 @@ class HemispherePlotter:
         # back_z = np.outer(np.ones(np.size(u)), 0)
         # backdrop = ax.plot_surface(back_x, back_y, back_z, alpha=0.8, zorder=0)
 
-        rline = 1.2*np.max(data)
+        rline = 1.2 * np.max(data)
         azline = 0
         iline = incidence
         xline = [0, cos(azline) * sin(iline) * rline]
         yline = [0, sin(azline) * sin(iline) * rline]
         zline = [0, cos(iline) * rline]
-        ax.plot3D(xline, yline, zline, 'darkorange', linewidth=4, zorder=0)
+        ax.plot3D(xline, yline, zline, "darkorange", linewidth=4, zorder=0)
 
         # Plot the surface
-        surf = ax.plot_surface(x, y, z,
-                        linewidth=1, alpha=1, facecolors=colors, zorder=100)
-        ax.scatter(scatter_x, scatter_y, scatter_z, s=1, c='black', zorder=200)
+        surf = ax.plot_surface(x, y, z, linewidth=1, alpha=1, facecolors=colors, zorder=100)
+        ax.scatter(scatter_x, scatter_y, scatter_z, s=1, c="black", zorder=200)
 
         ax.grid(False)
         ax.set_xticks([])
@@ -192,12 +192,12 @@ class HemispherePlotter:
 
         max_r = np.max(data)
         min_r = np.min(data)
-        ax.auto_scale_xyz([-0.5*max_r, 0.5*max_r], [-0.5*max_r, 0.5*max_r], [0, max_r])
+        ax.auto_scale_xyz([-0.5 * max_r, 0.5 * max_r], [-0.5 * max_r, 0.5 * max_r], [0, max_r])
 
         m = cm.ScalarMappable(cmap=jet, norm=norm)
 
         cbar_ax = fig.add_axes([0.75, 0.3, 0.035, 0.45])
-        delta = (max_r-min_r)/5
+        delta = (max_r - min_r) / 5
         ticks = np.arange(min_r, max_r, delta)
         ticks = list(ticks)
         ticks.append(max_r)
@@ -219,11 +219,11 @@ class HemispherePlotter:
         for tick in ticks:
             if tick - offset > 1:
                 labels.append(np.around(tick - offset, 2))
-            elif tick - offset > .01:
+            elif tick - offset > 0.01:
                 labels.append(np.around(tick - offset, 3))
-            elif tick - offset > .00001:
+            elif tick - offset > 0.00001:
                 labels.append(np.around(tick - offset, 6))
-            elif tick - offset > .00000001:
+            elif tick - offset > 0.00000001:
                 labels.append(np.around(tick - offset, 9))
             else:
                 labels.append(tick - offset)
@@ -231,4 +231,3 @@ class HemispherePlotter:
         colorbar.ax.set_yticklabels(labels)
 
         plt.show(block=False)  # Need block = False in order for loop to continue
-

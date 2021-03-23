@@ -58,15 +58,15 @@ class SpecConnectionChecker(ConnectionChecker):
             config_loc=self.config_loc,
         )
 
-    def check_connection(self, timeout: int = 3):
+    def check_connection(self, timeout: int = 3, show_dialog: bool = True):
         if self.connection_manager.spec_offline:
             connected = self.connection_manager.connect_spec(timeout)
         else:
             connected = self.connection_manager.send_to_spec("test")
 
-        if not connected:
-            self.alert_not_connected()
-        else:
+        if connected:
             self.func(*self.args)
+        elif show_dialog:
+            self.alert_not_connected()
 
         return connected

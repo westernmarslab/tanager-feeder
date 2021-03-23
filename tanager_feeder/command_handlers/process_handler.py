@@ -35,7 +35,6 @@ class ProcessHandler(CommandHandler):
                 if "." not in self.outputfile:
                     self.outputfile += ".csv"
 
-
                 if self.controller.process_manager.proc_local_remote == "local":
                     # Move on to finishing the process by transferring the data from remote to local
                     if warnings != "":
@@ -44,7 +43,9 @@ class ProcessHandler(CommandHandler):
                         self.controller.log("Files processed.")
                 else:  # if the final destination was remote then we're already done.
                     if warnings != "":
-                        self.controller.log("Files processed. \n" + warnings.replace("\n", " ") + "\n" + self.outputfile)
+                        self.controller.log(
+                            "Files processed. \n" + warnings.replace("\n", " ") + "\n" + self.outputfile
+                        )
                     else:
                         self.controller.log("Files processed.\n" + self.outputfile)
                 self.success(warnings)
@@ -80,9 +81,7 @@ class ProcessHandler(CommandHandler):
             if "processerrorcannotwrite" in self.listener.queue:
 
                 self.listener.queue.remove("processerrorcannotwrite")
-                self.interrupt(
-                    "Error processing files.\n\nDo you have access to the source folder?"
-                )
+                self.interrupt("Error processing files.\n\nDo you have access to the source folder?")
                 self.wait_dialog.top.wm_geometry("376x165")
                 self.controller.log("Error processing files")
                 self.controller.complete_queue_item()
@@ -100,7 +99,6 @@ class ProcessHandler(CommandHandler):
         self.timeout()
 
     def success(self, warnings: str = ""):
-
 
         self.controller.plot_manager.plot_input_file = self.outputfile
 

@@ -12,7 +12,6 @@ def is_raspberrypi():
 
 opsys: str = platform.system()
 if opsys == "Windows":
-    print("windows!")
     install_requires = ["pywinauto", "pyautogui", "tanager_tcp", "numpy", "matplotlib","colorutils", "cython", "numpy", "playsound", "psutil", "pygame", "tanager-tcp"]
 else:
     install_requires = ["colorutils", "cython", "matplotlib", "numpy", "playsound", "psutil", "pygame", "tanager-tcp"]

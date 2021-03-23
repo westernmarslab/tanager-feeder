@@ -81,5 +81,5 @@ class RemoteDirectoryWorker:
                     return "mkdirfailed"
 
             time.sleep(utils.INTERVAL)
-            t+= utils.INTERVAL
+            t += utils.INTERVAL
         return "mkdirfailed"

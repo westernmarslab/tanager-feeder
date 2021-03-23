@@ -7,6 +7,7 @@ from tanager_feeder import utils
 from tanager_feeder.plotter.tab import Tab
 from tanager_data_io.data_io import DataIO
 
+
 class Plotter(DataIO):
     def __init__(self, controller, dpi, style):
         super().__init__()
@@ -14,8 +15,8 @@ class Plotter(DataIO):
         self.controller = controller
         self.notebook = self.controller.view_notebook
         self.dpi = dpi
-        self.titles = [] # Tab titles
-        self.dataset_names = [] # 1 per file plotted
+        self.titles = []  # Tab titles
+        self.dataset_names = []  # 1 per file plotted
         self.style = style
         plt.style.use(style)
 

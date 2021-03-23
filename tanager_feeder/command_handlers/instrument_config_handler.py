@@ -35,8 +35,6 @@ class InstrumentConfigHandler(CommandHandler):
     def success(self):
         self.controller.spec_config_count = int(self.controller.instrument_config_entry.get())
 
-        self.controller.log(
-            "Instrument configured to average " + str(self.controller.spec_config_count) + " spectra."
-        )
+        self.controller.log("Instrument configured to average " + str(self.controller.spec_config_count) + " spectra.")
 
         super().success()

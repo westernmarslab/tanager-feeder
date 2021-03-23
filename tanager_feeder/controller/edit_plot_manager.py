@@ -23,7 +23,9 @@ class EditPlotManager:
         self.exclude_specular_check = None
         self.spec_tolerance_entry = None
 
-    def show(self, tab: Tab, existing_sample_indices: List, sample_options: List, existing_geoms: Dict, current_title: str):
+    def show(
+        self, tab: Tab, existing_sample_indices: List, sample_options: List, existing_geoms: Dict, current_title: str
+    ):
         self.tab = tab
         buttons = {
             "ok": {
@@ -227,10 +229,10 @@ class EditPlotManager:
                     for k in range(-70, 171):
                         if k % val == 0:
                             list_to_check.insert(n, k)
-                            n+=1
+                            n += 1
                     list_to_check.remove(angle)
-                    n-=1
-                n+=1
+                    n -= 1
+                n += 1
 
             for n, angle in enumerate(list_to_check):
                 if angle is not None:
