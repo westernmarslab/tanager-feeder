@@ -102,10 +102,9 @@ class SpecCompyController:
                             pass # This could happen if an autospec temp file was left hanging
                             # (created but not deleted) earlier.
                         os.rmdir(params[0] + "\\autospec_temp")
+                        print("sending response to checkwriteable")
                         self.send("yeswriteable", [])
                     except (NotADirectoryError, PermissionError, OSError) as e:
-                        print("hi hi")
-                        print(e)
                         self.send("notwriteable", [])
 
                 elif "spectrum" in cmd:  # Take a spectrum
@@ -512,7 +511,6 @@ class SpecCompyController:
                 elif "listdir" in cmd:
                     dir = params[0]
                     if not os.path.isdir(dir):
-
                         self.send("listdirfailed", [])
                     else:
                         try:
@@ -524,6 +522,7 @@ class SpecCompyController:
                             for file in files:
                                 if os.path.isdir(dir + file) and file[0] != ".":
                                     message += "&" + file
+                            print("sending a response to listdir")
                             self.send(message, [])
                         except (PermissionError):
                             self.send("listdirfailedpermission", [])
