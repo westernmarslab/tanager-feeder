@@ -20,7 +20,7 @@ class SpecCompyController:
 
         print("Starting ASD Feeder...\n")
         print("Starting TCP server")
-        self.local_server = TanagerServer(12345)
+        self.local_server = TanagerServer(12345, wait_for_network=True)
         thread = Thread(target=self.local_server.listen)
         thread.start()
         self.client = TanagerClient(self.local_server.remote_server_address, 12345)
@@ -102,7 +102,6 @@ class SpecCompyController:
                             pass # This could happen if an autospec temp file was left hanging
                             # (created but not deleted) earlier.
                         os.rmdir(params[0] + "\\autospec_temp")
-                        print("oh yeah!")
                         self.send("yeswriteable", [])
                     except (NotADirectoryError, PermissionError, OSError) as e:
                         print("hi hi")
@@ -149,7 +148,12 @@ class SpecCompyController:
                     # one more. Wait for this number to change before moving on.
                     # old=len(spec_controller.hopefully_saved_files)
 
-                    self.spec_controller.take_spectrum(filename)
+                    spec_taken = self.spec_controller.take_spectrum(filename)
+                    if not spec_taken:
+                        self.spec_controller.hopefully_saved_files.pop(-1)
+                        self.spec_controller.nextnum = str(int(self.spec_controller.nextnum) - 1)
+                        self.send("failedtosavefile", [filename])
+                        continue
 
                     # Now wait for the data file to turn up where it belongs.
                     saved = False
@@ -357,8 +361,6 @@ class SpecCompyController:
                         try:
                             self.process_controller.process(input_path, temp_output_path, csv_name)
                         except Exception as e:
-                            print("error processing!")
-
                             self.process_controller.reset()
                             self.send("processerror", [])
                             traceback.print_exc()

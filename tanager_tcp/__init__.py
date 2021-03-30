@@ -1,4 +1,5 @@
 import socket
+import time
 from typing import Optional, Tuple
 
 global HEADER_LEN
@@ -8,12 +9,22 @@ ADDRESS_LEN = 25  # Number of digits in the address including IP address and por
 
 
 class TanagerServer:
-    def __init__(self, port: int):  # Port is the port to listen on
+    def __init__(self, port: int, wait_for_network=False):  # Port is the port to listen on
         # Create a TCP/IP socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         hostname = socket.gethostname()
         ip_address = socket.gethostbyname(hostname)
+
+        #This is useful because when the spectrometer computer starts up, asd-feeder may start
+        # before network connections are initialized. This can lead to the TanagerServer using localhost.
+        if wait_for_network:
+            while ip_address == "127.0.0.1":
+                print("Waiting for network connection...")
+                hostname = socket.gethostname()
+                ip_address = socket.gethostbyname(hostname)
+                time.sleep(2)
+
 
         # Bind the socket to the port
         self.server_address = (ip_address, port)
