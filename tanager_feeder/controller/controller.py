@@ -51,6 +51,8 @@ from tanager_feeder.command_handlers.spectrum_handler import SpectrumHandler
 from tanager_feeder.command_handlers.white_reference_handler import WhiteReferenceHandler
 from tanager_feeder.command_handlers.restart_rs3_handler import RestartRS3Handler
 from tanager_feeder.command_handlers.restart_computer_handler import RestartComputerHandler
+from tanager_feeder.command_handlers.check_writeable_handler import CheckWriteableHandler
+from tanager_feeder.command_handlers.list_contents_handler import ListContentsHandler
 
 from tanager_feeder.commanders.spec_commander import SpecCommander
 from tanager_feeder.commanders.pi_commander import PiCommander
@@ -160,6 +162,7 @@ class Controller(utils.ControllerType):
 
         self.white_referencing = False
         self.white_reference_attempt = 0
+        self.opt_attempt = 0
         self.overwrite_all = False  # User can say yes to all for overwriting files.
 
         self.audio_signals = False
@@ -1936,85 +1939,25 @@ class Controller(utils.ControllerType):
         self.spec_commander.configure_instrument(self.instrument_config_entry.get())
         InstrumentConfigHandler(self)
 
+    def check_writeable(self):
+        self.spec_commander.check_writeable(self.spec_save_dir_entry.get())
+        CheckWriteableHandler(self)
+
+    def list_contents(self):
+        status = self.remote_directory_worker.get_dirs(self.spec_save_dir_entry.get())
+        ListContentsHandler(self, status)
+
     # Set thes ave configuration for raw spectral data. First, use a remotedirectoryworker to check whether the
     # directory exists and is writeable. If it doesn't exist, give an option to create the directory.
     def set_save_config(self) -> None:
-        # inner_mkdir function gets called if the directory doesn't exist and the user clicks 'yes' for making the directory.
-        def inner_mkdir(dir_to_make: str) -> None:
-            mkdir_status = self.remote_directory_worker.mkdir(dir_to_make)
-            if mkdir_status == "mkdirsuccess":
-                self.set_save_config()
-            elif mkdir_status == "mkdirfailedfileexists":
-                ErrorDialog(
-                    self, title="Error", label="Could not create directory:\n\n" + dir_to_make + "\n\nFile exists."
-                )
-            elif mkdir_status == "mkdirfailed":
-                ErrorDialog(self, title="Error", label="Could not create directory:\n\n" + dir_to_make)
+        self.queue.insert(1, {self.set_save_config_part_2: []})
+        self.list_contents()
 
-        status = self.remote_directory_worker.get_dirs(self.spec_save_dir_entry.get())
+    def set_save_config_part_2(self):
+        self.queue.insert(1, {self.finish_set_save_config: []})
+        self.check_writeable()
 
-        if status == "listdirfailed":
-
-            if self.script_running:  # If a script is running, automatically try to make the directory.
-                inner_mkdir(self.spec_save_dir_entry.get())
-            else:  # Otherwise, ask the user first.
-                buttons = {"yes": {inner_mkdir: [self.spec_save_dir_entry.get()]}, "no": {self.reset: []}}
-                ErrorDialog(
-                    self,
-                    title="Directory does not exist",
-                    label=self.spec_save_dir_entry.get() + "\n\ndoes not exist. Do you want to create this directory?",
-                    buttons=buttons,
-                )
-            return
-
-        if status == "listdirfailedpermission":
-            ErrorDialog(self, label="Error: Permission denied for\n" + self.spec_save_dir_entry.get())
-            return
-
-        if status == "timeout":
-            if not self.text_only:
-                buttons = {
-                    "cancel": {},
-                    "retry": {self.spec_commander.remove_from_listener_queue: [["timeout"]], self.next_in_queue: []},
-                }
-                try:  # Do this if there is a wait dialog up
-                    self.wait_dialog.interrupt(
-                        "Error: Operation timed out.\n\nCheck that the automation script is running on the spectrometer"
-                        "\n computer and the spectrometer is connected."
-                    )
-                    self.wait_dialog.set_buttons(buttons)  # , buttons=buttons)
-                    self.wait_dialog.top.geometry("376x175")
-                    for button in self.wait_dialog.tk_buttons:
-                        button.config(width=15)
-                except (AttributeError, TclError):
-                    dialog = ErrorDialog(
-                        self,
-                        label="Error: Operation timed out.\n\nCheck that the automation script is running on the"
-                        " spectrometer\n computer and the spectrometer is connected.",
-                        buttons=buttons,
-                    )
-                    dialog.top.geometry("376x145")
-                    for button in dialog.tk_buttons:
-                        button.config(width=15)
-            else:
-                self.log("Error: Operation timed out while trying to set save configuration")
-            return
-        self.spec_commander.check_writeable(self.spec_save_dir_entry.get())
-        t = 3 * utils.BUFFER
-        while t > 0:
-            if "yeswriteable" in self.spec_listener.queue:
-                self.spec_listener.queue.remove("yeswriteable")
-                break
-            if "notwriteable" in self.spec_listener.queue:
-                self.spec_listener.queue.remove("notwriteable")
-                ErrorDialog(self, label="Error: Permission denied.\nCannot write to specified directory.")
-                return
-            time.sleep(utils.INTERVAL)
-            t = t - utils.INTERVAL
-        if t <= 0:
-            ErrorDialog(self, label="Error: Operation timed out.")
-            return
-
+    def finish_set_save_config(self):
         spec_num = self.spec_startnum_entry.get()
         while len(spec_num) < self.config_info.num_len:
             spec_num = "0" + spec_num

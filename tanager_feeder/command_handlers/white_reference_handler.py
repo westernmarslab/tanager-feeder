@@ -64,6 +64,7 @@ class WhiteReferenceHandler(CommandHandler):
                     self.controller.next_in_queue()
                 elif self.pause:
                     self.interrupt("Error: Failed to take white reference.\n\nPaused.", retry=True)
+                    self.controller.white_reference_attempt += 1
                     self.wait_dialog.top.geometry("376x175")
                     self.controller.log("Error: Failed to take white reference.")
                 else:  # You can't retry if you already clicked cancel because we already cleared out the queue
@@ -72,7 +73,6 @@ class WhiteReferenceHandler(CommandHandler):
                     self.controller.white_reference_attempt = 0
                     # Does nothing in automatic mode
                     self.controller.clear()
-
                 return
 
             if "wrfailedfileexists" in self.listener.queue:

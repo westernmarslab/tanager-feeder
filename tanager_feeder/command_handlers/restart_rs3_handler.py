@@ -21,11 +21,13 @@ class RestartRS3Handler(CommandHandler):
             time.sleep(utils.INTERVAL)
             self.timeout_s -= utils.INTERVAL
 
+        print("RS3 restart timeout!")
         self.timeout()
 
     def timeout(self):
         super().timeout()
         self.controller.white_reference_attempt = 0
+        self.controller.opt_attempt = 0
 
     def success(self):
         super().success()

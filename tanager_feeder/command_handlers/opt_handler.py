@@ -13,6 +13,7 @@ class OptHandler(CommandHandler):
             timeout_s = 1000
         self.listener = controller.spec_listener
         super().__init__(controller, title, label, timeout=timeout_s)
+        self.attempt = self.controller.opt_attempt
 
     def wait(self):
         while self.timeout_s > 0:
@@ -46,26 +47,45 @@ class OptHandler(CommandHandler):
                 self.listener.queue.remove("optfailure")
 
                 if not self.cancel and not self.pause:
-                    self.controller.log("Error: Failed to optimize instrument. Retrying.")
+                    if self.attempt == 0:
+                        self.controller.opt_attempt = 1
+                        self.controller.log("Error: Failed to optimize instrument. Retrying.")
+                    elif self.attempt == 1:
+                        self.controller.opt_attempt = 2
+                        self.controller.log(
+                            "Error: Failed to optimize instrument. Restarting RS3 and retrying."
+                        )
+                        self.controller.queue.insert(0, {self.controller.restart_rs3: []})
+                    elif self.attempt == 2:
+                        self.controller.opt_attempt += 1
+                        self.controller.log(
+                            f"Error: Failed to optimize instrument. Restarting spectrometer computer and retrying."
+                        )
+                        self.controller.queue.insert(0, {self.controller.restart_computer: []})
+                    else:
+                        self.controller.opt_attempt += 1
+                        self.controller.log(
+                            f"Error: Failed to optimize instrument. Restarting spectrometer computer and retrying"
+                            f" ({self.controller.opt_attempt-3})."
+                        )
+                        self.controller.queue.insert(0, {self.controller.restart_computer: []})
                     self.controller.next_in_queue()
                 elif self.pause:
-                    self.interrupt("Error: There was a problem with\noptimizing the instrument.\n\nPaused.", retry=True)
-                    self.wait_dialog.top.geometry("376x165")
-                    self.controller.log("Error: There was a problem with optimizing the instrument.")
-                elif not self.cancel:
-                    self.interrupt("Error: There was a problem with\noptimizing the instrument.", retry=True)
-                    self.wait_dialog.top.geometry("376x165")
-                    self.controller.log("Error: There was a problem with optimizing the instrument.")
+                    self.interrupt("Error: Failed to optimize instrument.\n\nPaused.", retry=True)
+                    self.controller.opt_attempt += 1
+                    self.wait_dialog.top.geometry("376x175")
+                    self.controller.log("Error: Failed to optimize instrument.")
                 else:  # You can't retry if you already clicked cancel because we already cleared out the queue
-                    self.interrupt(
-                        "Error: There was a problem with\noptimizing the instrument.\n\nData acquisition canceled.",
-                        retry=False,
-                    )
-                    self.wait_dialog.top.geometry("376x165")
-                    self.controller.log("Error: There was a problem with optimizing the instrument.")
+                    self.interrupt("Error: Failed to optimize instrument.\n\nData acquisition canceled.", retry=False)
+                    self.wait_dialog.top.geometry("376x175")
+                    self.controller.opt_attempt = 0
+                    # Does nothing in automatic mode
+                    self.controller.clear()
                 return
             time.sleep(utils.INTERVAL)
             self.timeout_s -= utils.INTERVAL
+
+        self.controller.opt_attempt = 0
         self.timeout()
 
     def success(self):

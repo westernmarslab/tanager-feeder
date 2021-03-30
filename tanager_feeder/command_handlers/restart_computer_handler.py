@@ -34,6 +34,7 @@ class RestartComputerHandler(CommandHandler):
             time.sleep(utils.INTERVAL)
             self.timeout_s -= utils.INTERVAL
 
+        print("compy restart timeout!")
         self.timeout()
 
     def timeout(self):

@@ -276,6 +276,7 @@ class SpecCompyController:
                     # don't get saved during optimization, but this needs to happen anyway because we need to know
                     # where to put the log file when we record that we optimized.
                     if self.spec_controller.save_dir == "":
+                        print("Sending noconfig")
                         self.send("noconfig", [])
                         continue
 

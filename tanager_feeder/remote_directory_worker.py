@@ -7,7 +7,7 @@ class RemoteDirectoryWorker:
     def __init__(self, spec_commander, listener):
         self.spec_commander = spec_commander
         self.listener = listener
-        self.timeout_s = utils.BUFFER
+        self.timeout_s = 3*utils.BUFFER
 
     def reset_timeout(self):
         self.timeout_s = utils.BUFFER
@@ -20,7 +20,6 @@ class RemoteDirectoryWorker:
             # If we get a file back with a list of the contents, replace the old listbox contents with new ones.
             # The cmdfilename should be e.g. listdir&R=+RiceData+Kathleen+spectral_data
             for item in self.listener.queue:
-                print(cmdfilename)
                 if cmdfilename in item:
                     contents = (
                         item.replace(
@@ -51,19 +50,17 @@ class RemoteDirectoryWorker:
 
     # Assume parent has already been validated, but don't assume it exists
     def get_dirs(self, parent):
-
         cmdfilename = self.spec_commander.listdir(parent)
         status = self.wait_for_contents(cmdfilename)
         return status
 
     def get_contents(self, parent):
-
         cmdfilename = self.spec_commander.list_contents(parent)
         return self.wait_for_contents(cmdfilename)
 
     def mkdir(self, newdir):
         self.spec_commander.mkdir(newdir)
-        timeout = 2 * utils.BUFFER
+        timeout = self.timeout_s
         t = 0
         while t < timeout:
             for item in self.listener.queue:

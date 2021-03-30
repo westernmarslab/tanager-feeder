@@ -29,7 +29,8 @@ class SaveConfigHandler(CommandHandler):
             t = t - utils.INTERVAL
             time.sleep(utils.INTERVAL)
         if t <= 0:
-            self.timeout()
+            print("IN save config handler, timeout looking for unexpected.")
+            self.timeout("Error: Operation timed out while waiting to set save configuration.")
             return
 
         if len(self.listener.unexpected_files) > 0:
@@ -105,7 +106,7 @@ class SaveConfigHandler(CommandHandler):
 
             time.sleep(utils.INTERVAL)
 
-        self.timeout(log_string="Error: Operation timed out while waiting to set save configuration.")
+        self.timeout("Error: Operation timed out while waiting to set save configuration.")
 
     def success(self):
         self.controller.spec_save_path = self.controller.spec_save_dir_entry.get()
