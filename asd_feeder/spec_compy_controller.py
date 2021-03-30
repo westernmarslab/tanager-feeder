@@ -20,7 +20,7 @@ class SpecCompyController:
 
         print("Starting ASD Feeder...\n")
         print("Starting TCP server")
-        self.local_server = TanagerServer(12345)
+        self.local_server = TanagerServer(12345, wait_for_network=True)
         thread = Thread(target=self.local_server.listen)
         thread.start()
         self.client = TanagerClient(self.local_server.remote_server_address, 12345)
@@ -87,18 +87,25 @@ class SpecCompyController:
                     print("***************")
                     print("Command received: " + cmd)
 
-                # The first message the control computer sends on startup sets its IP address as the control computer IP.
-                # if cmd == "setcontrolserveraddress":
-                #     self.control_server_address = (params[0], int(params[1]))
-                #     print("set control server address!")
-                #     print(self.control_server_address)
+                if cmd == "restartcomputer":
+                    self.send("restarting", [])
+                    os.system("shutdown /r /t 1")
 
-                if "checkwriteable" in cmd:  # Check whether you can write to a given directory
+                elif cmd == "restartrs3":
+                    self.send("rs3restarted", [])
+
+                elif "checkwriteable" in cmd:  # Check whether you can write to a given directory
                     try:
-                        os.mkdir(params[0] + "\\autospec_temp")
-                        os.removedirs(params[0] + "\\autospec_temp")
+                        try:
+                            os.mkdir(params[0] + "\\autospec_temp")
+                        except OSError:
+                            pass # This could happen if an autospec temp file was left hanging
+                            # (created but not deleted) earlier.
+                        os.rmdir(params[0] + "\\autospec_temp")
                         self.send("yeswriteable", [])
-                    except:
+                    except (NotADirectoryError, PermissionError, OSError) as e:
+                        print("hi hi")
+                        print(e)
                         self.send("notwriteable", [])
 
                 elif "spectrum" in cmd:  # Take a spectrum
@@ -141,7 +148,12 @@ class SpecCompyController:
                     # one more. Wait for this number to change before moving on.
                     # old=len(spec_controller.hopefully_saved_files)
 
-                    self.spec_controller.take_spectrum(filename)
+                    spec_taken = self.spec_controller.take_spectrum(filename)
+                    if not spec_taken:
+                        self.spec_controller.hopefully_saved_files.pop(-1)
+                        self.spec_controller.nextnum = str(int(self.spec_controller.nextnum) - 1)
+                        self.send("failedtosavefile", [filename])
+                        continue
 
                     # Now wait for the data file to turn up where it belongs.
                     saved = False
@@ -163,6 +175,14 @@ class SpecCompyController:
                         self.send("failedtosavefile", [filename])
 
                 elif cmd == "saveconfig":
+                    self.spec_controller.save_dir = "test"
+                    self.spec_controller.basename = "test"
+                    self.spec_controller.nextnum = "test"
+                    self.spec_controller.numspectra = 20
+                    self.send("donelookingforunexpected", [])
+                    self.send("saveconfigsuccess", [])
+                    continue
+
                     save_path = params[0]
 
                     file = self.check_for_unexpected(
@@ -179,6 +199,7 @@ class SpecCompyController:
                     if found_unexpected == True:
                         time.sleep(2)
                     self.send("donelookingforunexpected", [])
+
 
                     basename = params[1]
                     startnum = params[2]
@@ -215,9 +236,11 @@ class SpecCompyController:
                 elif cmd == "wr":
                     if self.spec_controller.save_dir == "":
                         self.send("noconfig", [])
+                        print("noconfig")
                         continue
                     if self.spec_controller.numspectra is None:
                         self.send("nonumspectra", [])
+                        print("nonumspectectra")
                         continue
 
                     if self.computer == "old":
@@ -338,8 +361,6 @@ class SpecCompyController:
                         try:
                             self.process_controller.process(input_path, temp_output_path, csv_name)
                         except Exception as e:
-                            print("error processing!")
-
                             self.process_controller.reset()
                             self.send("processerror", [])
                             traceback.print_exc()
@@ -442,6 +463,8 @@ class SpecCompyController:
                             self.send("processerrorwropt", [])
 
                 elif "instrumentconfig" in cmd:
+
+
                     instrument_config_num = params[0]
                     try:
                         self.spec_controller.instrument_config(instrument_config_num)
@@ -531,7 +554,6 @@ class SpecCompyController:
 
                 # make a directory
                 elif cmd == "mkdir":
-                    print("make a directory")
                     try:
                         print(params[0])
                         os.makedirs(params[0])
@@ -540,14 +562,11 @@ class SpecCompyController:
                             if "\\".join(params[0].split("\\")[:-1]) == self.spec_controller.save_dir:
                                 expected = params[0].split(self.spec_controller.save_dir)[1].split("\\")[1]
                                 self.spec_controller.hopefully_saved_files.append(expected)
-
                         self.send("mkdirsuccess", [])
                     except (FileExistsError):
-
                         self.send("mkdirfailedfileexists", [])
 
                     except (PermissionError):
-
                         self.send("mkdirfailedpermission", [])
                     except:
 
@@ -578,12 +597,12 @@ class SpecCompyController:
 
     def filename_to_cmd(self, filename):
         cmd = filename.split("&")[0]
-        if (
-            "listdir" not in cmd and "listcontents" not in cmd
-        ):  # For listdir, we need to remember the cmd number sent over - the control compy
-            # will be watching for an exact filename match.
-            while cmd[-1] in "1234567890":
-                cmd = cmd[0:-1]
+        # if (
+        #     "listdir" not in cmd and "listcontents" not in cmd
+        # ):  # For listdir, we need to remember the cmd number sent over - the control compy
+        #     # will be watching for an exact filename match.
+        #     while cmd[-1] in "1234567890":
+        #         cmd = cmd[0:-1]
         params = filename.split("&")[1:]
         i = 0
         for param in params:

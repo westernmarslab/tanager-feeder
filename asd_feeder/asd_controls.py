@@ -1,6 +1,7 @@
 from pywinauto import Application
 from pywinauto import keyboard
 from pywinauto import findwindows
+import pywintypes
 import pywinauto
 import warnings
 import pyautogui
@@ -145,7 +146,9 @@ class RS3Controller:
             return True
 
     def take_spectrum(self, filename):
-        self.spec.set_focus()
+        focused = try_set_focus(self.spec)
+        if not focused:
+            return False
         time.sleep(1)
         pyautogui.press("space")
 
@@ -160,7 +163,10 @@ class RS3Controller:
             int(self.numspectra) < 100
         ):  # WR often fails for small numbers of spectra, I think maybe because it hasn't finished catching up after optimizing?
             time.sleep(2)
-        self.spec.set_focus()
+        focused = try_set_focus(self.spec)
+        if not focused:
+            self.wr_failure = True
+            return
         keyboard.send_keys("{F4}")
         start_timeout = 10
         t = 0
@@ -202,7 +208,9 @@ class RS3Controller:
     # point you are ready to take a spectrum.
     def optimize(self):
         self.opt_complete = False
-        self.spec.set_focus()
+        focused = try_set_focus(self.spec)
+        if not focused:
+            return False
         keyboard.send_keys("^O")
 
         started = False
@@ -265,6 +273,7 @@ class RS3Controller:
         self.opt_complete = True
 
     def instrument_config(self, numspectra):
+        return True #TODO: take this out
         pauseafter = False
         if self.numspectra == None or int(self.numspectra) < 20 or True:
             pauseafter = True
@@ -287,7 +296,10 @@ class RS3Controller:
 
         config.Edit3.set_edit_text(str(numspectra))  # probably done twice to set numspectra for wr and taking spectra.
         config.Edit.set_edit_text(str(numspectra))
-        config.set_focus()
+        focused = try_set_focus(config)
+        if not focused:
+            self.failed_to_open = True
+            return
         config.ThunderRT6PictureBoxDC.click_input()
         if pauseafter:
             time.sleep(2)
@@ -320,7 +332,11 @@ class RS3Controller:
         save.Edit5.set_edit_text(base)
         save.Edit4.set_edit_text(startnum)
 
-        save.set_focus()
+        focused = try_set_focus(save)
+        if not focused:
+            print("ERROR: Failed to set focus on save dialog")
+            raise Exception
+            return
         okfound = False
         controls = [save.ThunderRT6PictureBoxDC3, save.ThunderRT6PictureBoxDC2, save.ThunderRT6PictureBox]
         t = 15
@@ -648,10 +664,17 @@ def wait_for_window(app, title, timeout=5):
 
 
 def find_image(image, rect=None, loc=None):
-
     if rect != None:
         screenshot = pyautogui.screenshot(region=(rect.left, rect.top, rect.width(), rect.height()))
     else:
         screenshot = pyautogui.screenshot(region=loc)
     location = pyautogui.locate(image, screenshot)
     return location
+
+def try_set_focus(target):
+    try:
+        target.set_focus()
+        return True
+    except pywintypes.error as e:
+        return False
+
