@@ -85,9 +85,8 @@ class SpecListener(Listener):
 
             elif "lostconnection" in cmd:
                 if self.alert_lostconnection:
-                    print("Spec read command: lostconnection")
                     self.alert_lostconnection = False
-
+                    self.controller.freeze()
                     buttons = {
                         "retry": {
                             self.set_alert_lostconnection: [True],
@@ -105,7 +104,6 @@ class SpecListener(Listener):
                         button_width=15,
                         width=600,
                     )
-                    # TODO: confirm try/except block wasn't needed.
 
             elif "unexpectedfile" in cmd:
                 if self.new_dialogs:

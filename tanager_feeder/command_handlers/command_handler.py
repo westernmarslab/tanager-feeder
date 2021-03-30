@@ -77,7 +77,7 @@ class CommandHandler:
         log_string: Optional[str] = None,
         retry: bool = True,
         dialog: bool = True,
-        dialog_string: str = "Error: Operation timed out",
+        dialog_string: str = "Error: Operation timed out.",
     ):
         if self.text_only:
             self.controller.script_failed = True

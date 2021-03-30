@@ -48,11 +48,17 @@ class WhiteReferenceHandler(CommandHandler):
                             "Error: Failed to take white reference. Restarting RS3 and retrying."
                         )
                         self.controller.queue.insert(0, {self.controller.restart_rs3: []})
+                    elif self.attempt == 2:
+                        self.controller.white_reference_attempt += 1
+                        self.controller.log(
+                            f"Error: Failed to take white reference. Restarting spectrometer computer and retrying."
+                        )
+                        self.controller.queue.insert(0, {self.controller.restart_computer: []})
                     else:
                         self.controller.white_reference_attempt += 1
                         self.controller.log(
                             f"Error: Failed to take white reference. Restarting spectrometer computer and retrying"
-                            f" ({self.controller.white_reference_attempt-2})."
+                            f" ({self.controller.white_reference_attempt-3})."
                         )
                         self.controller.queue.insert(0, {self.controller.restart_computer: []})
                     self.controller.next_in_queue()
@@ -60,12 +66,6 @@ class WhiteReferenceHandler(CommandHandler):
                     self.interrupt("Error: Failed to take white reference.\n\nPaused.", retry=True)
                     self.wait_dialog.top.geometry("376x175")
                     self.controller.log("Error: Failed to take white reference.")
-                # elif not self.cancel:
-                #     self.interrupt("Error: Failed to take white reference.", retry=True)
-                #     utils.set_text(
-                #         self.controller.sample_label_entries[self.controller.current_sample_gui_index],
-                #         self.controller.current_label,
-                #     )
                 else:  # You can't retry if you already clicked cancel because we already cleared out the queue
                     self.interrupt("Error: Failed to take white reference.\n\nData acquisition canceled.", retry=False)
                     self.wait_dialog.top.geometry("376x175")

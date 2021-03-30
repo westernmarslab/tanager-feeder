@@ -23,5 +23,9 @@ class RestartRS3Handler(CommandHandler):
 
         self.timeout()
 
+    def timeout(self):
+        super().timeout()
+        self.controller.white_reference_attempt = 0
+
     def success(self):
         super().success()

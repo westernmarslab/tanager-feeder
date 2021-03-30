@@ -156,6 +156,7 @@ class Controller(utils.ControllerType):
         self.script_failed = False
         self.script_running = False
         self.text_only = False  # for running scripts.
+        self.frozen = False
 
         self.white_referencing = False
         self.white_reference_attempt = 0
@@ -1251,6 +1252,8 @@ class Controller(utils.ControllerType):
     # Action will be either wr, take_spectrum, or opt (manual mode) OR it might just be 'acquire' (automatic mode)
     # For any of these things, we need to validate input.
     def acquire(self, override: bool = False, setup_complete: bool = False, action: Any = None, garbage: bool = False):
+        if not self.frozen:
+            self.freeze()
         # pylint: disable = comparison-with-callable
         if not setup_complete:
             # Make sure basenum entry has the right number of digits. It is already guaranteed to have no more digits
@@ -1890,8 +1893,8 @@ class Controller(utils.ControllerType):
         # the spec compy we won't have to do setup things agian.
         self.acquire(override=False, setup_complete=False, action=self.opt)
 
-    # called when user clicks wr button. No different than wr() except we clear out the queue first just in case there
-    # is something leftover hanging out in there.
+    # called when user clicks wr button. No different than wr() except we freeze buttons and clear out the queue first
+    # just in case there is something leftover hanging out in there.
     def wr_button_cmd(self) -> None:
         self.queue = []
         self.queue.append(
@@ -2757,6 +2760,7 @@ class Controller(utils.ControllerType):
         self.filemenu.entryconfig(0, state=DISABLED)
         self.filemenu.entryconfig(1, state=DISABLED)
         self.console.console_entry.configure(state="disabled")
+        self.frozen = True
 
     def unfreeze(self):
         self.console.console_entry.configure(state="normal")
@@ -2797,6 +2801,8 @@ class Controller(utils.ControllerType):
             self.add_sample_button.configure(state="disabled")
             for pos_menu in self.pos_menus:
                 pos_menu.configure(state="disabled")
+
+        self.frozen = False
 
     def log(self, text: str, newline: Optional[bool] = True):
         self.console.log(text, newline)
