@@ -594,7 +594,8 @@ class SpecCompyController:
     def send(self, cmd, params):
         message = self.cmd_to_filename(cmd, params)
         sent = self.client.send(message)
-        while not sent:
+        # the lostconnection message will get resent anyway, no need to clog up lanes by retrying here.
+        while not sent and message != "lostconnection":
             print("Failed to send message, retrying.")
             print(message)
             sent = self.client.send(message)

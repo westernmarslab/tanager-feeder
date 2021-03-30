@@ -18,7 +18,7 @@ class RestartComputerHandler(CommandHandler):
             if "restarting" in self.listener.queue:
                 self.listener.queue.remove("restarting")
                 time.sleep(30)
-                t = 60
+                t = 120
                 while t > 0:
                     t -= 3
                     connected = self.connection_checker.check_connection(timeout=3, show_dialog=False)
@@ -34,7 +34,6 @@ class RestartComputerHandler(CommandHandler):
             time.sleep(utils.INTERVAL)
             self.timeout_s -= utils.INTERVAL
 
-        print("compy restart timeout!")
         self.timeout()
 
     def timeout(self):
