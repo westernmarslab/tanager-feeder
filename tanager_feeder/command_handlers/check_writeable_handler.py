@@ -23,6 +23,7 @@ class CheckWriteableHandler(CommandHandler):
             self.timeout_s -= utils.INTERVAL
 
         print("timed out while checking if writeable")
+        print(self.listener.queue)
         self.timeout(
             "Error: Operation timed out while checking write permissions."
         )

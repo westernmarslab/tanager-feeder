@@ -593,7 +593,12 @@ class SpecCompyController:
 
     def send(self, cmd, params):
         message = self.cmd_to_filename(cmd, params)
-        self.client.send(message)
+        sent = self.client.send(message)
+        while not sent:
+            print("Failed to send message, retrying.")
+            print(message)
+            sent = self.client.send(message)
+
 
     def filename_to_cmd(self, filename):
         cmd = filename.split("&")[0]
