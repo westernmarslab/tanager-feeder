@@ -5,8 +5,7 @@ from tanager_feeder import utils
 
 
 class WhiteReferenceHandler(CommandHandler):
-    def __init__(
-        self, controller, title: str = "White referencing...", label: str = "White referencing..."):
+    def __init__(self, controller, title: str = "White referencing...", label: str = "White referencing..."):
 
         timeout_s: int = controller.spec_config_count / 9 + 40 + utils.BUFFER
         self.listener = controller.spec_listener
@@ -44,9 +43,7 @@ class WhiteReferenceHandler(CommandHandler):
                         self.controller.log("Error: Failed to take white reference. Retrying.")
                     elif self.attempt == 1:
                         self.controller.white_reference_attempt = 2
-                        self.controller.log(
-                            "Error: Failed to take white reference. Restarting RS3 and retrying."
-                        )
+                        self.controller.log("Error: Failed to take white reference. Restarting RS3 and retrying.")
                         self.controller.queue.insert(0, {self.controller.restart_rs3: []})
                     elif self.attempt == 2:
                         self.controller.white_reference_attempt += 1

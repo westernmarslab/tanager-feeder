@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
-import numpy as np
 import matplotlib as mpl
 import matplotlib.cm as cm
+import numpy as np
 
 from tanager_feeder.utils import cos, sin
 
@@ -10,7 +10,8 @@ class HemispherePlotter:
     def __init__(self):
         pass
 
-    def plot(self, geoms, data, incidence, sample_name, data_label):
+    @staticmethod
+    def plot(geoms, data, incidence, sample_name, data_label):
         offset = 0
         if np.min(data) < 0:
             offset = -1 * 4 * np.min(data)
@@ -96,8 +97,9 @@ class HemispherePlotter:
                     z[-1].append(None)
                     r[-1].append(None)
 
-        for j in range(len(r)):
-            for k in range(len(r[j])):
+        # if values are missing, average nearby values to estimate.
+        for j, val_list in enumerate(r):
+            for k, val in enumerate(val_list):
                 if r[j][k] is None:
                     close_rs = []
                     search_index = j
@@ -138,6 +140,8 @@ class HemispherePlotter:
         y = np.array(y)
         z = np.array(z)
 
+        # For some reason pylint doesn't think plt.cm has a member 'jet'
+        # pylint: disable = no-member
         jet = plt.cm.jet
         colors = []
         num_az = len(winnowed_az)
@@ -180,7 +184,7 @@ class HemispherePlotter:
         ax.plot3D(xline, yline, zline, "darkorange", linewidth=4, zorder=0)
 
         # Plot the surface
-        surf = ax.plot_surface(x, y, z, linewidth=1, alpha=1, facecolors=colors, zorder=100)
+        ax.plot_surface(x, y, z, linewidth=1, alpha=1, facecolors=colors, zorder=100)
         ax.scatter(scatter_x, scatter_y, scatter_z, s=1, c="black", zorder=200)
 
         ax.grid(False)

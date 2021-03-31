@@ -1,130 +1,159 @@
+from tkinter import (
+    Entry,
+    Button,
+    Label,
+    Frame,
+    BOTH,
+    RIGHT,
+    LEFT,
+)
 
-        def open_options(self, tab, current_title):
+from tanager_feeder.dialogs.dialog import Dialog
+from tanager_feeder.dialogs.error_dialog import ErrorDialog
+from tanager_feeder import utils
 
-            def select_tab():
-                self.view_notebook.select(tab.top)
+class SimplePlotSettingsManager:
+    def __init__(self, controller: utils.ControllerType):
+        self.controller = controller
+        self.view_notebook = controller.view_notebook
+        self.tk_format = utils.TkFormat(controller.config_info)
 
-            buttons = {
-                'ok': {
-                    select_tab: [],
-                    lambda: tab.set_title(self.new_plot_title_entry.get()): []
-                }
+        self.plot_options_dialog = None
+        self.new_plot_title_entry = None
+        self.tab = None
+        self.left_zoom_entry = None
+        self.right_zoom_entry = None
+        self.left_zoom_entry2 = None
+        self.right_zoom_entry2 = None
+        self.left_zoom_entry_z = None
+        self.right_zoom_entry_z = None
+    
+    def show(self, tab, current_title):
+        self.tab = tab
+        buttons = {
+            'ok': {
+                self.select_tab: [],
+                lambda: tab.set_title(self.new_plot_title_entry.get()): []
             }
+        }
 
-            def apply_x():
-                self.view_notebook.select(tab.top)
+        self.plot_options_dialog = Dialog(self, 'Plot Options', '\nPlot title:', buttons=buttons)
+        self.new_plot_title_entry = Entry(self.plot_options_dialog.top, width=20, bd=self.tk_format.bd,
+                                          bg=self.tk_format.entry_background, selectbackground=self.tk_format.selectbackground,
+                                          selectforeground=self.tk_format.selectforeground)
+        self.new_plot_title_entry.insert(0, current_title)
+        self.new_plot_title_entry.pack()
 
-                try:
-                    x1 = float(self.left_zoom_entry.get())
-                    x2 = float(self.right_zoom_entry.get())
-                    tab.adjust_x(x1, x2)
-                except:
-                    ErrorDialog(self, title='Invalid Zoom Range',
-                                label='Error: Invalid x limits: ' + self.left_zoom_entry.get() + ', ' + self.right_zoom_entry.get())
+        outer_outer_zoom_frame = Frame(self.plot_options_dialog.top, bg=self.tk_format.bg, padx=self.tk_format.padx, pady=15)
+        outer_outer_zoom_frame.pack(expand=True, fill=BOTH)
 
-            def apply_y():
-                self.view_notebook.select(tab.top)
-                try:
-                    y1 = float(self.left_zoom_entry2.get())
-                    y2 = float(self.right_zoom_entry2.get())
-                    tab.adjust_y(y1, y2)
-                except Exception as e:
-                    print(e)
-                    ErrorDialog(self, title='Invalid Zoom Range',
-                                label='Error! Invalid y limits: ' + self.left_zoom_entry2.get() + ', ' + self.right_zoom_entry2.get())
+        zoom_title_frame = Frame(outer_outer_zoom_frame, bg=self.tk_format.bg)
+        zoom_title_frame.pack(pady=(5, 10))
+        zoom_title_label = Label(zoom_title_frame, text='Adjust plot x and y limits:', bg=self.tk_format.bg,
+                                      fg=self.tk_format.textcolor)
+        zoom_title_label.pack(side=LEFT, pady=(0, 4))
 
-            def apply_z():
-                self.view_notebook.select(tab.top)
+        outer_zoom_frame = Frame(outer_outer_zoom_frame, bg=self.tk_format.bg, padx=self.tk_format.padx)
+        outer_zoom_frame.pack(expand=True, fill=BOTH, pady=(0, 10))
+        zoom_frame = Frame(outer_zoom_frame, bg=self.tk_format.bg, padx=self.tk_format.padx)
+        zoom_frame.pack()
 
-                try:
-                    z1 = float(self.left_zoom_entry_z.get())
-                    z2 = float(self.right_zoom_entry_z.get())
-                    tab.adjust_z(z1, z2)
-                except Exception as e:
-                    print(e)
-                    ErrorDialog(self, title='Invalid Zoom Range',
-                                label='Error: Invalid z limits: ' + self.left_zoom_entry.get() + ', ' + self.right_zoom_entry.get())
+        zoom_label = Label(zoom_frame, text='x1:', bg=self.tk_format.bg, fg=self.tk_format.textcolor)
+        self.left_zoom_entry = Entry(zoom_frame, width=7, bd=self.tk_format.bd, bg=self.tk_format.entry_background,
+                                     selectbackground=self.tk_format.selectbackground, selectforeground=self.tk_format.selectforeground)
+        zoom_label2 = Label(zoom_frame, text='x2:', bg=self.tk_format.bg, fg=self.tk_format.textcolor)
+        self.right_zoom_entry = Entry(zoom_frame, width=7, bd=self.tk_format.bd, bg=self.tk_format.entry_background,
+                                      selectbackground=self.tk_format.selectbackground,
+                                      selectforeground=self.tk_format.selectforeground)
+        zoom_button = Button(zoom_frame, text='Apply', command=self.apply_x, width=7, fg=self.tk_format.buttontextcolor,
+                                  bg=self.tk_format.buttonbackgroundcolor, bd=self.tk_format.bd)
+        zoom_button.config(fg=self.tk_format.buttontextcolor, highlightbackground=self.tk_format.highlightbackgroundcolor,
+                                bg=self.tk_format.buttonbackgroundcolor)
+        zoom_button.pack(side=RIGHT, padx=(10, 10))
+        self.right_zoom_entry.pack(side=RIGHT, padx=self.tk_format.padx)
+        zoom_label2.pack(side=RIGHT, padx=self.tk_format.padx)
+        self.left_zoom_entry.pack(side=RIGHT, padx=self.tk_format.padx)
+        zoom_label.pack(side=RIGHT, padx=self.tk_format.padx)
 
-            self.plot_options_dialog = Dialog(self, 'Plot Options', '\nPlot title:', buttons=buttons)
-            self.new_plot_title_entry = Entry(self.plot_options_dialog.top, width=20, bd=self.bd,
-                                              bg=self.entry_background, selectbackground=self.selectbackground,
-                                              selectforeground=self.selectforeground)
-            self.new_plot_title_entry.insert(0, current_title)
-            self.new_plot_title_entry.pack()
+        outer_zoom_frame2 = Frame(outer_outer_zoom_frame, bg=self.tk_format.bg, padx=self.tk_format.padx)
+        outer_zoom_frame2.pack(expand=True, fill=BOTH, pady=(0, 10))
+        zoom_frame2 = Frame(outer_zoom_frame2, bg=self.tk_format.bg, padx=self.tk_format.padx)
+        zoom_frame2.pack()
+        zoom_label3 = Label(zoom_frame2, text='y1:', bg=self.tk_format.bg, fg=self.tk_format.textcolor)
+        self.left_zoom_entry2 = Entry(zoom_frame2, width=7, bd=self.tk_format.bd, bg=self.tk_format.entry_background,
+                                      selectbackground=self.tk_format.selectbackground,
+                                      selectforeground=self.tk_format.selectforeground)
+        zoom_label4 = Label(zoom_frame2, text='y2:', bg=self.tk_format.bg, fg=self.tk_format.textcolor)
+        self.right_zoom_entry2 = Entry(zoom_frame2, width=7, bd=self.tk_format.bd, bg=self.tk_format.entry_background,
+                                       selectbackground=self.tk_format.selectbackground,
+                                       selectforeground=self.tk_format.selectforeground)
+        zoom_button2 = Button(zoom_frame2, text='Apply', command=self.apply_y, width=7,
+                                   fg=self.tk_format.buttontextcolor, bg=self.tk_format.buttonbackgroundcolor, bd=self.tk_format.bd)
+        zoom_button2.config(fg=self.tk_format.buttontextcolor, highlightbackground=self.tk_format.highlightbackgroundcolor,
+                                 bg=self.tk_format.buttonbackgroundcolor)
 
-            self.outer_outer_zoom_frame = Frame(self.plot_options_dialog.top, bg=self.bg, padx=self.padx, pady=15)
-            self.outer_outer_zoom_frame.pack(expand=True, fill=BOTH)
+        zoom_button2.pack(side=RIGHT, padx=(10, 10))
+        self.right_zoom_entry2.pack(side=RIGHT, padx=self.tk_format.padx)
+        zoom_label4.pack(side=RIGHT, padx=self.tk_format.padx)
+        self.left_zoom_entry2.pack(side=RIGHT, padx=self.tk_format.padx)
+        zoom_label3.pack(side=RIGHT, padx=self.tk_format.padx)
 
-            self.zoom_title_frame = Frame(self.outer_outer_zoom_frame, bg=self.bg)
-            self.zoom_title_frame.pack(pady=(5, 10))
-            self.zoom_title_label = Label(self.zoom_title_frame, text='Adjust plot x and y limits:', bg=self.bg,
-                                          fg=self.textcolor)
-            self.zoom_title_label.pack(side=LEFT, pady=(0, 4))
+        outer_zoom_frame_z = Frame(outer_outer_zoom_frame, bg=self.tk_format.bg, padx=self.tk_format.padx)
+        outer_zoom_frame_z.pack(expand=True, fill=BOTH, pady=(0, 10))
+        zoom_frame_z = Frame(outer_zoom_frame_z, bg=self.tk_format.bg, padx=self.tk_format.padx)
+        zoom_frame_z.pack()
+        zoom_label_z1 = Label(zoom_frame_z, text='z1:', bg=self.tk_format.bg, fg=self.tk_format.textcolor)
+        self.left_zoom_entry_z = Entry(zoom_frame_z, width=7, bd=self.tk_format.bd, bg=self.tk_format.entry_background,
+                                       selectbackground=self.tk_format.selectbackground,
+                                       selectforeground=self.tk_format.selectforeground)
+        zoom_label_z2 = Label(zoom_frame_z, text='z2:', bg=self.tk_format.bg, fg=self.tk_format.textcolor)
+        self.right_zoom_entry_z = Entry(zoom_frame_z, width=7, bd=self.tk_format.bd, bg=self.tk_format.entry_background,
+                                        selectbackground=self.tk_format.selectbackground,
+                                        selectforeground=self.tk_format.selectforeground)
+        zoom_button_z = Button(zoom_frame_z, text='Apply', command=self.apply_z, width=7,
+                                    fg=self.tk_format.buttontextcolor, bg=self.tk_format.buttonbackgroundcolor, bd=self.tk_format.bd)
+        zoom_button_z.config(fg=self.tk_format.buttontextcolor, highlightbackground=self.tk_format.highlightbackgroundcolor,
+                                  bg=self.tk_format.buttonbackgroundcolor)
 
-            self.outer_zoom_frame = Frame(self.outer_outer_zoom_frame, bg=self.bg, padx=self.padx)
-            self.outer_zoom_frame.pack(expand=True, fill=BOTH, pady=(0, 10))
-            self.zoom_frame = Frame(self.outer_zoom_frame, bg=self.bg, padx=self.padx)
-            self.zoom_frame.pack()
+        zoom_button_z.pack(side=RIGHT, padx=(10, 10))
+        self.right_zoom_entry_z.pack(side=RIGHT, padx=self.tk_format.padx)
+        zoom_label_z2.pack(side=RIGHT, padx=self.tk_format.padx)
+        self.left_zoom_entry_z.pack(side=RIGHT, padx=self.tk_format.padx)
+        zoom_label_z1.pack(side=RIGHT, padx=self.tk_format.padx)
+        
+    def select_tab(self):
+        self.view_notebook.select(self.tab.top)
 
-            self.zoom_label = Label(self.zoom_frame, text='x1:', bg=self.bg, fg=self.textcolor)
-            self.left_zoom_entry = Entry(self.zoom_frame, width=7, bd=self.bd, bg=self.entry_background,
-                                         selectbackground=self.selectbackground, selectforeground=self.selectforeground)
-            self.zoom_label2 = Label(self.zoom_frame, text='x2:', bg=self.bg, fg=self.textcolor)
-            self.right_zoom_entry = Entry(self.zoom_frame, width=7, bd=self.bd, bg=self.entry_background,
-                                          selectbackground=self.selectbackground,
-                                          selectforeground=self.selectforeground)
-            self.zoom_button = Button(self.zoom_frame, text='Apply', command=apply_x, width=7, fg=self.buttontextcolor,
-                                      bg=self.buttonbackgroundcolor, bd=self.bd)
-            self.zoom_button.config(fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor,
-                                    bg=self.buttonbackgroundcolor)
-            self.zoom_button.pack(side=RIGHT, padx=(10, 10))
-            self.right_zoom_entry.pack(side=RIGHT, padx=self.padx)
-            self.zoom_label2.pack(side=RIGHT, padx=self.padx)
-            self.left_zoom_entry.pack(side=RIGHT, padx=self.padx)
-            self.zoom_label.pack(side=RIGHT, padx=self.padx)
+    def apply_x(self):
+        self.view_notebook.select(self.tab.top)
 
-            self.outer_zoom_frame2 = Frame(self.outer_outer_zoom_frame, bg=self.bg, padx=self.padx)
-            self.outer_zoom_frame2.pack(expand=True, fill=BOTH, pady=(0, 10))
-            self.zoom_frame2 = Frame(self.outer_zoom_frame2, bg=self.bg, padx=self.padx)
-            self.zoom_frame2.pack()
-            self.zoom_label3 = Label(self.zoom_frame2, text='y1:', bg=self.bg, fg=self.textcolor)
-            self.left_zoom_entry2 = Entry(self.zoom_frame2, width=7, bd=self.bd, bg=self.entry_background,
-                                          selectbackground=self.selectbackground,
-                                          selectforeground=self.selectforeground)
-            self.zoom_label4 = Label(self.zoom_frame2, text='y2:', bg=self.bg, fg=self.textcolor)
-            self.right_zoom_entry2 = Entry(self.zoom_frame2, width=7, bd=self.bd, bg=self.entry_background,
-                                           selectbackground=self.selectbackground,
-                                           selectforeground=self.selectforeground)
-            self.zoom_button2 = Button(self.zoom_frame2, text='Apply', command=apply_y, width=7,
-                                       fg=self.buttontextcolor, bg=self.buttonbackgroundcolor, bd=self.bd)
-            self.zoom_button2.config(fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor,
-                                     bg=self.buttonbackgroundcolor)
+        try:
+            x1 = float(self.left_zoom_entry.get())
+            x2 = float(self.right_zoom_entry.get())
+            self.tab.adjust_x(x1, x2)
+        except:
+            ErrorDialog(self, title='Invalid Zoom Range',
+                        label='Error: Invalid x limits: ' + self.left_zoom_entry.get() + ', ' + self.right_zoom_entry.get())
 
-            self.zoom_button2.pack(side=RIGHT, padx=(10, 10))
-            self.right_zoom_entry2.pack(side=RIGHT, padx=self.padx)
-            self.zoom_label4.pack(side=RIGHT, padx=self.padx)
-            self.left_zoom_entry2.pack(side=RIGHT, padx=self.padx)
-            self.zoom_label3.pack(side=RIGHT, padx=self.padx)
+    def apply_y(self):
+        self.view_notebook.select(self.tab.top)
+        try:
+            y1 = float(self.left_zoom_entry2.get())
+            y2 = float(self.right_zoom_entry2.get())
+            self.tab.adjust_y(y1, y2)
+        except Exception as e:
+            print(e)
+            ErrorDialog(self, title='Invalid Zoom Range',
+                        label='Error! Invalid y limits: ' + self.left_zoom_entry2.get() + ', ' + self.right_zoom_entry2.get())
 
-            self.outer_zoom_frame_z = Frame(self.outer_outer_zoom_frame, bg=self.bg, padx=self.padx)
-            self.outer_zoom_frame_z.pack(expand=True, fill=BOTH, pady=(0, 10))
-            self.zoom_frame_z = Frame(self.outer_zoom_frame_z, bg=self.bg, padx=self.padx)
-            self.zoom_frame_z.pack()
-            self.zoom_label_z1 = Label(self.zoom_frame_z, text='z1:', bg=self.bg, fg=self.textcolor)
-            self.left_zoom_entry_z = Entry(self.zoom_frame_z, width=7, bd=self.bd, bg=self.entry_background,
-                                           selectbackground=self.selectbackground,
-                                           selectforeground=self.selectforeground)
-            self.zoom_label_z2 = Label(self.zoom_frame_z, text='z2:', bg=self.bg, fg=self.textcolor)
-            self.right_zoom_entry_z = Entry(self.zoom_frame_z, width=7, bd=self.bd, bg=self.entry_background,
-                                            selectbackground=self.selectbackground,
-                                            selectforeground=self.selectforeground)
-            self.zoom_button_z = Button(self.zoom_frame_z, text='Apply', command=apply_z, width=7,
-                                        fg=self.buttontextcolor, bg=self.buttonbackgroundcolor, bd=self.bd)
-            self.zoom_button_z.config(fg=self.buttontextcolor, highlightbackground=self.highlightbackgroundcolor,
-                                      bg=self.buttonbackgroundcolor)
+    def apply_z(self):
+        self.view_notebook.select(self.tab.top)
 
-            self.zoom_button_z.pack(side=RIGHT, padx=(10, 10))
-            self.right_zoom_entry_z.pack(side=RIGHT, padx=self.padx)
-            self.zoom_label_z2.pack(side=RIGHT, padx=self.padx)
-            self.left_zoom_entry_z.pack(side=RIGHT, padx=self.padx)
-            self.zoom_label_z1.pack(side=RIGHT, padx=self.padx)
+        try:
+            z1 = float(self.left_zoom_entry_z.get())
+            z2 = float(self.right_zoom_entry_z.get())
+            self.tab.adjust_z(z1, z2)
+        except Exception as e:
+            print(e)
+            ErrorDialog(self, title='Invalid Zoom Range',
+                        label='Error: Invalid z limits: ' + self.left_zoom_entry.get() + ', ' + self.right_zoom_entry.get())

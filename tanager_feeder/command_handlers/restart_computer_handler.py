@@ -6,11 +6,11 @@ from tanager_feeder import utils
 
 
 class RestartComputerHandler(CommandHandler):
-    def __init__(
-        self, controller, title: str = "Restarting...", label: str = "Restarting computer..."
-    ):
+    def __init__(self, controller, title: str = "Restarting...", label: str = "Restarting computer..."):
         self.listener = controller.spec_listener
-        self.connection_checker = SpecConnectionChecker(controller.connection_manager, controller.config_info, func=self.success)
+        self.connection_checker = SpecConnectionChecker(
+            controller.connection_manager, controller.config_info, func=self.success
+        )
         super().__init__(controller, title, label, timeout=10 + utils.BUFFER)
 
     def wait(self):
@@ -38,10 +38,13 @@ class RestartComputerHandler(CommandHandler):
 
     def timeout(self):
         self.controller.white_reference_attempt = 0
-        super().timeout(retry=False, dialog_string="Error: Timed out while trying\nto restart the spectrometer computer.")
+        super().timeout(
+            retry=False, dialog_string="Error: Timed out while trying\nto restart the spectrometer computer."
+        )
         self.wait_dialog.top.geometry("376x145")
-        connection_checker = SpecConnectionChecker(self.controller.connection_manager, self.controller.config_info,
-                                                   func=self.pass_function)
+        connection_checker = SpecConnectionChecker(
+            self.controller.connection_manager, self.controller.config_info, func=self.pass_function
+        )
         connection_checker.check_connection(timeout=3)
 
     def pass_function(self):

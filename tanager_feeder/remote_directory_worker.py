@@ -7,7 +7,7 @@ class RemoteDirectoryWorker:
     def __init__(self, spec_commander, listener):
         self.spec_commander = spec_commander
         self.listener = listener
-        self.timeout_s = 3*utils.BUFFER
+        self.timeout_s = 3 * utils.BUFFER
 
     def reset_timeout(self):
         self.timeout_s = utils.BUFFER

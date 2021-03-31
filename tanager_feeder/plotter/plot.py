@@ -26,7 +26,6 @@ class Plot:
         exclude_artifacts=False,
         draw=True,
     ):
-        pass
 
         self.plotter = plotter
         self.samples = samples

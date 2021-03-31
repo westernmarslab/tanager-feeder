@@ -30,7 +30,6 @@ class Tab:
         exclude_artifacts=False,
         exclude_specular=False,
         specularity_tolerance=None,
-        draw=False,
     ):
         self.hemisphere_plotter = HemispherePlotter()
         if geoms is None:
@@ -805,7 +804,7 @@ class Tab:
         self.contour_sample.data = {"all samples": {"i": [], "e": [], "delta R": []}}
         self.contour_sample.geoms = ["all samples"]
 
-        for j, sample in enumerate(self.samples):
+        for sample in self.samples:
             recip_sample = Sample(sample.name, sample.file, sample.title)
             for geom in sample.geoms:
                 i, e, az = utils.get_i_e_az(geom)
@@ -867,8 +866,8 @@ class Tab:
             self.recip_samples.append(recip_sample)
 
         for sample in self.recip_samples:
-            for label in sample.data:
-                if len(sample.data[label]["average reflectance"]) > 1:
+            for geom in sample.data:
+                if len(sample.data[geom]["average reflectance"]) > 1:
                     i, e, az = utils.get_i_e_az(geom)
                     g = utils.get_phase_angle(i, e, az)
 
@@ -1021,6 +1020,7 @@ class Tab:
 
     # not implemented
     def calculate_photometric_variability(self, left, right):
+        # pylint: disable = unreachable
         raise NotImplementedError
         left = float(left)
         right = float(right)

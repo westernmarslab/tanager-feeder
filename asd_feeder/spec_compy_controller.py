@@ -102,7 +102,6 @@ class SpecCompyController:
                             pass # This could happen if an autospec temp file was left hanging
                             # (created but not deleted) earlier.
                         os.rmdir(params[0] + "\\autospec_temp")
-                        print("sending response to checkwriteable")
                         self.send("yeswriteable", [])
                     except (NotADirectoryError, PermissionError, OSError) as e:
                         self.send("notwriteable", [])
@@ -488,7 +487,6 @@ class SpecCompyController:
                         print(source)
                     try:
                         with open(source, "r") as file:
-                            print("opened file")
                             data = file.readlines()
                             batch_size = 500
                             self.send(f"datatransferstarted{len(data)/500}", [])
@@ -522,7 +520,6 @@ class SpecCompyController:
                             for file in files:
                                 if os.path.isdir(dir + file) and file[0] != ".":
                                     message += "&" + file
-                            print("sending a response to listdir")
                             self.send(message, [])
                         except (PermissionError):
                             self.send("listdirfailedpermission", [])
@@ -569,7 +566,6 @@ class SpecCompyController:
                     except (PermissionError):
                         self.send("mkdirfailedpermission", [])
                     except:
-
                         self.send("mkdirfailed", [])
 
                 # Not implemented yet!

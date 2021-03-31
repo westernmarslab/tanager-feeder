@@ -113,7 +113,6 @@ class SpecListener(Listener):
                         label="There is an untracked file in the data directory.\nDoes this belong here?\n\n"
                         + params[0],
                     )
-                    # TODO: confirm try/except block wasn't needed.
                 else:
                     self.unexpected_files.append(params[0])
 

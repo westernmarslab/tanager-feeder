@@ -1,10 +1,16 @@
 import os
 import time
 from threading import Thread
-from tkinter.filedialog import askopenfilename
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
+
+
+# pylint: disable = not-callable
+# Get quite a number of false (I think) not callable errors.
+# pylint: disable = method-hidden
+# Dummy ControllerType used for type hinting leads to lots of pylint method-hidden warnings.
 
 import tkinter as tk
+from tkinter.filedialog import askopenfilename
 from tkinter import (
     Button,
     Frame,
@@ -26,7 +32,6 @@ from tkinter import (
     INSERT,
     TclError,
 )
-from typing import Optional
 
 import numpy as np
 
@@ -213,6 +218,8 @@ class Controller(utils.ControllerType):
             "Sample 5",
         ]  # All available positions. Does not change.
         self.taken_sample_positions = []  # Filled positions. Changes as samples are added and removed.
+        self.add_sample_button = None
+        self.add_geometry_button = None
 
         self.master = Tk()
         self.master.configure(background=self.tk_format.bg)
@@ -1022,7 +1029,7 @@ class Controller(utils.ControllerType):
     def plot_remote(self, filename: str) -> None:
         self.queue.insert(0, {self.plot_remote: [filename]})
         plot_loc = os.path.join(self.config_info.local_config_loc, "plot_temp.csv")
-        self.queue.insert(1, {self.plot_manager.plot: [plot_loc, False]})
+        self.queue.insert(1, {self.plot_manager.plot: [plot_loc]})
         self.spec_commander.transfer_data(filename)
         DataHandler(
             self,
@@ -1227,7 +1234,7 @@ class Controller(utils.ControllerType):
 
         # Requested save config is guaranteed to be valid because of input checks above.
         save_config_status = self.check_save_config()
-        if self.check_save_config() == "not_set":
+        if save_config_status == "not_set":
             self.complete_queue_item()
             self.queue.insert(0, nextaction)
             self.queue.insert(0, {self.set_save_config: []})
@@ -1626,7 +1633,6 @@ class Controller(utils.ControllerType):
         if unit == "angle":
             # First check whether we actually need to move at all.
             if next_az is None:
-                # TODO: confirm this shouldn't have a try/catch involved.
                 next_az = int(self.active_azimuth_entries[0].get())
 
             if next_az == self.science_az:  # No change in azimuth angle, no need to move
@@ -1851,7 +1857,8 @@ class Controller(utils.ControllerType):
             return False
         return True
 
-    def check_light_misses_arc(self, i, e, az, required_sep, print_me=False):
+    @staticmethod
+    def check_light_misses_arc(i, e, az, required_sep, print_me=False):
         # This is the azimuthal distance between the arc the light source travels
         # and the detector arm. -90 to 90 because i is negative.
         arm_bottom_az = az - 90
@@ -1931,6 +1938,7 @@ class Controller(utils.ControllerType):
         self.spec_commander.restart_computer()
         self.connection_manager.spec_offline = True
         RestartComputerHandler(self)
+
     def restart_rs3(self):
         self.spec_commander.restart_rs3()
         RestartRS3Handler(self)
@@ -2033,17 +2041,12 @@ class Controller(utils.ControllerType):
         ProcessHandler(self, os.path.join(output_directory, output_file))
 
     def finish_process(self, source_file, output_file) -> None:
-        print("FINISH PROCESSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS")
         self.spec_commander.transfer_data(source_file)
         DataHandler(
             self,
             destination=output_file,
         )
         return
-        # We're going to transfer the data file and log file to the final destination. To transfer the log file, first
-        # decide on a name to call it. This will be based on the dat file name. E.g. foo.csv would have foo_log.txt
-        # associated with it.
-        final_data_destination, final_log_destination = self.process_manager.finish_processing()
 
     # This gets called when the user clicks 'Edit plot' from the right-click menu on a plot.
     # Pops up a scrollable listbox with sample options.
@@ -2235,8 +2238,8 @@ class Controller(utils.ControllerType):
         self.control_frame.update()  # Configure scrollbar.
 
     def set_taken_sample_positions(self, *args):
-        # TODO: understand where these extra args are coming from
-        print(args)
+        # pylint: disable = unused-argument
+        # args contains a tuple of tkinter pyvars. e.g. ('PY_VAR39', '', 'w'). Not used.
         self.taken_sample_positions = []
         for var in self.sample_pos_vars:
             self.taken_sample_positions.append(var.get())
@@ -2500,7 +2503,6 @@ class Controller(utils.ControllerType):
         self.queue = []
 
     def set_individual_range(self, force=-1):
-        # TODO: save individually specified angles to config file
         if force == 0:
             self.range_frame.pack_forget()
             self.individual_angles_frame.pack()
@@ -2526,8 +2528,8 @@ class Controller(utils.ControllerType):
     #     self.output_filename_entry.icursor(pos)
 
     def validate_spec_save_dir(self, *args):
-        # TODO: understand where these extra args are coming from
-        print(args)
+        # pylint: disable = unused-argument
+        # args contains a tuple of tkinter pyvars. e.g. ('PY_VAR39', '', 'w'). Not used.
         pos = self.spec_save_dir_entry.index(INSERT)
         spec_save_dir = utils.rm_reserved_chars(self.spec_save_dir_entry.get())
         if len(spec_save_dir) < len(self.spec_save_dir_entry.get()):
@@ -2537,8 +2539,8 @@ class Controller(utils.ControllerType):
         self.spec_save_dir_entry.icursor(pos)
 
     def validate_basename(self, *args):
-        # TODO: understand where these extra args are coming from
-        print(args)
+        # pylint: disable = unused-argument
+        # args contains a tuple of tkinter pyvars. e.g. ('PY_VAR39', '', 'w'). Not used.
         pos = self.spec_basename_entry.index(INSERT)
         basename = utils.rm_reserved_chars(self.spec_basename_entry.get())
         basename = basename.strip("/").strip("\\")
@@ -2547,8 +2549,8 @@ class Controller(utils.ControllerType):
         self.spec_basename_entry.icursor(pos)
 
     def validate_startnum(self, *args):
-        # TODO: understand where these extra args are coming from
-        print(args)
+        # pylint: disable = unused-argument
+        # args contains a tuple of tkinter pyvars. e.g. ('PY_VAR39', '', 'w'). Not used.
         pos = self.spec_startnum_entry.index(INSERT)
         num = utils.numbers_only(self.spec_startnum_entry.get())
         if len(num) > self.config_info.num_len:
@@ -2749,5 +2751,3 @@ class Controller(utils.ControllerType):
 
     def log(self, text: str, newline: Optional[bool] = True):
         self.console.log(text, newline)
-
-    # TODO: Consider moving to a safe geometry on shutdown.

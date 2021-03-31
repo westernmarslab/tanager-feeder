@@ -52,9 +52,7 @@ class OptHandler(CommandHandler):
                         self.controller.log("Error: Failed to optimize instrument. Retrying.")
                     elif self.attempt == 1:
                         self.controller.opt_attempt = 2
-                        self.controller.log(
-                            "Error: Failed to optimize instrument. Restarting RS3 and retrying."
-                        )
+                        self.controller.log("Error: Failed to optimize instrument. Restarting RS3 and retrying.")
                         self.controller.queue.insert(0, {self.controller.restart_rs3: []})
                     elif self.attempt == 2:
                         self.controller.opt_attempt += 1

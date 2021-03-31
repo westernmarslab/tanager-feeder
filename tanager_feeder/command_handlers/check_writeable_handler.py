@@ -3,6 +3,7 @@ import time
 from tanager_feeder.command_handlers.command_handler import CommandHandler
 from tanager_feeder import utils
 
+
 class CheckWriteableHandler(CommandHandler):
     def __init__(self, controller, title: str = "Checking permissions...", label: str = "Checking permissions..."):
 
@@ -24,6 +25,4 @@ class CheckWriteableHandler(CommandHandler):
 
         print("timed out while checking if writeable")
         print(self.listener.queue)
-        self.timeout(
-            "Error: Operation timed out while checking write permissions."
-        )
+        self.timeout("Error: Operation timed out while checking write permissions.")
