@@ -60,12 +60,22 @@ class RS3Controller:
         self.interval = 0.25
 
         try:
-            # print(errortime)
-            self.app = Application().connect(path=RS3_loc)
+            self.app = Application().connect(path=self.RS3_loc)
         except:
             print("\tStarting RS³")
-            self.app = Application().start(RS3_loc)
+            self.app = Application().start(self.RS3_loc)
         print("\tConnected to RS3")
+        self.spec = None
+        self.spec_connected = False
+        self.spec = self.app.ThunderRT6Form
+        self.spec.draw_outline()
+        self.pid = self.app.process
+        self.menu = RS3Menu(self.app)
+
+    def restart(self):
+        print("Restarting RS³")
+        self.app.kill()
+        self.app = Application().start(self.RS3_loc)
         self.spec = None
         self.spec_connected = False
         self.spec = self.app.ThunderRT6Form

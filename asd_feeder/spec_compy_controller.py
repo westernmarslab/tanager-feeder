@@ -92,6 +92,10 @@ class SpecCompyController:
                     os.system("shutdown /r /t 1")
 
                 elif cmd == "restartrs3":
+                    try:
+                        self.spec_controller.restart()
+                    except:
+                        self.send("rs3restartfailed")
                     self.send("rs3restarted", [])
 
                 elif "checkwriteable" in cmd:  # Check whether you can write to a given directory
