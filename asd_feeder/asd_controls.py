@@ -413,48 +413,60 @@ class ViewSpecProController:
             pass
 
     def process(self, input_path, output_path, tsv_name):
+        print("hi!!")
         files = os.listdir(output_path)
         for file in files:
             if ".sco" in file:
-                os.remove(output_path + "\\" + file)
+                os.remove(os.path.join(output_path, file))
 
-        files_to_process = os.listdir(input_path)
+        files_to_process = os.listdir(input_path) # TODO: make this include only files with the right extension
+        files_to_remove = []
+        for j, file in enumerate(files_to_process):
+            # if not os.path.isfile(os.path.join(input_path, file)): #take the directories out
+            if os.path.isdir(os.path.join(input_path, file)):
+                files_to_remove.append(file)
+
+        for file in files_to_remove:
+            files_to_process.remove(file)
+
         #If we have over 50 files, do the processing in batches.
         num_batches = 1
         next_folder = os.path.join(os.path.join(input_path, f"tanager_batch_{num_batches}"))
+        self.safe_make_dir(next_folder)
         batch_folders = [next_folder]
         for j, file in enumerate(files_to_process):
-            if j > 0 and j % 10 == 0 and j != len(files_to_process)-1:
+            if j > 0 and j % 50 == 0 and j != len(files_to_process)-1:
                 num_batches += 1
-                next_folder = os.path.join(os.path.join(input_path, f"batch_{num_batches}"))
-                os.mkdir(next_folder)
+                next_folder = os.path.join(os.path.join(input_path, f"tanager_batch_{num_batches}"))
+                self.safe_make_dir(next_folder)
                 batch_folders.append(next_folder)
+                # shutil.copyfile(os.path.join(input_path, "test_data_1.tsv"), os.path.join(next_folder, "test_data_1.tsv"))
             source = os.path.join(input_path, file)
             destination = os.path.join(next_folder, file)
             shutil.copyfile(source, destination)
 
-        print("processing files")
+        print("Processing files")
         self.spec.set_focus()
         self.spec.menu_select("File -> Close")
 
-        for folder in batch_folders:
+        for j, folder in enumerate(batch_folders):
             self.open_files(folder)
             time.sleep(1)
             self.set_save_directory(folder)
             self.splice_correction()
             self.ascii_export(folder, tsv_name)
+            print(f"Processing batch {j} complete. Cleaning directory.")
+            self.spec.menu_select("File -> Close")
 
-        print("waiting!")
-        time.sleep(20)
+        self.concatenate_files(batch_folders, os.path.join(output_path, tsv_name))
+        self.clear_batch_folders(batch_folders)
 
-        self.concatenate_files(batch_folders, os.path.append(output_path, tsv_name))
+        print("Processing complete.")
 
-        print("Processing complete. Cleaning directory.")
-        self.spec.menu_select("File -> Close")
-        for folder in batch_folders:
-            os.removedirs(folder)
-
-        print("Finished.")
+    def safe_make_dir(self, dir):
+        if os.path.isdir(dir):
+            shutil.rmtree(dir)
+        os.mkdir(dir)
 
     def concatenate_files(self, batch_folders, destination):
         files_to_concatenate = []
@@ -462,7 +474,7 @@ class ViewSpecProController:
             files = os.listdir(folder)
             for file in files:
                 if ".tsv" in file:
-                    files_to_concatenate.append(file)
+                    files_to_concatenate.append(os.path.join(folder, file))
 
         all_data = []
         headers = ""
@@ -472,13 +484,23 @@ class ViewSpecProController:
             data = np.genfromtxt(
                 file, skip_header=1, dtype=float, delimiter="\t", encoding=None, deletechars=""
             )
-            print(data[0])
-            all_data.append(data[1:])
+            for k, row in enumerate(data):
+                if k == len(all_data):
+                    all_data.append(list(row))
+                else:
+                    all_data[k] = all_data[k] + list(row[1:])
 
         with open(destination, "w+") as file:
-            file.write(headers)
+            file.write(headers+"\n")
             for row in all_data:
-                file.write(row)
+                row = [str(j) for j in row]
+                file.write("\t".join(row)+"\n")
+
+        print("Batched data recombined.")
+
+    def clear_batch_folders(self, batch_folders):
+        for folder in batch_folders:
+            shutil.rmtree(folder)
 
 
     def open_files(self, path):
