@@ -177,13 +177,13 @@ class SpecCompyController:
                         self.send("failedtosavefile", [filename])
 
                 elif cmd == "saveconfig":
-                    self.spec_controller.save_dir = "test"
-                    self.spec_controller.basename = "test"
-                    self.spec_controller.nextnum = "test"
-                    self.spec_controller.numspectra = 20
-                    self.send("donelookingforunexpected", [])
-                    self.send("saveconfigsuccess", [])
-                    continue
+                    # self.spec_controller.save_dir = "test"
+                    # self.spec_controller.basename = "test"
+                    # self.spec_controller.nextnum = "test"
+                    # self.spec_controller.numspectra = 20
+                    # self.send("donelookingforunexpected", [])
+                    # self.send("saveconfigsuccess", [])
+                    # continue
 
                     save_path = params[0]
 

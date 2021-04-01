@@ -8,6 +8,7 @@ import pyautogui
 from pywinauto import mouse
 import time
 import os
+import shutil
 
 import numpy as np
 
@@ -85,7 +86,7 @@ class RS3Controller:
 
     def check_connectivity(self):
         try:
-            top_window = top = self.app.top_window()
+            top_window = self.app.top_window()
         except Exception as e:
             print("Cannot find top window")
             print(e)
@@ -283,7 +284,6 @@ class RS3Controller:
         self.opt_complete = True
 
     def instrument_config(self, numspectra):
-        return True #TODO: take this out
         pauseafter = False
         if self.numspectra == None or int(self.numspectra) < 20 or True:
             pauseafter = True
@@ -417,24 +417,69 @@ class ViewSpecProController:
         for file in files:
             if ".sco" in file:
                 os.remove(output_path + "\\" + file)
+
+        files_to_process = os.listdir(input_path)
+        #If we have over 50 files, do the processing in batches.
+        num_batches = 1
+        next_folder = os.path.join(os.path.join(input_path, f"tanager_batch_{num_batches}"))
+        batch_folders = [next_folder]
+        for j, file in enumerate(files_to_process):
+            if j > 0 and j % 10 == 0 and j != len(files_to_process)-1:
+                num_batches += 1
+                next_folder = os.path.join(os.path.join(input_path, f"batch_{num_batches}"))
+                os.mkdir(next_folder)
+                batch_folders.append(next_folder)
+            source = os.path.join(input_path, file)
+            destination = os.path.join(next_folder, file)
+            shutil.copyfile(source, destination)
+
         print("processing files")
         self.spec.set_focus()
         self.spec.menu_select("File -> Close")
-        self.open_files(input_path)
-        time.sleep(1)
 
-        self.set_save_directory(output_path)
-        self.splice_correction()
-        self.ascii_export(output_path, tsv_name)
+        for folder in batch_folders:
+            self.open_files(folder)
+            time.sleep(1)
+            self.set_save_directory(folder)
+            self.splice_correction()
+            self.ascii_export(folder, tsv_name)
+
+        print("waiting!")
+        time.sleep(20)
+
+        self.concatenate_files(batch_folders, os.path.append(output_path, tsv_name))
 
         print("Processing complete. Cleaning directory.")
         self.spec.menu_select("File -> Close")
-        files = os.listdir(output_path)
-        for file in files:
-            if ".sco" in file:
-                os.remove(output_path + "\\" + file)
+        for folder in batch_folders:
+            os.removedirs(folder)
 
         print("Finished.")
+
+    def concatenate_files(self, batch_folders, destination):
+        files_to_concatenate = []
+        for folder in batch_folders:
+            files = os.listdir(folder)
+            for file in files:
+                if ".tsv" in file:
+                    files_to_concatenate.append(file)
+
+        all_data = []
+        headers = ""
+        for j, file in enumerate(files_to_concatenate):
+            with open(file, "r") as f:
+                headers = f.readline().strip("\n")
+            data = np.genfromtxt(
+                file, skip_header=1, dtype=float, delimiter="\t", encoding=None, deletechars=""
+            )
+            print(data[0])
+            all_data.append(data[1:])
+
+        with open(destination, "w+") as file:
+            file.write(headers)
+            for row in all_data:
+                file.write(row)
+
 
     def open_files(self, path):
         print("Opening files from " + path)
