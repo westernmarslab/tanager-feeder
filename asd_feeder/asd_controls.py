@@ -168,6 +168,7 @@ class RS3Controller:
         self.nextnum = str(int(self.nextnum) + 1)
         while len(self.nextnum) < INDEXNUMLEN:
             self.nextnum = "0" + self.nextnum
+        return True
 
     def white_reference(self):
         if (
