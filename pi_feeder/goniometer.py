@@ -6,7 +6,7 @@ import numpy as np
 from pi_feeder import motor, encoder, limit_switch
 
 AZIMUTH_GEAR_RATIO = 10
-AZIMUTH_HOME_OFFSET = 23.5
+AZIMUTH_HOME_OFFSET = 25.2
 DISTANCE_TOLERANCE = 0.5
 
 
@@ -220,8 +220,6 @@ class Goniometer:
         self.motors["sample tray"]["motor"].configure(tray_angle)
 
     def home_azimuth(self, direction=motor.Motor.BACKWARD):
-        print("HOMING AZ")
-        print("SMALL OFFSET")
         if self.incidence <= -60:
             self.set_position("incidence", -60)
         self.motors["azimuth"]["motor"].home(direction)
