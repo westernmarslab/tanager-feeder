@@ -220,6 +220,8 @@ class Goniometer:
         self.motors["sample tray"]["motor"].configure(tray_angle)
 
     def home_azimuth(self, direction=motor.Motor.BACKWARD):
+        print("HOMING AZ")
+        print("SMALL OFFSET")
         if self.incidence <= -60:
             self.set_position("incidence", -60)
         self.motors["azimuth"]["motor"].home(direction)
