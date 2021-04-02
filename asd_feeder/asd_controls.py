@@ -440,7 +440,6 @@ class ViewSpecProController:
                 next_folder = os.path.join(os.path.join(input_path, f"tanager_batch_{num_batches}"))
                 self.safe_make_dir(next_folder)
                 batch_folders.append(next_folder)
-                # shutil.copyfile(os.path.join(input_path, "test_data_1.tsv"), os.path.join(next_folder, "test_data_1.tsv"))
             source = os.path.join(input_path, file)
             destination = os.path.join(next_folder, file)
             shutil.copyfile(source, destination)

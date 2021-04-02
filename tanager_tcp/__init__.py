@@ -19,7 +19,7 @@ class TanagerServer:
         #This is useful because when the spectrometer computer starts up, asd-feeder may start
         # before network connections are initialized. This can lead to the TanagerServer using localhost.
         if wait_for_network:
-            while ip_address == "127.0.0.1":
+            while ip_address[0:3] == "127": #.0.0.1":
                 print("Waiting for network connection...")
                 hostname = socket.gethostname()
                 ip_address = socket.gethostbyname(hostname)
@@ -27,8 +27,8 @@ class TanagerServer:
 
 
         # Bind the socket to the port
-        self.server_address = (ip_address, port)
-        # self.server_address = ("", port)
+        # self.server_address = (ip_address, port) #This causes the raspberry pi to fail.
+        self.server_address = ("", port)
 
         self.sock.bind(self.server_address)
         self.queue = []
