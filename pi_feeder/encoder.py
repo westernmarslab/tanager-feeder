@@ -110,7 +110,12 @@ class AMT212ARotaryEncoder:
     def get_position_degrees(self, num_measurements=1):
         adjusted_position_degrees = []
         for _ in range(num_measurements):
-            response = self._read_encoder_raw()
+            response = None
+            while response is None:
+                try:
+                    response = self._read_encoder_raw()
+                except ValueError:
+                    print("Error. Failed to read encoder. Retrying.")
             self._check_encoder_response_parity(response)
             position = (response >> 2) & 0x0FFF  # Throw away the lowest 2 bits for 12-bit encoder.
             position_degrees = 360 * position / 0x0FFF
