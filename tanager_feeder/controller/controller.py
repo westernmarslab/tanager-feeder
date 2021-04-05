@@ -84,6 +84,11 @@ class Controller(utils.ControllerType):
         self.config_info = config_info
         self.tk_format = utils.TkFormat(self.config_info)
 
+        # The queue is a list of dictionaries commands:parameters
+        # The commands are supposed to be executed in order, assuming each one succeeds.
+        # CommandHandlers tell the controller when it's time to do the next one
+        self.queue = []
+
         try:
             self.spec_listener = SpecListener(connection_manager, config_info)
         except OSError as e:
@@ -122,10 +127,7 @@ class Controller(utils.ControllerType):
 
         self.remote_directory_worker = RemoteDirectoryWorker(self.spec_commander, self.spec_listener)
 
-        # The queue is a list of dictionaries commands:parameters
-        # The commands are supposed to be executed in order, assuming each one succeeds.
-        # CommandHandlers tell the controller when it's time to do the next one
-        self.queue = []
+
 
         # One wait dialog open at a time. CommandHandlers check whether to use an existing one or make a new one.
         self.wait_dialog = None
@@ -1852,8 +1854,7 @@ class Controller(utils.ControllerType):
         if not self.check_light_misses_arc(i, e, az, self.required_angular_separation):
             return False
         # And finally check if the light will hit the fiber optic cable, which has az = az -35
-        print("checking fiber optic!")
-        if not self.check_light_misses_arc(i, e, az + 25, self.required_angular_separation_for_fiber, print_me=True):
+        if not self.check_light_misses_arc(i, e, az + 25, self.required_angular_separation_for_fiber):
             return False
         return True
 

@@ -1,3 +1,4 @@
+import time
 from typing import Optional
 
 from tanager_feeder.commanders.commander import Commander
@@ -103,13 +104,6 @@ class SpecCommander(Commander):
         self.send(filename)
         return filename
 
-    # TODO: does this need to be deleted or implemented?
-    # def send_data(self, source,destination)
-    #     self.remove_from_listener_queue(['datareceived','datafailure'])
-    #     filename=self.encrypt('getdata',parameters=[source,destination])
-    #     self.send(filename)
-    #     return filename
-
     def process(self, input_dir: str, output_dir: str, output_file: str):
         self.remove_from_listener_queue(
             [
@@ -128,4 +122,12 @@ class SpecCommander(Commander):
         return filename
 
     def send(self, message):
-        return self.connection_manager.send_to_spec(message)
+        sent = False
+        attempt = 1
+        #If spec is offline, give a chance for reconnection.
+        while not sent and attempt < 3:
+            sent = self.connection_manager.send_to_spec(message)
+            attempt += 1
+            if not sent:
+                time.sleep(2)
+        return sent

@@ -7,7 +7,7 @@ from tanager_feeder import utils
 class WhiteReferenceHandler(CommandHandler):
     def __init__(self, controller, title: str = "White referencing...", label: str = "White referencing..."):
 
-        timeout_s: int = controller.spec_config_count / 9 + 40 + utils.BUFFER
+        timeout_s: int = controller.spec_config_count / 9 + 90 + utils.BUFFER
         self.listener = controller.spec_listener
         super().__init__(controller, title, label, timeout=timeout_s)
         self.controller.white_referencing = True
@@ -35,6 +35,7 @@ class WhiteReferenceHandler(CommandHandler):
                 self.controller.set_save_config()
                 return
             if "wrfailed" in self.listener.queue:
+                print("WR failed!")
                 self.listener.queue.remove("wrfailed")
 
                 if not self.cancel and not self.pause:
