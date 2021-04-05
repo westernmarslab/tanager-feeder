@@ -87,14 +87,8 @@ class Motor:
 
         self.target_theta = target_theta
         while abs(self.position_degrees - target_theta) > 3 / self.steps_per_degree and tries > 0 and not self.kill_now:
-            print("DECIDING WHICH DIRECTION AND HOW FAR")
             distance, sign = self.get_distance_and_direction(target_theta)
             numsteps = int(sign * distance * self.steps_per_degree)
-            print(f"STEPS: {numsteps}")
-            if sign == 1:
-                print("FORWARD")
-            else:
-                print("BACKWARD")
 
             if numsteps == 0:
                 return "success"
@@ -181,10 +175,19 @@ class Motor:
                     if switch.get_tripped():
                         self.backward(10, False)
                         return
-            self.set_step(1, 0)
-            time.sleep(self.delay)
-            self.set_step(0, 0)
-            time.sleep(self.delay)
+
+            if i < steps - 15:
+                self.set_step(1, 0)
+                time.sleep(self.delay)
+                self.set_step(0, 0)
+                time.sleep(self.delay)
+            else:
+                print("SLOW")
+                delay_scaling_factor = 6/np.sqrt(steps - i)
+                self.set_step(1, 0)
+                time.sleep(delay_scaling_factor*self.delay)
+                self.set_step(0, 0)
+                time.sleep(delay_scaling_factor*self.delay)
 
     def backward(self, steps, monitor=True):
         for i in range(0, steps):
@@ -195,10 +198,18 @@ class Motor:
                     if switch.get_tripped():
                         self.forward(10, False)
                         return
-            self.set_step(1, 1)
-            time.sleep(self.delay)
-            self.set_step(0, 1)
-            time.sleep(self.delay)
+            if i < steps - 15:
+                self.set_step(1, 1)
+                time.sleep(self.delay)
+                self.set_step(0, 1)
+                time.sleep(self.delay)
+            else:
+                print("SLOW")
+                delay_scaling_factor = 4/np.sqrt(steps - i)
+                self.set_step(1, 1)
+                time.sleep(delay_scaling_factor*self.delay)
+                self.set_step(0, 1)
+                time.sleep(delay_scaling_factor*self.delay)
 
     def set_step(self, w1, w2):
         GPIO.output(self.pins[0], w1)

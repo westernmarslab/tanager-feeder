@@ -45,8 +45,8 @@ class Goniometer:
                     "Azimuth",
                     [27, 17],
                     [limit_switch.LimitSwitch(2), limit_switch.LimitSwitch(3)],
-                    2.22,  # 800 steps/rev
-                    0.004,
+                    1.11,  # 800 steps/rev
+                    0.007,
                     encoder.AMT212ARotaryEncoder(port="/dev/ttyUSB0", encoder_base=0x50, zero_position=az_zero),
                     AZIMUTH_GEAR_RATIO,
                 ),
