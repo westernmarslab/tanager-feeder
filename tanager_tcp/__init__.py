@@ -14,15 +14,15 @@ class TanagerServer:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         hostname = socket.gethostname()
-        ip_address = socket.gethostbyname(hostname)
+        self.ip_address = socket.gethostbyname(hostname)
 
         #This is useful because when the spectrometer computer starts up, asd-feeder may start
         # before network connections are initialized. This can lead to the TanagerServer using localhost.
         if wait_for_network:
-            while ip_address[0:3] == "127": #.0.0.1":
+            while self.ip_address[0:3] == "127":
                 print("Waiting for network connection...")
                 hostname = socket.gethostname()
-                ip_address = socket.gethostbyname(hostname)
+                self.ip_address = socket.gethostbyname(hostname)
                 time.sleep(2)
 
 
@@ -35,7 +35,7 @@ class TanagerServer:
         self.remote_server_address = None
 
     def listen(self):
-        print(f"Listening on {self.server_address[0]} port {self.server_address[1]}.\n\n")
+        print(f"Listening on {self.ip_address} port {self.server_address[1]}.\n\n")
         # Listen for incoming connections
         self.sock.listen(1)
         # Wait for a connection

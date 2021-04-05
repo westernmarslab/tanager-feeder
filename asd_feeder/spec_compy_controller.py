@@ -149,9 +149,9 @@ class SpecCompyController:
                     # After saving a spectrum, the spec_controller updates its list of expected files to include
                     # one more. Wait for this number to change before moving on.
                     # old=len(spec_controller.hopefully_saved_files)
-
-                    spec_taken = self.spec_controller.take_spectrum(filename)
-                    if not spec_taken:
+                    try:
+                        self.spec_controller.take_spectrum(filename)
+                    except:
                         self.spec_controller.hopefully_saved_files.pop(-1)
                         self.spec_controller.nextnum = str(int(self.spec_controller.nextnum) - 1)
                         self.send("failedtosavefile", [filename])
