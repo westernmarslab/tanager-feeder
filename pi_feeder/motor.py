@@ -175,6 +175,7 @@ class Motor:
                     if switch.get_tripped():
                         self.backward(10, False)
                         return
+
             if i < steps - 10:
                 self.set_step(1, 0)
                 time.sleep(self.delay)
