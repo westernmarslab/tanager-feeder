@@ -176,15 +176,13 @@ class Motor:
                         self.backward(10, False)
                         return
 
-            if i < steps - 30:
+            if i < steps - 15:
                 self.set_step(1, 0)
                 time.sleep(self.delay)
                 self.set_step(0, 0)
                 time.sleep(self.delay)
             else:
                 delay_scaling_factor = 6/np.sqrt(steps - i)
-                print("SLOW DOWN")
-                print(delay_scaling_factor)
                 self.set_step(1, 0)
                 time.sleep(delay_scaling_factor*self.delay)
                 self.set_step(0, 0)
@@ -199,10 +197,17 @@ class Motor:
                     if switch.get_tripped():
                         self.forward(10, False)
                         return
-            self.set_step(1, 1)
-            time.sleep(self.delay)
-            self.set_step(0, 1)
-            time.sleep(self.delay)
+            if i < steps - 15:
+                self.set_step(1, 1)
+                time.sleep(self.delay)
+                self.set_step(0, 1)
+                time.sleep(self.delay)
+            else:
+                delay_scaling_factor = 4/np.sqrt(steps - i)
+                self.set_step(1, 1)
+                time.sleep(delay_scaling_factor*self.delay)
+                self.set_step(0, 1)
+                time.sleep(delay_scaling_factor*self.delay)
 
     def set_step(self, w1, w2):
         GPIO.output(self.pins[0], w1)
