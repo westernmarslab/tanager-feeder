@@ -176,13 +176,13 @@ class Motor:
                         self.backward(10, False)
                         return
 
-            if i < steps - 10:
+            if i < steps - 30:
                 self.set_step(1, 0)
                 time.sleep(self.delay)
                 self.set_step(0, 0)
                 time.sleep(self.delay)
             else:
-                delay_scaling_factor = 4/np.sqrt(steps - i)
+                delay_scaling_factor = 6/np.sqrt(steps - i)
                 print("SLOW DOWN")
                 print(delay_scaling_factor)
                 self.set_step(1, 0)
