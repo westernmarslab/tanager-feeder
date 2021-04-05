@@ -182,6 +182,7 @@ class Motor:
                 self.set_step(0, 0)
                 time.sleep(self.delay)
             else:
+                print("SLOW")
                 delay_scaling_factor = 6/np.sqrt(steps - i)
                 self.set_step(1, 0)
                 time.sleep(delay_scaling_factor*self.delay)
@@ -203,6 +204,7 @@ class Motor:
                 self.set_step(0, 1)
                 time.sleep(self.delay)
             else:
+                print("SLOW")
                 delay_scaling_factor = 4/np.sqrt(steps - i)
                 self.set_step(1, 1)
                 time.sleep(delay_scaling_factor*self.delay)
