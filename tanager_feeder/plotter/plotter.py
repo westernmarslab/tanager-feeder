@@ -1,5 +1,5 @@
 # Plotter takes a Tk root object and uses it as a base to spawn Tk Toplevel plot windows.
-from tkinter import TclError
+from tkinter import TclError, filedialog
 
 import matplotlib.pyplot as plt
 
@@ -32,21 +32,22 @@ class Plotter(DataIO):
         # if the user saves a plot so that the next time they click save plot, the save dialog opens into the same
         # directory where they just saved.
 
-    # def get_path(self):
-    #     initialdir = self.save_dir
-    #     if initialdir is not None:
-    #         print("initial dir set to " + self.save_dir)
-    #         path = filedialog.asksaveasfilename(initialdir=initialdir)
-    #     else:
-    #         path = filedialog.asksaveasfilename()
-    #
-    #     self.save_dir = path
-    #     if "\\" in path:
-    #         self.save_dir = "\\".join(path.split("\\")[0:-1])
-    #     elif "/" in path:
-    #         self.save_dir = "/".join(path.split("/")[0:-1])
-    #     print("return")
-    #     return path
+    #called from Plot.save()
+    def get_path(self):
+        initialdir = self.save_dir
+        if initialdir is not None:
+            print("initial dir set to " + self.save_dir)
+            path = filedialog.asksaveasfilename(initialdir=initialdir)
+        else:
+            path = filedialog.asksaveasfilename()
+
+        self.save_dir = path
+        if "\\" in path:
+            self.save_dir = "\\".join(path.split("\\")[0:-1])
+        elif "/" in path:
+            self.save_dir = "/".join(path.split("/")[0:-1])
+        print("return")
+        return path
 
     def notebook_click(self, event):
         self.close_right_click_menus(event)

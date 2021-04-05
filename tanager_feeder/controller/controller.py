@@ -1998,8 +1998,11 @@ class Controller(utils.ControllerType):
         self.queue = []
         self.script_running = False
         if self.wait_dialog is not None:
-            self.wait_dialog.interrupt(message)
-            self.wait_dialog.top.wm_geometry("376x140")
+            try:
+                self.wait_dialog.interrupt(message)
+                self.wait_dialog.top.wm_geometry("376x140")
+            except TclError:
+                pass
 
     def increment_num(self) -> None:
         try:
@@ -2036,11 +2039,11 @@ class Controller(utils.ControllerType):
         else:
             self.spec_commander.process(input_directory, output_directory, output_file)
             self.queue.insert(0, {self.process_cmd: [input_directory, output_directory, output_file]})
-        print("queue! in controller.py")
-        print(self.queue)
         ProcessHandler(self, os.path.join(output_directory, output_file))
 
     def finish_process(self, source_file, output_file) -> None:
+        print("FInishing process")
+        print(self.queue)
         self.spec_commander.transfer_data(source_file)
         DataHandler(
             self,
