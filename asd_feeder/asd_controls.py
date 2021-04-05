@@ -414,11 +414,14 @@ class ViewSpecProController:
             pass
 
     def process(self, input_path, output_path, tsv_name):
-        print("hi!!")
         files = os.listdir(output_path)
         for file in files:
             if ".sco" in file:
                 os.remove(os.path.join(output_path, file))
+        files = os.listdir(input_path)
+        for file in files:
+            if ".sco" in file:
+                os.remove(os.path.join(input_path, file))
 
         files_to_process = os.listdir(input_path) # TODO: make this include only files with the right extension
         files_to_remove = []
@@ -450,11 +453,13 @@ class ViewSpecProController:
         self.spec.menu_select("File -> Close")
 
         for j, folder in enumerate(batch_folders):
+            print("NEXT FOLDER")
+            print(folder)
             self.open_files(folder)
             time.sleep(1)
-            self.set_save_directory(folder)
+            self.set_save_directory(input_path)
             self.splice_correction()
-            self.ascii_export(folder, tsv_name)
+            self.ascii_export(input_path, tsv_name.split(".csv")[0]+f"_{j}.csv")
             print(f"Processing batch {j} complete. Cleaning directory.")
             self.spec.menu_select("File -> Close")
 
@@ -473,7 +478,7 @@ class ViewSpecProController:
         for folder in batch_folders:
             files = os.listdir(folder)
             for file in files:
-                if ".tsv" in file:
+                if ".csv" in file:
                     files_to_concatenate.append(os.path.join(folder, file))
 
         all_data = []
@@ -485,6 +490,7 @@ class ViewSpecProController:
                 file, skip_header=1, dtype=float, delimiter="\t", encoding=None, deletechars=""
             )
             for k, row in enumerate(data):
+                print(row)
                 if k == len(all_data):
                     all_data.append(list(row))
                 else:
@@ -500,7 +506,11 @@ class ViewSpecProController:
 
     def clear_batch_folders(self, batch_folders):
         for folder in batch_folders:
-            shutil.rmtree(folder)
+            try:
+                shutil.rmtree(folder)
+            except PermissionError:
+                time.sleep(2)
+                shutil.rmtree(folder)
 
 
     def open_files(self, path):
