@@ -33,12 +33,6 @@ class MotionHandler(CommandHandler):
                     self.listener.queue.remove(item)
                     self.interrupt("Failure moving...")
                     return
-            if "nopiconfig" in self.listener.queue:
-                # TODO: Manange nopiconfig (maybe take it out).
-                print("nopiconfig")
-                self.listener.queue.remove("nopiconfig")
-                self.controller.set_manual_automatic(force=0)
-                return
 
             time.sleep(utils.INTERVAL)
             self.timeout_s -= utils.INTERVAL

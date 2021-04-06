@@ -1,3 +1,4 @@
+import time
 from typing import List
 
 from tanager_feeder.commanders.commander import Commander
@@ -76,4 +77,16 @@ class PiCommander(Commander):
         self.send(filename)
 
     def send(self, message: str):
-        return self.connection_manager.send_to_pi(message)
+        sent = False
+        attempt = 1
+        while sent is False and attempt < 3:
+            sent = self.connection_manager.send_to_pi(message)
+            attempt += 1
+            if not sent:
+                print(f"Retrying command {message}")
+                time.sleep(4)
+        if not sent:
+            print(f"Failed to send command {message}")
+        else:
+            print(f"Sent {message}")
+        return sent

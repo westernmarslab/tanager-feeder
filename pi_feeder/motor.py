@@ -67,8 +67,6 @@ class Motor:
                 self._position_degrees = float(theta)
 
     def set_full_turns(self, target_turns):
-        print(f"target: {target_turns}")
-        print(f"current: {self.position_full_turns}")
         turns_needed = np.abs(target_turns - self.position_full_turns)
         if turns_needed == 0:
             return
@@ -78,12 +76,9 @@ class Motor:
         else:
             self.backward(steps_needed)
         self.position_full_turns = target_turns
-        print("new full turn position: " + str(target_turns))
 
     def move_to_angle(self, target_theta: int):
         tries = 50
-        print(f"TARGET: {target_theta}")
-        print(f"CURRENT: {self.position_degrees}")
 
         self.target_theta = target_theta
         while abs(self.position_degrees - target_theta) > 3 / self.steps_per_degree and tries > 0 and not self.kill_now:
@@ -182,7 +177,6 @@ class Motor:
                 self.set_step(0, 0)
                 time.sleep(self.delay)
             else:
-                print("SLOW")
                 delay_scaling_factor = 6/np.sqrt(steps - i)
                 self.set_step(1, 0)
                 time.sleep(delay_scaling_factor*self.delay)
@@ -204,7 +198,6 @@ class Motor:
                 self.set_step(0, 1)
                 time.sleep(self.delay)
             else:
-                print("SLOW")
                 delay_scaling_factor = 4/np.sqrt(steps - i)
                 self.set_step(1, 1)
                 time.sleep(delay_scaling_factor*self.delay)

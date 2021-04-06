@@ -31,8 +31,6 @@ class PiController:
             dir_path = os.path.split(ENCODER_CONFIG_PATH)[0]
             print(f"Encoder config file not found, creating new one at {ENCODER_CONFIG_PATH}")
             if not os.path.isdir(dir_path):
-                print("making dir")
-                print(dir_path)
                 os.mkdir(dir_path)
             self.write_encoder_config(0, 0, 0, 0)
             self.goniometer = goniometer.Goniometer()
@@ -169,15 +167,12 @@ class PiController:
 
     def encrypt(self, cmd, parameters=None):
         filename = cmd
-        print(filename)
         if parameters:
-            print(parameters)
             for param in parameters:
                 param = param.replace("/", "+")
                 param = param.replace("\\", "+")
                 param = param.replace(":", "=")
                 filename = filename + "&" + param
-        print(filename)
         return filename
 
     def decrypt(self, encrypted):
