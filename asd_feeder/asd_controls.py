@@ -190,6 +190,9 @@ class RS3Controller:
             else:
                 time.sleep(self.interval)
                 t += self.interval
+                if t%2==0:
+                    print(t)
+                    print(start_timeout)
         if t >= start_timeout:
             print("wr failed")
             self.wr_failure = True
@@ -205,8 +208,9 @@ class RS3Controller:
             else:
                 time.sleep(self.interval)
                 t += self.interval
-                print(finish_timeout)
-                print(t)
+                if t % 2 == 0:
+                    print(finish_timeout)
+                    print(t)
         if t >= finish_timeout:
             self.wr_failure = True
             print("wr failed")
@@ -416,11 +420,14 @@ class ViewSpecProController:
             pass
 
     def process(self, input_path, output_path, tsv_name):
-        print("hi!!")
         files = os.listdir(output_path)
         for file in files:
             if ".sco" in file:
                 os.remove(os.path.join(output_path, file))
+        files = os.listdir(input_path)
+        for file in files:
+            if ".sco" in file:
+                os.remove(os.path.join(input_path, file))
 
         files_to_process = os.listdir(input_path) # TODO: make this include only files with the right extension
         files_to_remove = []
@@ -452,11 +459,13 @@ class ViewSpecProController:
         self.spec.menu_select("File -> Close")
 
         for j, folder in enumerate(batch_folders):
+            print("NEXT FOLDER")
+            print(folder)
             self.open_files(folder)
             time.sleep(1)
-            self.set_save_directory(folder)
+            self.set_save_directory(input_path)
             self.splice_correction()
-            self.ascii_export(folder, tsv_name)
+            self.ascii_export(input_path, tsv_name.split(".csv")[0]+f"_{j}.csv")
             print(f"Processing batch {j} complete. Cleaning directory.")
             self.spec.menu_select("File -> Close")
 
@@ -475,7 +484,7 @@ class ViewSpecProController:
         for folder in batch_folders:
             files = os.listdir(folder)
             for file in files:
-                if ".tsv" in file:
+                if ".csv" in file:
                     files_to_concatenate.append(os.path.join(folder, file))
 
         all_data = []
@@ -487,6 +496,7 @@ class ViewSpecProController:
                 file, skip_header=1, dtype=float, delimiter="\t", encoding=None, deletechars=""
             )
             for k, row in enumerate(data):
+                print(row)
                 if k == len(all_data):
                     all_data.append(list(row))
                 else:
@@ -502,7 +512,11 @@ class ViewSpecProController:
 
     def clear_batch_folders(self, batch_folders):
         for folder in batch_folders:
-            shutil.rmtree(folder)
+            try:
+                shutil.rmtree(folder)
+            except PermissionError:
+                time.sleep(2)
+                shutil.rmtree(folder)
 
 
     def open_files(self, path):
@@ -743,11 +757,13 @@ def wait_for_window(app, title, timeout=5):
 
 
 def find_image(image, rect=None, loc=None):
+    print("Finding")
     if rect != None:
         screenshot = pyautogui.screenshot(region=(rect.left, rect.top, rect.width(), rect.height()))
     else:
         screenshot = pyautogui.screenshot(region=loc)
     location = pyautogui.locate(image, screenshot)
+    print("Done")
     return location
 
 def try_set_focus(target):

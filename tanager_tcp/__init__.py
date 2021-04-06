@@ -39,8 +39,10 @@ class TanagerServer:
         # Listen for incoming connections
         self.sock.listen(1)
         # Wait for a connection
-
+        i = 0
         while True:
+            i += 1
+
             connection, _ = self.sock.accept()
             try:
                 # Receive the header telling the length of the message
