@@ -79,6 +79,8 @@ class SpecCompyController:
                     self.client.server_address = self.local_server.remote_server_address
                     print(self.client.server_address)
                 message = self.local_server.queue.pop(0)
+                if message == "test":
+                    continue
                 print(f"Message received: {message}")
 
                 cmd, params = self.filename_to_cmd(message)
@@ -138,6 +140,7 @@ class SpecCompyController:
 
             time.sleep(0.25)
 
+    # Copied in command interpreter, Should be in a utils file.
     def send(self, cmd, params):
         message = self.cmd_to_filename(cmd, params)
         sent = self.client.send(message)
@@ -148,7 +151,7 @@ class SpecCompyController:
             sent = self.client.send(message)
 
 
-    #In command interpreter, Should be able to delete
+    #Copied in command interpreter, Should be in a utils file.
     def filename_to_cmd(self, filename):
         cmd = filename.split("&")[0]
         params = filename.split("&")[1:]
@@ -166,20 +169,3 @@ class SpecCompyController:
             filename = filename + "&" + param
             i = i + 1
         return filename
-
-    def check_for_unexpected(self, save_dir, hopefully_saved_files, data_files_to_ignore):
-        data_files = []
-        try:
-            data_files = os.listdir(save_dir)
-        except:
-            pass
-        expected_files = []
-        for file in hopefully_saved_files:
-            expected_files.append(file.split("\\")[-1])
-        for file in data_files:
-            # print('This file is here:'+file)
-            if file not in data_files_to_ignore:
-                if file not in expected_files:
-                    # print('And it is not expected.')
-                    return file
-        return None
