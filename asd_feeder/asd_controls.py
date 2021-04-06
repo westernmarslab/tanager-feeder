@@ -190,6 +190,9 @@ class RS3Controller:
             else:
                 time.sleep(self.interval)
                 t += self.interval
+                if t%2==0:
+                    print(t)
+                    print(start_timeout)
         if t >= start_timeout:
             print("wr failed")
             self.wr_failure = True
@@ -205,8 +208,9 @@ class RS3Controller:
             else:
                 time.sleep(self.interval)
                 t += self.interval
-                print(finish_timeout)
-                print(t)
+                if t % 2 == 0:
+                    print(finish_timeout)
+                    print(t)
         if t >= finish_timeout:
             self.wr_failure = True
             print("wr failed")
@@ -753,11 +757,13 @@ def wait_for_window(app, title, timeout=5):
 
 
 def find_image(image, rect=None, loc=None):
+    print("Finding")
     if rect != None:
         screenshot = pyautogui.screenshot(region=(rect.left, rect.top, rect.width(), rect.height()))
     else:
         screenshot = pyautogui.screenshot(region=loc)
     location = pyautogui.locate(image, screenshot)
+    print("Done")
     return location
 
 def try_set_focus(target):
