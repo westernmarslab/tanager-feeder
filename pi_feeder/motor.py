@@ -5,8 +5,7 @@ from typing import List
 import numpy as np
 import RPi.GPIO as GPIO
 
-from pi_feeder import limit_switch.SwitchTrippedException
-from pi_feeder import limit_switch
+from pi_feeder.limit_switch import SwitchTrippedException
 
 MAX_NUM_STEPS = 50000
 GPIO.setwarnings(False)
