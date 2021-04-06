@@ -1,10 +1,10 @@
 import time
 
-from tanager_feeder.command_handlers.command_handler import CommandHandler
+from tanager_feeder.command_handlers.trigger_restart_handler import TriggerRestartHandler
 from tanager_feeder import utils
 
 
-class WhiteReferenceHandler(CommandHandler):
+class WhiteReferenceHandler(TriggerRestartHandler):
     def __init__(self, controller, title: str = "White referencing...", label: str = "White referencing..."):
 
         timeout_s: int = controller.spec_config_count / 9 + 90 + utils.BUFFER
@@ -35,7 +35,6 @@ class WhiteReferenceHandler(CommandHandler):
                 self.controller.set_save_config()
                 return
             if "wrfailed" in self.listener.queue:
-                print("WR failed!")
                 self.listener.queue.remove("wrfailed")
 
                 if not self.cancel and not self.pause:
@@ -109,3 +108,8 @@ class WhiteReferenceHandler(CommandHandler):
         self.controller.wr_time = int(time.time())
         self.controller.white_reference_attempt = 0
         super().success()
+
+    def timeout(self):
+        if self.cancel:
+            self.controller.white_reference_attempt = 0
+        super().timeout("take white reference")

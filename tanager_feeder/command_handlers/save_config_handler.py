@@ -52,7 +52,6 @@ class SaveConfigHandler(CommandHandler):
             if "saveconfigfailedfileexists" in self.listener.queue:
 
                 self.listener.queue.remove("saveconfigfailedfileexists")
-                self.interrupt("Error: File exists.\nDo you want to overwrite this data?")
 
                 if self.controller.overwrite_all:
                     # self.wait_dialog.top.destroy()
