@@ -16,11 +16,14 @@ class RestartComputerHandler(CommandHandler):
     def wait(self):
         while self.timeout_s > 0:
             if "restarting" in self.listener.queue:
+                print("Restarting in restart handler")
+                self.controller.restarting_spec_compy = True
                 self.listener.queue.remove("restarting")
                 time.sleep(30)
                 t = 120
                 while t > 0:
                     t -= 3
+                    print("trying to connect")
                     connected = self.connection_checker.check_connection(timeout=3, show_dialog=False)
                     if connected:
                         print("connected hooray!")
@@ -38,6 +41,7 @@ class RestartComputerHandler(CommandHandler):
 
     def timeout(self):
         self.controller.white_reference_attempt = 0
+        self.controller.restarting_spec_compy = False
         super().timeout(
             retry=False, dialog_string="Error: Timed out while trying\nto restart the spectrometer computer."
         )
@@ -53,4 +57,5 @@ class RestartComputerHandler(CommandHandler):
     def success(self):
         self.controller.log("Spec compy restarted.")
         time.sleep(30)
+        self.controller.restarting_spec_compy = False
         super().success()

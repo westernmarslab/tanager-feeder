@@ -89,6 +89,12 @@ class Controller(utils.ControllerType):
         # CommandHandlers tell the controller when it's time to do the next one
         self.queue = []
 
+        self.restarting_spec_compy = False
+        self.white_referencing = False
+        self.white_reference_attempt = 0
+        self.opt_attempt = 0
+        self.overwrite_all = False  # User can say yes to all for overwriting files.
+
         try:
             self.spec_listener = SpecListener(connection_manager, config_info)
         except OSError as e:
@@ -167,10 +173,7 @@ class Controller(utils.ControllerType):
         self.text_only = False  # for running scripts.
         self.frozen = False
 
-        self.white_referencing = False
-        self.white_reference_attempt = 0
-        self.opt_attempt = 0
-        self.overwrite_all = False  # User can say yes to all for overwriting files.
+
 
         self.audio_signals = False
 

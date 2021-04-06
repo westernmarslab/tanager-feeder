@@ -63,12 +63,19 @@ class SpecConnectionChecker(ConnectionChecker):
         attempt = 1
         connected = self.connection_manager.send_to_spec("test", connect_timeout=timeout)
 
-        if not connected and show_dialog and attempt >= attempts:
-            self.alert_not_connected()
-        elif not connected:
-            print("Spec compy not connected. Retrying.")
-            time.sleep(2)
-            self.check_connection(timeout=timeout, attempts=attempts - 1)
+        if show_dialog:
+            if not connected and attempt >= attempts:
+                self.alert_not_connected()
+            elif not connected:
+                print("Spec compy not connected. Retrying.")
+                time.sleep(2)
+                self.check_connection(timeout=timeout, attempts=attempts - 1)
+        else:
+            if not connected and attempt < attempts:
+                print("Spec compy not connected. Retrying.")
+                time.sleep(2)
+                self.check_connection(timeout=timeout, attempts=attempts - 1)
+
         if connected:
             self.func(*self.args)
 

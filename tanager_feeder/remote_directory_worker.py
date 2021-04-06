@@ -15,7 +15,8 @@ class RemoteDirectoryWorker:
     def wait_for_contents(self, cmdfilename):
         # Wait to hear what the listener finds
         self.reset_timeout()
-        while self.timeout_s > 0:
+        t = 0
+        while t < self.timeout_s:
             # print('looking for '+cmdfilename)
             # If we get a file back with a list of the contents, replace the old listbox contents with new ones.
             # The cmdfilename should be e.g. listdir&R=+RiceData+Kathleen+spectral_data
@@ -45,7 +46,7 @@ class RemoteDirectoryWorker:
                     return "listfilesfailed"
 
             time.sleep(utils.INTERVAL)
-            self.timeout_s -= utils.INTERVAL
+            t += 0.5*utils.INTERVAL
         return "timeout"
 
     # Assume parent has already been validated, but don't assume it exists

@@ -162,8 +162,12 @@ class PiController:
             config_file.write(f"{az}\n")
             config_file.write(f"{tray}\n")
 
-    def send(self, filename):
-        self.client.send(filename)
+    def send(self, message):
+        sent = self.client.send(message)
+        while not sent:
+            print("Failed to send message, retrying.")
+            print(message)
+            sent = self.client.send(message)
 
     def encrypt(self, cmd, parameters=None):
         filename = cmd

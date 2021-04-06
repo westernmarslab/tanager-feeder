@@ -44,11 +44,13 @@ class SpectrumHandler(CommandHandler):
 
             if "savespecfailedfileexists" in self.listener.queue:
                 self.listener.queue.remove("savespecfailedfileexists")
-                self.interrupt("Error: File exists.\nDo you want to overwrite this data?")
-                self.wait_dialog.top.wm_geometry("420x145")
+                # print("here!")
+                # self.interrupt("Error: File exists.\nDo you want to overwrite this data?")
+                # self.wait_dialog.top.wm_geometry("420x145")
 
                 if self.controller.overwrite_all:
                     self.remove_retry(need_new=False)  # No need for a new wait_dialog
+                    return
 
                 if self.controller.manual_automatic.get() == 0 and not self.controller.script_running:
                     self.interrupt("Error: File exists.\nDo you want to overwrite this data?")

@@ -1,10 +1,10 @@
 import time
 
-from tanager_feeder.command_handlers.command_handler import CommandHandler
+from tanager_feeder.command_handlers.trigger_restart_handler import TriggerRestartHandler
 from tanager_feeder import utils
 
 
-class OptHandler(CommandHandler):
+class OptHandler(TriggerRestartHandler):
     def __init__(self, controller, title: str = "Optimizing...", label: str = "Optimizing..."):
 
         if controller.spec_config_count is not None:
@@ -90,3 +90,8 @@ class OptHandler(CommandHandler):
         self.controller.opt_time = int(time.time())
         self.controller.log("Instrument optimized.")
         super().success()
+
+    def timeout(self):
+        if self.cancel:
+            self.controller.opt_attempt = 0
+        super().timeout("optimize instrument")

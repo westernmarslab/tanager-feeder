@@ -34,7 +34,7 @@ class SpecListener(Listener):
     def run(self):
         i = 0
         while True:
-            if not self.connection_manager.spec_offline and i % 20 == 0:
+            if not self.connection_manager.spec_offline and i % 20 == 0 and not self.controller.restarting_spec_compy:
                 if len(self.controller.queue) > 0:
                     attempts = 5
                 else:
@@ -87,7 +87,7 @@ class SpecListener(Listener):
             elif "listcontents" in cmd:
                 self.queue.append(message)
 
-            elif "lostconnection" in cmd:
+            elif "lostconnection" in cmd and not self.controller.restarting_spec_compy:
                 if self.alert_lostconnection:
                     self.alert_lostconnection = False
                     self.controller.freeze()
@@ -109,7 +109,7 @@ class SpecListener(Listener):
                         width=600,
                     )
 
-            elif "unexpectedfile" in cmd:
+            elif "unexpectedfile" in cmd and not self.controller.restarting_spec_compy:
                 if self.new_dialogs:
                     ErrorDialog(
                         self.controller,

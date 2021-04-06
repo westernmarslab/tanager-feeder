@@ -5,9 +5,7 @@ from typing import List
 import numpy as np
 import RPi.GPIO as GPIO
 
-from pi_feeder import limit_switch
-
-from pi_feeder import limit_switch
+from pi_feeder.limit_switch import SwitchTrippedException
 
 MAX_NUM_STEPS = 50000
 GPIO.setwarnings(False)
@@ -104,9 +102,15 @@ class Motor:
         # if particular motor has limit switches, and fully backward triggers
         # a limit switch, zero the encoder angle and turn counts
         if direction == self.BACKWARD:
-            self.backward(MAX_NUM_STEPS)
+            try:
+                self.backward(MAX_NUM_STEPS)
+            except SwitchTrippedException:
+                pass
         elif direction == self.FORWARD:
-            self.forward(MAX_NUM_STEPS)
+            try:
+                self.forward(MAX_NUM_STEPS)
+            except SwitchTrippedException:
+                pass
         else:
             raise Exception("Invalid direction")
         self.encoder.configure(0)
@@ -169,6 +173,7 @@ class Motor:
                 for switch in self.limit_sws:
                     if switch.get_tripped():
                         self.backward(10, False)
+                        raise SwitchTrippedException()
                         return
 
             if i < steps - 15:
@@ -191,6 +196,7 @@ class Motor:
                 for switch in self.limit_sws:
                     if switch.get_tripped():
                         self.forward(10, False)
+                        raise SwitchTrippedException()
                         return
             if i < steps - 15:
                 self.set_step(1, 1)

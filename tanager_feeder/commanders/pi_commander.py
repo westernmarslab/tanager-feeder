@@ -79,7 +79,7 @@ class PiCommander(Commander):
     def send(self, message: str):
         sent = False
         attempt = 1
-        while sent is False and attempt < 3:
+        while sent is False and attempt < 10:
             sent = self.connection_manager.send_to_pi(message)
             attempt += 1
             if not sent:
