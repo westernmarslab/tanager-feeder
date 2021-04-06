@@ -38,7 +38,9 @@ class SpecCompyController:
         self.data_files_to_ignore = []
         print_connection_announcement = None
 
+        count = 0
         while True:
+            count += 1
             # check connectivity with spectrometer
             connected = self.spec_controller.check_connectivity()
             if not connected:
@@ -234,6 +236,7 @@ class SpecCompyController:
                         self.send("saveconfigerror", [])
                         self.skip_spectrum()
                         instrument_config_num = None
+                        print("Continuing")
 
                 elif cmd == "wr":
                     if self.spec_controller.save_dir == "":
