@@ -36,6 +36,7 @@ class CommandInterpreter:
 
     def restart(self, params):
         self.send("restarting", [])
+        time.sleep(10)
         os.system("shutdown /r /t 1")
 
     def take_spectrum(self, params):

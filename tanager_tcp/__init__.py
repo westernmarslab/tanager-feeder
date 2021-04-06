@@ -25,7 +25,6 @@ class TanagerServer:
                 self.ip_address = socket.gethostbyname(hostname)
                 time.sleep(2)
 
-
         # Bind the socket to the port
         # self.server_address = (ip_address, port) #This causes the raspberry pi to fail.
         self.server_address = ("", port)

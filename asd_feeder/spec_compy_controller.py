@@ -33,17 +33,36 @@ class SpecCompyController:
         self.logger = Logger()
         self.control_server_address = None  # Will be set when a control computer sends a message with its ip_address and the port it's listening on
         self.command_interpreter = CommandInterpreter(self.client, self.local_server, self.spec_controller, self.computer, self.logger, self.corrector)
+        self.time_since_cycled = 0
+        thread = Thread(target=self.watchdog)
+        thread.start()
+
+    def watchdog(self):
+        announced_minute = []
+        next_minute = 60
+        while True:
+            print("************************************************Watching")
+            if next_minute < self.time_since_cycled and len(announced_minute) == next_minute/60-1:
+                print(f"************************************************{self.time_since_cycled/60} minutes since watchdog reset. Restarting computer at 10 minutes.")
+                announced_minute.append(1)
+                next_minute += 60
+            elif 120 < self.time_since_cycled:
+                print("************************************************10 minutes since cycle, time for restart")
+                self.command_interpreter.restart(None)
+            time.sleep(10)
+            self.time_since_cycled += 10
 
     def listen(self):
-
         print_connection_announcement = None
 
         count = 0
         while True:
             count += 1
+            self.time_since_cycled = 0
             if count%100==0:
                 print("Listening")
             # check connectivity with spectrometer
+            print("checking connection")
             connected = self.spec_controller.check_connectivity()
             if not connected:
                 try:
@@ -66,9 +85,10 @@ class SpecCompyController:
             ):  # If we weren't connected before, let everyone know we are now!
                 print_connection_announcement = False
                 print("RS³ connected to the spectrometer. Listening!")
-
+            print("Looking for unexpected files")
             # check for unexpected files in data directory
             self.command_interpreter.routine_file_check()
+            print("handling commands")
 
 
             # check for new commands in the tcp server queue
@@ -137,6 +157,7 @@ class SpecCompyController:
                     self.command_interpreter.rmdir(params)
 
             time.sleep(0.25)
+            print("Reset loop")
 
     def send(self, cmd, params):
         message = self.cmd_to_filename(cmd, params)
