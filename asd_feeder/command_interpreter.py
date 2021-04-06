@@ -35,6 +35,7 @@ class CommandInterpreter:
             self.send("notwriteable", [])
 
     def restart(self, params):
+        time.sleep(20)
         self.send("restarting", [])
         time.sleep(10)
         os.system("shutdown /r /t 1")

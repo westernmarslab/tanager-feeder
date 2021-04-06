@@ -4,6 +4,7 @@ import traceback
 import os
 import time
 from threading import Thread
+from multiprocessing import Process
 
 from tanager_tcp import TanagerClient, TanagerServer
 
@@ -34,33 +35,21 @@ class SpecCompyController:
         self.control_server_address = None  # Will be set when a control computer sends a message with its ip_address and the port it's listening on
         self.command_interpreter = CommandInterpreter(self.client, self.local_server, self.spec_controller, self.computer, self.logger, self.corrector)
         self.time_since_cycled = 0
-        thread = Thread(target=self.watchdog)
-        thread.start()
 
-    def watchdog(self):
-        announced_minute = []
-        next_minute = 60
-        while True:
-            print("************************************************Watching")
-            if next_minute < self.time_since_cycled and len(announced_minute) == next_minute/60-1:
-                print(f"************************************************{self.time_since_cycled/60} minutes since watchdog reset. Restarting computer at 10 minutes.")
-                announced_minute.append(1)
-                next_minute += 60
-            elif 120 < self.time_since_cycled:
-                print("************************************************10 minutes since cycle, time for restart")
-                self.command_interpreter.restart(None)
-            time.sleep(10)
-            self.time_since_cycled += 10
+        watchdog = Watchdog(self.temp_data_loc)
+        process = Process(target=watchdog.watch)
+        process.start()
 
     def listen(self):
         print_connection_announcement = None
-
         count = 0
         while True:
             count += 1
-            self.time_since_cycled = 0
-            if count%100==0:
-                print("Listening")
+
+            if count%10==0:
+                with open(os.path.join(self.temp_data_loc, "watchdog"), "w+") as f:
+                    pass # This file is looked for by the watchdog.
+
             # check connectivity with spectrometer
             print("checking connection")
             connected = self.spec_controller.check_connectivity()
@@ -190,3 +179,35 @@ class SpecCompyController:
             filename = filename + "&" + param
             i = i + 1
         return filename
+
+class Watchdog:
+    def __init__(self, folder):
+        self.folder = folder
+    def watch(self):
+        announced_minute = []
+        next_minute = 60
+        time_since_cycled = 0
+        while True:
+            print("************************************************Watching")
+            files = os.listdir(self.folder)
+            for file in files:
+                if "watchdog" in file:
+                    try:
+                        os.remove(os.path.join(self.folder, file))
+                    except: # OSError?
+                        print("Warning: Could not delete watchdog file.")
+                    time_since_cycled = 0
+            if next_minute < time_since_cycled and len(announced_minute) == next_minute/60-1:
+                print(f"************************************************{time_since_cycled/60} minutes since watchdog reset. Restarting computer at 10 minutes.")
+                announced_minute.append(1)
+                next_minute += 60
+            elif 20 < time_since_cycled:
+                home = os.path.expanduser("~")
+                with open(os.path.join(home, "watchdog_restart"), "w+") as f:
+                    f.write("watched!")
+                print("************************************************10 minutes since cycle, time for restart")
+                time.sleep(30)
+                os.system("shutdown /r /t 1")
+
+            time.sleep(10)
+            time_since_cycled += 10
