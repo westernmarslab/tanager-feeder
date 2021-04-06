@@ -4,6 +4,7 @@ import traceback
 import os
 import time
 from threading import Thread
+from multiprocessing import Process, Queue
 
 from tanager_tcp import TanagerClient, TanagerServer
 
@@ -20,9 +21,10 @@ class SpecCompyController:
 
         print("Starting ASD Feeder...\n")
         print("Starting TCP server")
-        self.local_server = TanagerServer(12345, wait_for_network=True)
-        thread = Thread(target=self.local_server.listen)
-        thread.start()
+        self.queue = Queue()
+        self.local_server = TanagerServer(12345, wait_for_network=True, queue=self.queue)
+        process = Process(target=self.local_server.listen)
+        process.start()
         self.client = TanagerClient(self.local_server.remote_server_address, 12345)
 
         print("Initializing ASD connections...")
@@ -34,23 +36,10 @@ class SpecCompyController:
         self.control_server_address = None  # Will be set when a control computer sends a message with its ip_address and the port it's listening on
         self.command_interpreter = CommandInterpreter(self.client, self.local_server, self.spec_controller, self.computer, self.logger, self.corrector)
         self.time_since_cycled = 0
-        thread = Thread(target=self.watchdog)
-        thread.start()
-
-    def watchdog(self):
-        announced_minute = []
-        next_minute = 60
-        while True:
-            print("************************************************Watching")
-            if next_minute < self.time_since_cycled and len(announced_minute) == next_minute/60-1:
-                print(f"************************************************{self.time_since_cycled/60} minutes since watchdog reset. Restarting computer at 10 minutes.")
-                announced_minute.append(1)
-                next_minute += 60
-            elif 120 < self.time_since_cycled:
-                print("************************************************10 minutes since cycle, time for restart")
-                self.command_interpreter.restart(None)
-            time.sleep(10)
-            self.time_since_cycled += 10
+        self.watchdog = Watchdog()
+        self.watchdog_queue = Queue()
+        process = Process(target=self.watchdog.watch, args=(self.watchdog_queue,))
+        process.start()
 
     def listen(self):
         print_connection_announcement = None
@@ -88,19 +77,23 @@ class SpecCompyController:
             print("Looking for unexpected files")
             # check for unexpected files in data directory
             self.command_interpreter.routine_file_check()
-            print("handling commands")
+            print("Check for message")
 
 
             # check for new commands in the tcp server queue
-            while len(self.local_server.queue) > 0:
-                print(".")
-                if self.local_server.remote_server_address != self.client.server_address:
+            message = self.check_queue()
+            print("handling commands")
+            if message is not None and message != "test":
+                address = message[0]
+                print("here is the address I got")
+                print(address)
+                message = message[1]
+                print(self.local_server.remote_server_address)
+                if address != self.client.server_address:
                     print("Setting control computer address:")
-                    self.client.server_address = self.local_server.remote_server_address
+                    self.client.server_address = address
                     print(self.client.server_address)
-                message = self.local_server.queue.pop(0)
-                if message == "test":
-                    continue
+
                 print(f"Message received: {message}")
 
                 cmd, params = self.filename_to_cmd(message)
@@ -161,6 +154,12 @@ class SpecCompyController:
             time.sleep(0.25)
             print("Reset loop")
 
+    def check_queue(self):
+        try:
+            return self.queue.get(block=False)
+        except: # Should be queue.Empty, cannot get import to work.
+            return None
+
     # Copied in command interpreter, Should be in a utils file.
     def send(self, cmd, params):
         message = self.cmd_to_filename(cmd, params)
@@ -169,7 +168,9 @@ class SpecCompyController:
         while not sent and message != "lostconnection":
             print("Failed to send message, retrying.")
             print(message)
+            time.sleep(2)
             sent = self.client.send(message)
+        print(f"Sent {message}")
 
 
     #Copied in command interpreter, Should be in a utils file.
@@ -190,3 +191,29 @@ class SpecCompyController:
             filename = filename + "&" + param
             i = i + 1
         return filename
+
+class Watchdog:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def watch(queue):
+        announced_minute = []
+        next_minute = 60
+        time_since_cycled = 0
+        while True:
+            try:
+                queue.get(block=False)
+            except:# Queue.Empty:
+                time.sleep(10)
+                time_since_cycled += 10
+
+            print("************************************************Watching")
+            if next_minute < time_since_cycled and len(announced_minute) == next_minute / 60 - 1:
+                print(
+                    f"************************************************{time_since_cycled / 60} minutes since watchdog reset. Restarting computer at 10 minutes.")
+                announced_minute.append(1)
+                next_minute += 60
+            elif 120 < time_since_cycled:
+                print("************************************************10 minutes since cycle, time for restart")
+                os.system("shutdown /r /t 1")

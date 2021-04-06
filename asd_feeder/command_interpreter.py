@@ -35,8 +35,12 @@ class CommandInterpreter:
             self.send("notwriteable", [])
 
     def restart(self, params):
+        print("Sending restart response!")
+        time.sleep(30) #Don't get carried away restarting too fast and doing so much.
+        # Otherwise the message that you are restarting can get lost.
         self.send("restarting", [])
-        time.sleep(10)
+        print("Done")
+        time.sleep(30) #Don't get carried away restarting too fast and doing so much.
         os.system("shutdown /r /t 1")
 
     def take_spectrum(self, params):
@@ -530,8 +534,10 @@ class CommandInterpreter:
         # the lostconnection message will get resent anyway, no need to clog up lanes by retrying here.
         while not sent and message != "lostconnection":
             print("Failed to send message, retrying.")
+            time.sleep(2)
             print(message)
             sent = self.client.send(message)
+        print(f"Sent {message}")
 
 
     def filename_to_cmd(self, filename):

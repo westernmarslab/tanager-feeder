@@ -1,6 +1,7 @@
 import socket
 import time
 from typing import Optional, Tuple
+from multiprocessing import Queue
 
 global HEADER_LEN
 HEADER_LEN = 12
@@ -9,7 +10,7 @@ ADDRESS_LEN = 25  # Number of digits in the address including IP address and por
 
 
 class TanagerServer:
-    def __init__(self, port: int, wait_for_network=False):  # Port is the port to listen on
+    def __init__(self, port: int, queue: Queue, wait_for_network=False):  # Port is the port to listen on
         # Create a TCP/IP socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -30,8 +31,15 @@ class TanagerServer:
         self.server_address = ("", port)
 
         self.sock.bind(self.server_address)
-        self.queue = []
+        self.queue = queue
         self.remote_server_address = None
+
+    def get(self):
+        try:
+            message = self.queue.get(block=False)
+            return message
+        except: # Should be queue.Empty, cannot get import to work.
+            return None
 
     def listen(self):
         print(f"Listening on {self.ip_address} port {self.server_address[1]}.\n\n")
@@ -41,7 +49,6 @@ class TanagerServer:
         i = 0
         while True:
             i += 1
-
             connection, _ = self.sock.accept()
             try:
                 # Receive the header telling the length of the message
@@ -66,7 +73,6 @@ class TanagerServer:
 
                 decoded_remote_server_address = remote_server_address.decode("utf-8").split("&")
                 self.remote_server_address = (decoded_remote_server_address[0], int(decoded_remote_server_address[1]))
-
                 # Receive the actual message
                 message = b""
                 while len(message) < int(header):
@@ -74,8 +80,8 @@ class TanagerServer:
                     message += data
                     if not data:
                         raise ShortMessageError("Message shorter than expected")
-
-                self.queue.append(str(message, "utf-8"))
+                print(self.remote_server_address)
+                self.queue.put((self.remote_server_address, str(message, "utf-8")))
 
                 # Send a return message containing the header and address info
                 connection.sendall(header + remote_server_address)
@@ -102,6 +108,7 @@ class TanagerClient:
         if self.connected:
             raise AlreadyConnectedException
         if self.server_address is None:
+            print("Error: No server address.")
             return False
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.settimeout(timeout)
@@ -119,6 +126,7 @@ class TanagerClient:
         if not self.connected:
             self.connect()
         if not self.connected:
+            print("Error: Could not connect.")
             return False
         # base message may be passed as string or bytes-like object
         if isinstance(base_message, (bytes, bytearray)):
