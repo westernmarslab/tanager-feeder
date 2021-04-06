@@ -35,7 +35,11 @@ class SpecListener(Listener):
         i = 0
         while True:
             if not self.connection_manager.spec_offline and i % 20 == 0:
-                self.connection_checker.check_connection(timeout=8)
+                if len(self.controller.queue) > 0:
+                    attempts = 5
+                else:
+                    attempts = 1
+                self.connection_checker.check_connection(timeout=8, attempts=attempts)
             else:
                 self.listen()
             i += 1

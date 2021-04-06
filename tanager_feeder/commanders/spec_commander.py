@@ -121,13 +121,17 @@ class SpecCommander(Commander):
         self.send(filename)
         return filename
 
-    def send(self, message):
+    def send(self, message: str):
         sent = False
         attempt = 1
-        #If spec is offline, give a chance for reconnection.
-        while not sent and attempt < 3:
+        while sent is False and attempt < 3:
             sent = self.connection_manager.send_to_spec(message)
             attempt += 1
             if not sent:
-                time.sleep(2)
+                print(f"Retrying command {message}")
+                time.sleep(4)
+        if not sent:
+            print(f"Failed to send command {message}")
+        else:
+            print(f"Sent {message}")
         return sent

@@ -200,11 +200,13 @@ class RS3Controller:
         finished = False
         while not finished and t < finish_timeout:
             loc = find_image(IMG_LOC + "/white_status.png", rect=self.spec.ThunderRT6PictureBoxDC6.rectangle())
-            if loc != None:
+            if loc is not None:
                 finished = True
             else:
                 time.sleep(self.interval)
                 t += self.interval
+                print(finish_timeout)
+                print(t)
         if t >= finish_timeout:
             self.wr_failure = True
             print("wr failed")

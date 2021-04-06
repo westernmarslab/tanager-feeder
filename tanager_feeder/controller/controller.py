@@ -1405,7 +1405,6 @@ class Controller(utils.ControllerType):
                 # Do keep the emission arm above -50 to avoid danger of running oversized samples into the arm.
                 # For emission angles < -50, complete the movement later. Don't have to worry about it
                 # for first movement if if we're already at wr position
-                print(self.sample_tray_index)
                 if self.sample_tray_index > -1:
                     self.queue.append({self.next_geom: [False, True]})
                 else:
@@ -1415,7 +1414,7 @@ class Controller(utils.ControllerType):
 
             next_emission = int(entry.get())
             self.queue.append({self.move_tray: ["wr"]})
-            if next_emission < -50:
+            if next_emission < -50 or next_emission > 50:
                 self.queue.append({self.set_emission: [next_emission, MovementUnits.ANGLE.value]})
             self.queue.append({self.opt: [True, True]})
             self.queue.append({self.wr: [True, True]})
@@ -1423,6 +1422,10 @@ class Controller(utils.ControllerType):
             for pos in self.taken_sample_positions:  # e.g. 'Sample 1'
                 if next_emission < -50:
                     self.queue.append({self.set_emission: [-50, MovementUnits.ANGLE.value]})
+                    self.queue.append({self.move_tray: [pos]})
+                    self.queue.append({self.set_emission: [next_emission, MovementUnits.ANGLE.value]})
+                elif next_emission > 50:
+                    self.queue.append({self.set_emission: [50, MovementUnits.ANGLE.value]})
                     self.queue.append({self.move_tray: [pos]})
                     self.queue.append({self.set_emission: [next_emission, MovementUnits.ANGLE.value]})
                 else:
@@ -1433,6 +1436,8 @@ class Controller(utils.ControllerType):
         # Return tray to wr position when finished
         if next_emission < -50:
             self.queue.append({self.set_emission: [-50, MovementUnits.ANGLE.value]})
+        if next_emission > 50:
+            self.queue.append({self.set_emission: [50, MovementUnits.ANGLE.value]})
         self.queue.append({self.move_tray: ["wr"]})
 
         # Now append the script queue we saved at the beginning. But check if acquire is the first command in the
@@ -1553,6 +1558,8 @@ class Controller(utils.ControllerType):
         if cap_at_minus_50:  # This is to prevent accidentally running oversized samples into the fiber optic.
             if next_e < -50:
                 next_e = -50
+            elif next_e > 50:
+                next_e = 50
         next_az = int(self.active_azimuth_entries[0].get())
 
         # Update goniometer position. Don't run the arms into each other

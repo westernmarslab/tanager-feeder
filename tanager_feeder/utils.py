@@ -87,7 +87,9 @@ class ConnectionManager:
         self._pi_ip = new_ip
         self.pi_client = TanagerClient((new_ip, self.REMOTE_PORT), self.LISTEN_FOR_PI_PORT)
 
-    def send_to_spec(self, message: str) -> bool:
+    def send_to_spec(self, message: str, connect_timeout=5) -> bool:
+        if self.spec_offline:
+            self.connect_spec(connect_timeout)
         if not self.spec_offline:
             sent = self.spec_client.send(message)
             if not sent:
@@ -95,7 +97,9 @@ class ConnectionManager:
             return sent
         return False
 
-    def send_to_pi(self, message: str) -> bool:
+    def send_to_pi(self, message: str, connect_timeout=5) -> bool:
+        if self.pi_offline:
+            self.connect_pi(connect_timeout)
         if not self.pi_offline:
             sent = self.pi_client.send(message)
             if not sent:

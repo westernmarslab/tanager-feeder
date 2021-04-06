@@ -165,6 +165,7 @@ class TanagerClient:
             return_address = return_message[HEADER_LEN:].decode("utf-8")
             if return_address != address_info:
                 raise WrongAddressError
+
         except (OSError, WrongHeaderError, WrongAddressError):
             print("self.sock is not a socket, or server address is invalid argument? Retrying.")
             self.connected = False
