@@ -77,7 +77,7 @@ class CommandHandler:
         log_string: Optional[str] = None,
         retry: bool = True,
         dialog: bool = True,
-        dialog_string: str = "Error: Operation timed out",
+        dialog_string: str = "Error: Operation timed out.",
     ):
         if self.text_only:
             self.controller.script_failed = True
@@ -86,8 +86,11 @@ class CommandHandler:
         else:
             self.controller.log(log_string)
         if dialog:
-            self.wait_dialog.interrupt(dialog_string)
-            if retry:
+            try:
+                self.wait_dialog.interrupt(dialog_string)
+            except TclError:
+                pass
+            if retry and not self.cancel:
                 buttons = {"retry": {self.controller.next_in_queue: []}, "cancel": {self.finish: []}}
                 self.wait_dialog.set_buttons(buttons)
 

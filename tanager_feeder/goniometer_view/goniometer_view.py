@@ -658,13 +658,19 @@ class GoniometerView:
             self.position["current_sample"] = "WR"
         if sample == "wr":
             sample = "WR"
-        current_degrees = self.sample_names.index(self.position["current_sample"]) * 60
+        current_degrees = self.sample_names.index(self.position["current_sample"]) * -60
         self.position["current_sample"] = sample
-        next_degrees = self.sample_names.index(sample) * 60
+        next_degrees = self.sample_names.index(sample) * -60
 
         delta_theta = np.sign(next_degrees - current_degrees) * 10
         degrees_moved = 0
-        degrees_to_rotate = np.abs(next_degrees - current_degrees)
+        degrees_to_rotate_forward = np.abs(next_degrees - current_degrees)
+        degrees_to_rotate_backward = 360 - np.abs(current_degrees) + np.abs(next_degrees)
+        if degrees_to_rotate_forward < degrees_to_rotate_backward:
+            degrees_to_rotate = degrees_to_rotate_forward
+        else:
+            degrees_to_rotate = degrees_to_rotate_backward
+            delta_theta = -1*delta_theta
         while degrees_moved < degrees_to_rotate:
             self.rotate_tray(-1 * delta_theta)
             degrees_moved += np.abs(delta_theta)
@@ -706,9 +712,10 @@ class GoniometerView:
             self.wireframes[sample].rotate_az(degrees)
         self.set_goniometer_tilt(tilt)
 
+    # I don't think this function is ever used
     def set_tray_position(self, theta: float) -> None:
         diff = self.position["tray_angle"] - theta
-        self.rotate_tray(diff)
+        self.rotate_tray(-1*diff)
         self.position["tray_angle"] = theta
 
     @staticmethod

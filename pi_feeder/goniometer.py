@@ -6,7 +6,7 @@ import numpy as np
 from pi_feeder import motor, encoder, limit_switch
 
 AZIMUTH_GEAR_RATIO = 10
-AZIMUTH_HOME_OFFSET = 25.5
+AZIMUTH_HOME_OFFSET = 25.2
 DISTANCE_TOLERANCE = 0.5
 
 
@@ -45,8 +45,8 @@ class Goniometer:
                     "Azimuth",
                     [27, 17],
                     [limit_switch.LimitSwitch(2), limit_switch.LimitSwitch(3)],
-                    2.22,  # 800 steps/rev
-                    0.004,
+                    1.11,  # 800 steps/rev
+                    0.007,
                     encoder.AMT212ARotaryEncoder(port="/dev/ttyUSB0", encoder_base=0x50, zero_position=az_zero),
                     AZIMUTH_GEAR_RATIO,
                 ),
@@ -138,23 +138,17 @@ class Goniometer:
         }
         position_degrees = int(self.motors["sample tray"]["motor"].position_degrees)
         #Ok to be off by +/- 1 degree
-        print("HOOOOOOOOOOOOOOOOOOOOOOOOOOOOO")
-        print("string version:")
-        print(str(position_degrees))
+
         if str(position_degrees)[-1] == 9:
             position_degrees += 1
-            print("NEW POSITION_DEGREES")
-            print(position_degrees)
+
         elif str(position_degrees)[-1] ==1:
             position_degrees -= 1
         if (position_degrees + 1)%10 == 0:
-            print("here here here")
             position_degrees = position_degrees + 1
         elif (position_degrees -1)%10 == 0:
             position_degrees = position_degrees -1
         try:
-            print("lalala")
-            print(f"tray pos degrees: {position_degrees}")
             return pos_options[position_degrees]
         except KeyError:
             print("UNKNOWN")
@@ -184,14 +178,12 @@ class Goniometer:
             t += 0.5
 
             updated_distance, _ = self.motors[motor_name]["motor"].get_distance_and_direction(motor_angle)
-            print("updated distance: " + str(updated_distance))
             limit = 4
             if (
                 updated_distance > limit and updated_distance - last_distance > DISTANCE_TOLERANCE
             ):  # If we're moving away from the target. It's possible to overshoot the intended position by a few degrees, so don't do this check if the current position is close to the target.
                 print("ERROR: NOT MAKING PROGRESS")
                 if motor_name != "sample tray":
-                    print("not the sample tray")
                     self.motors[motor_name]["motor"].kill_now = True
                     return {"complete": False, "position": self.motors[motor_name]["motor"].position_degrees}
 
@@ -200,7 +192,6 @@ class Goniometer:
         return {"complete": True, "position": self.motors[motor_name]["motor"].position_degrees}
 
     def configure(self, i: float, e: float, tray_pos: int):
-        print(tray_pos)
         motor_pos = self.science_pos_to_motor_pos(i, e, 0, tray_pos)  # az value is a dummy value of 0
         self.motors["incidence"]["motor"].configure(motor_pos[0][0])
         self.motors["emission"]["motor"].configure(motor_pos[1][0])
@@ -300,7 +291,6 @@ class Goniometer:
         self.set_position("emission", -70)
         
     def move_tray_to_nearest(self):
-        print("MOVING TO NEAREST!!")
         smallest_diff = 360
         next_pos = 0
         current = self.tray_angle
@@ -310,8 +300,6 @@ class Goniometer:
                 smallest_diff = diff
                 next_pos = val
         self.set_position("sample tray", self.tray_angle_to_tray_pos(next_pos))
-        print("next tray pos in goniometer.py")
-        print(next_pos)
         
     def update_position(self):
         for name in self.motors:

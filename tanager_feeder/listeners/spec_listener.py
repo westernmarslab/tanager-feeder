@@ -34,8 +34,12 @@ class SpecListener(Listener):
     def run(self):
         i = 0
         while True:
-            if not self.connection_manager.spec_offline and i % 20 == 0:
-                self.connection_checker.check_connection(timeout=8)
+            if not self.connection_manager.spec_offline and i % 20 == 0 and not self.controller.restarting_spec_compy:
+                if len(self.controller.queue) > 0:
+                    attempts = 5
+                else:
+                    attempts = 1
+                self.connection_checker.check_connection(timeout=8, attempts=attempts)
             else:
                 self.listen()
             i += 1
@@ -68,6 +72,9 @@ class SpecListener(Listener):
             elif cmd == "savedfile":
                 self.queue.append(cmd)
 
+            elif cmd == "restarting":
+                self.queue.append(cmd)
+
             elif "log_data" in cmd:
                 found = False
                 for item in self.queue:
@@ -83,11 +90,10 @@ class SpecListener(Listener):
             elif "listcontents" in cmd:
                 self.queue.append(message)
 
-            elif "lostconnection" in cmd:
+            elif "lostconnection" in cmd and not self.controller.restarting_spec_compy:
                 if self.alert_lostconnection:
-                    print("Spec read command: lostconnection")
                     self.alert_lostconnection = False
-
+                    self.controller.freeze()
                     buttons = {
                         "retry": {
                             self.set_alert_lostconnection: [True],
@@ -105,9 +111,8 @@ class SpecListener(Listener):
                         button_width=15,
                         width=600,
                     )
-                    # TODO: confirm try/except block wasn't needed.
 
-            elif "unexpectedfile" in cmd:
+            elif "unexpectedfile" in cmd and not self.controller.restarting_spec_compy:
                 if self.new_dialogs:
                     ErrorDialog(
                         self.controller,
@@ -115,12 +120,11 @@ class SpecListener(Listener):
                         label="There is an untracked file in the data directory.\nDoes this belong here?\n\n"
                         + params[0],
                     )
-                    # TODO: confirm try/except block wasn't needed.
                 else:
                     self.unexpected_files.append(params[0])
 
             else:
-                self.queue.append(cmd+"&".join(params))
+                self.queue.append(cmd + "&".join(params))
 
     def set_alert_lostconnection(self, val: bool):
         self.alert_lostconnection = val

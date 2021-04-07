@@ -255,7 +255,6 @@ class Dialog:
         if self.controller is not None:
             self.controller.unfreeze()
         self.top.destroy()
-        # TODO: confirm try/catch around self.top.destroy wasn't needed.
 
     def retry(self):
         self.close()

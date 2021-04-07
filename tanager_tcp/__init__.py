@@ -1,4 +1,5 @@
 import socket
+import time
 from typing import Optional, Tuple
 
 global HEADER_LEN
@@ -8,28 +9,39 @@ ADDRESS_LEN = 25  # Number of digits in the address including IP address and por
 
 
 class TanagerServer:
-    def __init__(self, port: int):  # Port is the port to listen on
+    def __init__(self, port: int, wait_for_network=False):  # Port is the port to listen on
         # Create a TCP/IP socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         hostname = socket.gethostname()
-        ip_address = socket.gethostbyname(hostname)
+        self.ip_address = socket.gethostbyname(hostname)
+
+        #This is useful because when the spectrometer computer starts up, asd-feeder may start
+        # before network connections are initialized. This can lead to the TanagerServer using localhost.
+        if wait_for_network:
+            while self.ip_address[0:3] == "127":
+                print("Waiting for network connection...")
+                hostname = socket.gethostname()
+                self.ip_address = socket.gethostbyname(hostname)
+                time.sleep(2)
 
         # Bind the socket to the port
-        self.server_address = (ip_address, port)
-        # self.server_address = ("", port)
+        # self.server_address = (ip_address, port) #This causes the raspberry pi to fail.
+        self.server_address = ("", port)
 
         self.sock.bind(self.server_address)
         self.queue = []
         self.remote_server_address = None
 
     def listen(self):
-        print(f"Listening on {self.server_address[0]} port {self.server_address[1]}.\n\n")
+        print(f"Listening on {self.ip_address} port {self.server_address[1]}.\n\n")
         # Listen for incoming connections
         self.sock.listen(1)
         # Wait for a connection
-
+        i = 0
         while True:
+            i += 1
+
             connection, _ = self.sock.accept()
             try:
                 # Receive the header telling the length of the message
@@ -154,6 +166,7 @@ class TanagerClient:
             return_address = return_message[HEADER_LEN:].decode("utf-8")
             if return_address != address_info:
                 raise WrongAddressError
+
         except (OSError, WrongHeaderError, WrongAddressError):
             print("self.sock is not a socket, or server address is invalid argument? Retrying.")
             self.connected = False

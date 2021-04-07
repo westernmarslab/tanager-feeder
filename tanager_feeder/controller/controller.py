@@ -1,10 +1,16 @@
 import os
 import time
 from threading import Thread
-from tkinter.filedialog import askopenfilename
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
+
+
+# pylint: disable = not-callable
+# Get quite a number of false (I think) not callable errors.
+# pylint: disable = method-hidden
+# Dummy ControllerType used for type hinting leads to lots of pylint method-hidden warnings.
 
 import tkinter as tk
+from tkinter.filedialog import askopenfilename
 from tkinter import (
     Button,
     Frame,
@@ -26,7 +32,6 @@ from tkinter import (
     INSERT,
     TclError,
 )
-from typing import Optional
 
 import numpy as np
 
@@ -49,6 +54,10 @@ from tanager_feeder.command_handlers.process_handler import ProcessHandler
 from tanager_feeder.command_handlers.save_config_handler import SaveConfigHandler
 from tanager_feeder.command_handlers.spectrum_handler import SpectrumHandler
 from tanager_feeder.command_handlers.white_reference_handler import WhiteReferenceHandler
+from tanager_feeder.command_handlers.restart_rs3_handler import RestartRS3Handler
+from tanager_feeder.command_handlers.restart_computer_handler import RestartComputerHandler
+from tanager_feeder.command_handlers.check_writeable_handler import CheckWriteableHandler
+from tanager_feeder.command_handlers.list_contents_handler import ListContentsHandler
 
 from tanager_feeder.commanders.spec_commander import SpecCommander
 from tanager_feeder.commanders.pi_commander import PiCommander
@@ -74,6 +83,17 @@ class Controller(utils.ControllerType):
         self.connection_manager = connection_manager
         self.config_info = config_info
         self.tk_format = utils.TkFormat(self.config_info)
+
+        # The queue is a list of dictionaries commands:parameters
+        # The commands are supposed to be executed in order, assuming each one succeeds.
+        # CommandHandlers tell the controller when it's time to do the next one
+        self.queue = []
+
+        self.restarting_spec_compy = False
+        self.white_referencing = False
+        self.white_reference_attempt = 0
+        self.opt_attempt = 0
+        self.overwrite_all = False  # User can say yes to all for overwriting files.
 
         try:
             self.spec_listener = SpecListener(connection_manager, config_info)
@@ -113,10 +133,7 @@ class Controller(utils.ControllerType):
 
         self.remote_directory_worker = RemoteDirectoryWorker(self.spec_commander, self.spec_listener)
 
-        # The queue is a list of dictionaries commands:parameters
-        # The commands are supposed to be executed in order, assuming each one succeeds.
-        # CommandHandlers tell the controller when it's time to do the next one
-        self.queue = []
+
 
         # One wait dialog open at a time. CommandHandlers check whether to use an existing one or make a new one.
         self.wait_dialog = None
@@ -154,9 +171,9 @@ class Controller(utils.ControllerType):
         self.script_failed = False
         self.script_running = False
         self.text_only = False  # for running scripts.
+        self.frozen = False
 
-        self.white_referencing = False
-        self.overwrite_all = False  # User can say yes to all for overwriting files.
+
 
         self.audio_signals = False
 
@@ -206,6 +223,8 @@ class Controller(utils.ControllerType):
             "Sample 5",
         ]  # All available positions. Does not change.
         self.taken_sample_positions = []  # Filled positions. Changes as samples are added and removed.
+        self.add_sample_button = None
+        self.add_geometry_button = None
 
         self.master = Tk()
         self.master.configure(background=self.tk_format.bg)
@@ -1015,7 +1034,7 @@ class Controller(utils.ControllerType):
     def plot_remote(self, filename: str) -> None:
         self.queue.insert(0, {self.plot_remote: [filename]})
         plot_loc = os.path.join(self.config_info.local_config_loc, "plot_temp.csv")
-        self.queue.insert(1, {self.plot_manager.plot: [plot_loc, False]})
+        self.queue.insert(1, {self.plot_manager.plot: [plot_loc]})
         self.spec_commander.transfer_data(filename)
         DataHandler(
             self,
@@ -1220,7 +1239,7 @@ class Controller(utils.ControllerType):
 
         # Requested save config is guaranteed to be valid because of input checks above.
         save_config_status = self.check_save_config()
-        if self.check_save_config() == "not_set":
+        if save_config_status == "not_set":
             self.complete_queue_item()
             self.queue.insert(0, nextaction)
             self.queue.insert(0, {self.set_save_config: []})
@@ -1248,6 +1267,8 @@ class Controller(utils.ControllerType):
     # Action will be either wr, take_spectrum, or opt (manual mode) OR it might just be 'acquire' (automatic mode)
     # For any of these things, we need to validate input.
     def acquire(self, override: bool = False, setup_complete: bool = False, action: Any = None, garbage: bool = False):
+        if not self.frozen:
+            self.freeze()
         # pylint: disable = comparison-with-callable
         if not setup_complete:
             # Make sure basenum entry has the right number of digits. It is already guaranteed to have no more digits
@@ -1375,7 +1396,7 @@ class Controller(utils.ControllerType):
 
         # For each (i, e, az), opt, white reference, save the white reference, move the tray, take a  spectrum, then
         # move the tray back, then update geom to next.
-        next_emission = self.science_e # Define this here so as not to get an
+        next_emission = self.science_e  # Define this here so as not to get an
         # error if len(self.active_emission_entries) == 0 (not sure if this is a real case).
 
         for index, entry in enumerate(self.active_emission_entries):
@@ -1387,7 +1408,6 @@ class Controller(utils.ControllerType):
                 # Do keep the emission arm above -50 to avoid danger of running oversized samples into the arm.
                 # For emission angles < -50, complete the movement later. Don't have to worry about it
                 # for first movement if if we're already at wr position
-                print(self.sample_tray_index)
                 if self.sample_tray_index > -1:
                     self.queue.append({self.next_geom: [False, True]})
                 else:
@@ -1397,7 +1417,7 @@ class Controller(utils.ControllerType):
 
             next_emission = int(entry.get())
             self.queue.append({self.move_tray: ["wr"]})
-            if next_emission < -50:
+            if next_emission < -50 or next_emission > 50:
                 self.queue.append({self.set_emission: [next_emission, MovementUnits.ANGLE.value]})
             self.queue.append({self.opt: [True, True]})
             self.queue.append({self.wr: [True, True]})
@@ -1405,6 +1425,10 @@ class Controller(utils.ControllerType):
             for pos in self.taken_sample_positions:  # e.g. 'Sample 1'
                 if next_emission < -50:
                     self.queue.append({self.set_emission: [-50, MovementUnits.ANGLE.value]})
+                    self.queue.append({self.move_tray: [pos]})
+                    self.queue.append({self.set_emission: [next_emission, MovementUnits.ANGLE.value]})
+                elif next_emission > 50:
+                    self.queue.append({self.set_emission: [50, MovementUnits.ANGLE.value]})
                     self.queue.append({self.move_tray: [pos]})
                     self.queue.append({self.set_emission: [next_emission, MovementUnits.ANGLE.value]})
                 else:
@@ -1415,6 +1439,8 @@ class Controller(utils.ControllerType):
         # Return tray to wr position when finished
         if next_emission < -50:
             self.queue.append({self.set_emission: [-50, MovementUnits.ANGLE.value]})
+        if next_emission > 50:
+            self.queue.append({self.set_emission: [50, MovementUnits.ANGLE.value]})
         self.queue.append({self.move_tray: ["wr"]})
 
         # Now append the script queue we saved at the beginning. But check if acquire is the first command in the
@@ -1521,7 +1547,7 @@ class Controller(utils.ControllerType):
                     movement_order = [{"i": -60}, {"e": next_science_e}, {"az": next_science_az}, {"i": next_science_i}]
         return movement_order
 
-    def next_geom(self, complete_last: bool = True, cap_at_minus_50 = False) -> None:
+    def next_geom(self, complete_last: bool = True, cap_at_minus_50=False) -> None:
         self.complete_queue_item()
         if complete_last:
             self.active_incidence_entries.pop(0)
@@ -1535,6 +1561,8 @@ class Controller(utils.ControllerType):
         if cap_at_minus_50:  # This is to prevent accidentally running oversized samples into the fiber optic.
             if next_e < -50:
                 next_e = -50
+            elif next_e > 50:
+                next_e = 50
         next_az = int(self.active_azimuth_entries[0].get())
 
         # Update goniometer position. Don't run the arms into each other
@@ -1617,7 +1645,6 @@ class Controller(utils.ControllerType):
         if unit == "angle":
             # First check whether we actually need to move at all.
             if next_az is None:
-                # TODO: confirm this shouldn't have a try/catch involved.
                 next_az = int(self.active_azimuth_entries[0].get())
 
             if next_az == self.science_az:  # No change in azimuth angle, no need to move
@@ -1837,12 +1864,12 @@ class Controller(utils.ControllerType):
         if not self.check_light_misses_arc(i, e, az, self.required_angular_separation):
             return False
         # And finally check if the light will hit the fiber optic cable, which has az = az -35
-        print("checking fiber optic!")
-        if not self.check_light_misses_arc(i, e, az+25, self.required_angular_separation_for_fiber, print_me=True):
+        if not self.check_light_misses_arc(i, e, az + 25, self.required_angular_separation_for_fiber):
             return False
         return True
 
-    def check_light_misses_arc(self, i, e, az, required_sep, print_me=False):
+    @staticmethod
+    def check_light_misses_arc(i, e, az, required_sep, print_me=False):
         # This is the azimuthal distance between the arc the light source travels
         # and the detector arm. -90 to 90 because i is negative.
         arm_bottom_az = az - 90
@@ -1887,8 +1914,8 @@ class Controller(utils.ControllerType):
         # the spec compy we won't have to do setup things agian.
         self.acquire(override=False, setup_complete=False, action=self.opt)
 
-    # called when user clicks wr button. No different than wr() except we clear out the queue first just in case there
-    # is something leftover hanging out in there.
+    # called when user clicks wr button. No different than wr() except we freeze buttons and clear out the queue first
+    # just in case there is something leftover hanging out in there.
     def wr_button_cmd(self) -> None:
         self.queue = []
         self.queue.append(
@@ -1918,89 +1945,38 @@ class Controller(utils.ControllerType):
     def take_spectrum(self, override: bool, setup_complete: bool, garbage: bool) -> None:
         self.acquire(override=override, setup_complete=setup_complete, action=self.take_spectrum, garbage=garbage)
 
+    def restart_computer(self):
+        self.spec_commander.restart_computer()
+        self.connection_manager.spec_offline = True
+        RestartComputerHandler(self)
+
+    def restart_rs3(self):
+        self.spec_commander.restart_rs3()
+        RestartRS3Handler(self)
+
     def configure_instrument(self) -> None:
         self.spec_commander.configure_instrument(self.instrument_config_entry.get())
         InstrumentConfigHandler(self)
 
+    def check_writeable(self):
+        self.spec_commander.check_writeable(self.spec_save_dir_entry.get())
+        CheckWriteableHandler(self)
+
+    def list_contents(self):
+        status = self.remote_directory_worker.get_dirs(self.spec_save_dir_entry.get())
+        ListContentsHandler(self, status)
+
     # Set thes ave configuration for raw spectral data. First, use a remotedirectoryworker to check whether the
     # directory exists and is writeable. If it doesn't exist, give an option to create the directory.
     def set_save_config(self) -> None:
-        # inner_mkdir function gets called if the directory doesn't exist and the user clicks 'yes' for making the directory.
-        def inner_mkdir(dir_to_make: str) -> None:
-            mkdir_status = self.remote_directory_worker.mkdir(dir_to_make)
-            if mkdir_status == "mkdirsuccess":
-                self.set_save_config()
-            elif mkdir_status == "mkdirfailedfileexists":
-                ErrorDialog(
-                    self, title="Error", label="Could not create directory:\n\n" + dir_to_make + "\n\nFile exists."
-                )
-            elif mkdir_status == "mkdirfailed":
-                ErrorDialog(self, title="Error", label="Could not create directory:\n\n" + dir_to_make)
+        self.queue.insert(1, {self.set_save_config_part_2: []})
+        self.list_contents()
 
-        status = self.remote_directory_worker.get_dirs(self.spec_save_dir_entry.get())
+    def set_save_config_part_2(self):
+        self.queue.insert(1, {self.finish_set_save_config: []})
+        self.check_writeable()
 
-        if status == "listdirfailed":
-
-            if self.script_running:  # If a script is running, automatically try to make the directory.
-                inner_mkdir(self.spec_save_dir_entry.get())
-            else:  # Otherwise, ask the user first.
-                buttons = {"yes": {inner_mkdir: [self.spec_save_dir_entry.get()]}, "no": {self.reset: []}}
-                ErrorDialog(
-                    self,
-                    title="Directory does not exist",
-                    label=self.spec_save_dir_entry.get() + "\n\ndoes not exist. Do you want to create this directory?",
-                    buttons=buttons,
-                )
-            return
-
-        if status == "listdirfailedpermission":
-            ErrorDialog(self, label="Error: Permission denied for\n" + self.spec_save_dir_entry.get())
-            return
-
-        if status == "timeout":
-            if not self.text_only:
-                buttons = {
-                    "cancel": {},
-                    "retry": {self.spec_commander.remove_from_listener_queue: [["timeout"]], self.next_in_queue: []},
-                }
-                try:  # Do this if there is a wait dialog up
-                    self.wait_dialog.interrupt(
-                        "Error: Operation timed out.\n\nCheck that the automation script is running on the spectrometer"
-                        "\n computer and the spectrometer is connected."
-                    )
-                    self.wait_dialog.set_buttons(buttons)  # , buttons=buttons)
-                    self.wait_dialog.top.geometry("376x175")
-                    for button in self.wait_dialog.tk_buttons:
-                        button.config(width=15)
-                except (AttributeError, TclError):
-                    dialog = ErrorDialog(
-                        self,
-                        label="Error: Operation timed out.\n\nCheck that the automation script is running on the"
-                        " spectrometer\n computer and the spectrometer is connected.",
-                        buttons=buttons,
-                    )
-                    dialog.top.geometry("376x145")
-                    for button in dialog.tk_buttons:
-                        button.config(width=15)
-            else:
-                self.log("Error: Operation timed out while trying to set save configuration")
-            return
-        self.spec_commander.check_writeable(self.spec_save_dir_entry.get())
-        t = 3 * utils.BUFFER
-        while t > 0:
-            if "yeswriteable" in self.spec_listener.queue:
-                self.spec_listener.queue.remove("yeswriteable")
-                break
-            if "notwriteable" in self.spec_listener.queue:
-                self.spec_listener.queue.remove("notwriteable")
-                ErrorDialog(self, label="Error: Permission denied.\nCannot write to specified directory.")
-                return
-            time.sleep(utils.INTERVAL)
-            t = t - utils.INTERVAL
-        if t <= 0:
-            ErrorDialog(self, label="Error: Operation timed out.")
-            return
-
+    def finish_set_save_config(self):
         spec_num = self.spec_startnum_entry.get()
         while len(spec_num) < self.config_info.num_len:
             spec_num = "0" + spec_num
@@ -2033,8 +2009,11 @@ class Controller(utils.ControllerType):
         self.queue = []
         self.script_running = False
         if self.wait_dialog is not None:
-            self.wait_dialog.interrupt(message)
-            self.wait_dialog.top.wm_geometry("376x140")
+            try:
+                self.wait_dialog.interrupt(message)
+                self.wait_dialog.top.wm_geometry("376x140")
+            except TclError:
+                pass
 
     def increment_num(self) -> None:
         try:
@@ -2044,7 +2023,12 @@ class Controller(utils.ControllerType):
         except ValueError:
             return
 
-    def process_cmd(self, input_directory: Optional[str] = None, output_directory: Optional[str] = None, output_file: Optional[str] = None) -> None:
+    def process_cmd(
+        self,
+        input_directory: Optional[str] = None,
+        output_directory: Optional[str] = None,
+        output_file: Optional[str] = None,
+    ) -> None:
         if input_directory is None or output_directory is None or output_file is None:
             try:
                 input_directory, output_directory, output_file = self.process_manager.setup_process()
@@ -2054,28 +2038,29 @@ class Controller(utils.ControllerType):
         if self.process_manager.proc_local.get() == 1:
             self.spec_commander.process(input_directory, "spec_temp_data_loc", output_file)
             self.queue.insert(0, {self.process_cmd: [input_directory, output_directory, output_file]})
-            self.queue.insert(1, {self.finish_process: [os.path.join("spec_temp_data_loc", output_file), os.path.join(output_directory, output_file)]})
+            self.queue.insert(
+                1,
+                {
+                    self.finish_process: [
+                        os.path.join("spec_temp_data_loc", output_file),
+                        os.path.join(output_directory, output_file),
+                    ]
+                },
+            )
         else:
             self.spec_commander.process(input_directory, output_directory, output_file)
             self.queue.insert(0, {self.process_cmd: [input_directory, output_directory, output_file]})
-        print("queue! in controller.py")
-        print(self.queue)
         ProcessHandler(self, os.path.join(output_directory, output_file))
 
     def finish_process(self, source_file, output_file) -> None:
-        print("FINISH PROCESSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS")
+        print("FInishing process")
+        print(self.queue)
         self.spec_commander.transfer_data(source_file)
         DataHandler(
             self,
             destination=output_file,
         )
         return
-        # We're going to transfer the data file and log file to the final destination. To transfer the log file, first
-        # decide on a name to call it. This will be based on the dat file name. E.g. foo.csv would have foo_log.txt
-        # associated with it.
-        final_data_destination, final_log_destination = self.process_manager.finish_processing()
-
-
 
     # This gets called when the user clicks 'Edit plot' from the right-click menu on a plot.
     # Pops up a scrollable listbox with sample options.
@@ -2133,7 +2118,6 @@ class Controller(utils.ControllerType):
                 continue
             self.view_notebook.forget(tab)
         self.plot_manager = PlotManager(self)
-
 
     def choose_spec_save_dir(self):
         RemoteFileExplorer(
@@ -2268,8 +2252,8 @@ class Controller(utils.ControllerType):
         self.control_frame.update()  # Configure scrollbar.
 
     def set_taken_sample_positions(self, *args):
-        # TODO: understand where these extra args are coming from
-        print(args)
+        # pylint: disable = unused-argument
+        # args contains a tuple of tkinter pyvars. e.g. ('PY_VAR39', '', 'w'). Not used.
         self.taken_sample_positions = []
         for var in self.sample_pos_vars:
             self.taken_sample_positions.append(var.get())
@@ -2533,7 +2517,6 @@ class Controller(utils.ControllerType):
         self.queue = []
 
     def set_individual_range(self, force=-1):
-        # TODO: save individually specified angles to config file
         if force == 0:
             self.range_frame.pack_forget()
             self.individual_angles_frame.pack()
@@ -2559,8 +2542,8 @@ class Controller(utils.ControllerType):
     #     self.output_filename_entry.icursor(pos)
 
     def validate_spec_save_dir(self, *args):
-        # TODO: understand where these extra args are coming from
-        print(args)
+        # pylint: disable = unused-argument
+        # args contains a tuple of tkinter pyvars. e.g. ('PY_VAR39', '', 'w'). Not used.
         pos = self.spec_save_dir_entry.index(INSERT)
         spec_save_dir = utils.rm_reserved_chars(self.spec_save_dir_entry.get())
         if len(spec_save_dir) < len(self.spec_save_dir_entry.get()):
@@ -2570,8 +2553,8 @@ class Controller(utils.ControllerType):
         self.spec_save_dir_entry.icursor(pos)
 
     def validate_basename(self, *args):
-        # TODO: understand where these extra args are coming from
-        print(args)
+        # pylint: disable = unused-argument
+        # args contains a tuple of tkinter pyvars. e.g. ('PY_VAR39', '', 'w'). Not used.
         pos = self.spec_basename_entry.index(INSERT)
         basename = utils.rm_reserved_chars(self.spec_basename_entry.get())
         basename = basename.strip("/").strip("\\")
@@ -2580,8 +2563,8 @@ class Controller(utils.ControllerType):
         self.spec_basename_entry.icursor(pos)
 
     def validate_startnum(self, *args):
-        # TODO: understand where these extra args are coming from
-        print(args)
+        # pylint: disable = unused-argument
+        # args contains a tuple of tkinter pyvars. e.g. ('PY_VAR39', '', 'w'). Not used.
         pos = self.spec_startnum_entry.index(INSERT)
         num = utils.numbers_only(self.spec_startnum_entry.get())
         if len(num) > self.config_info.num_len:
@@ -2736,6 +2719,7 @@ class Controller(utils.ControllerType):
         self.filemenu.entryconfig(0, state=DISABLED)
         self.filemenu.entryconfig(1, state=DISABLED)
         self.console.console_entry.configure(state="disabled")
+        self.frozen = True
 
     def unfreeze(self):
         self.console.console_entry.configure(state="normal")
@@ -2777,7 +2761,7 @@ class Controller(utils.ControllerType):
             for pos_menu in self.pos_menus:
                 pos_menu.configure(state="disabled")
 
+        self.frozen = False
+
     def log(self, text: str, newline: Optional[bool] = True):
         self.console.log(text, newline)
-
-    # TODO: Consider moving to a safe geometry on shutdown.

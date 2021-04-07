@@ -16,14 +16,7 @@ class Commander:
             while command in self.listener.queue:
                 self.listener.queue.remove(command)
 
-        extended_commands = [
-            "spec_data",
-            "log_data",
-            "donemoving",
-            "currentposition",
-            "datatransfercomplete",
-            "batch"
-        ]
+        extended_commands = ["spec_data", "log_data", "donemoving", "currentposition", "datatransfercomplete", "batch"]
         for command in commands:
             if command in extended_commands:
                 for item in self.listener.queue:

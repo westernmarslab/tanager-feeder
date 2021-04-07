@@ -388,7 +388,7 @@ class ProcessManager:
                 + "\n\nDo you want to overwrite this data?",
                 buttons=buttons,
             )
-            width = len(full_process_output_path)*5+100
+            width = len(full_process_output_path) * 5 + 100
             dialog.top.wm_geometry(f"{width}x160")
             return False
         return True
@@ -445,12 +445,13 @@ class ProcessManager:
                     label=local_dir + "\n\ndoes not exist. Do you want to create this directory?",
                     buttons=buttons,
                 )
-        #TODO: check these return statements make sense.
+        # TODO: check these return statements make sense.
         return exists
 
     # Checks if the given directory exists and is writeable. If not writeable, gives user option to create.
     def check_remote_folder(self, remote_dir: str, next_action: Any) -> bool:
         print(remote_dir)
+
         def inner_mkdir(dir_to_make: str, action: Any):
             mkdir_status = self.remote_directory_worker.mkdir(dir_to_make)
             print("MKDIR STATUS!!")

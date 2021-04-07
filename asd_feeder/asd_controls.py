@@ -1,12 +1,14 @@
 from pywinauto import Application
 from pywinauto import keyboard
 from pywinauto import findwindows
+import pywintypes
 import pywinauto
 import warnings
 import pyautogui
 from pywinauto import mouse
 import time
 import os
+import shutil
 
 import numpy as np
 
@@ -59,12 +61,22 @@ class RS3Controller:
         self.interval = 0.25
 
         try:
-            # print(errortime)
-            self.app = Application().connect(path=RS3_loc)
+            self.app = Application().connect(path=self.RS3_loc)
         except:
             print("\tStarting RS³")
-            self.app = Application().start(RS3_loc)
+            self.app = Application().start(self.RS3_loc)
         print("\tConnected to RS3")
+        self.spec = None
+        self.spec_connected = False
+        self.spec = self.app.ThunderRT6Form
+        self.spec.draw_outline()
+        self.pid = self.app.process
+        self.menu = RS3Menu(self.app)
+
+    def restart(self):
+        print("Restarting RS³")
+        self.app.kill()
+        self.app = Application().start(self.RS3_loc)
         self.spec = None
         self.spec_connected = False
         self.spec = self.app.ThunderRT6Form
@@ -74,7 +86,7 @@ class RS3Controller:
 
     def check_connectivity(self):
         try:
-            top_window = top = self.app.top_window()
+            top_window = self.app.top_window()
         except Exception as e:
             print("Cannot find top window")
             print(e)
@@ -145,7 +157,9 @@ class RS3Controller:
             return True
 
     def take_spectrum(self, filename):
-        self.spec.set_focus()
+        focused = try_set_focus(self.spec)
+        if not focused:
+            return False
         time.sleep(1)
         pyautogui.press("space")
 
@@ -154,13 +168,17 @@ class RS3Controller:
         self.nextnum = str(int(self.nextnum) + 1)
         while len(self.nextnum) < INDEXNUMLEN:
             self.nextnum = "0" + self.nextnum
+        return True
 
     def white_reference(self):
         if (
             int(self.numspectra) < 100
         ):  # WR often fails for small numbers of spectra, I think maybe because it hasn't finished catching up after optimizing?
             time.sleep(2)
-        self.spec.set_focus()
+        focused = try_set_focus(self.spec)
+        if not focused:
+            self.wr_failure = True
+            return
         keyboard.send_keys("{F4}")
         start_timeout = 10
         t = 0
@@ -172,6 +190,9 @@ class RS3Controller:
             else:
                 time.sleep(self.interval)
                 t += self.interval
+                if t%2==0:
+                    print(t)
+                    print(start_timeout)
         if t >= start_timeout:
             print("wr failed")
             self.wr_failure = True
@@ -182,11 +203,14 @@ class RS3Controller:
         finished = False
         while not finished and t < finish_timeout:
             loc = find_image(IMG_LOC + "/white_status.png", rect=self.spec.ThunderRT6PictureBoxDC6.rectangle())
-            if loc != None:
+            if loc is not None:
                 finished = True
             else:
                 time.sleep(self.interval)
                 t += self.interval
+                if t % 2 == 0:
+                    print(finish_timeout)
+                    print(t)
         if t >= finish_timeout:
             self.wr_failure = True
             print("wr failed")
@@ -202,7 +226,9 @@ class RS3Controller:
     # point you are ready to take a spectrum.
     def optimize(self):
         self.opt_complete = False
-        self.spec.set_focus()
+        focused = try_set_focus(self.spec)
+        if not focused:
+            return False
         keyboard.send_keys("^O")
 
         started = False
@@ -287,7 +313,10 @@ class RS3Controller:
 
         config.Edit3.set_edit_text(str(numspectra))  # probably done twice to set numspectra for wr and taking spectra.
         config.Edit.set_edit_text(str(numspectra))
-        config.set_focus()
+        focused = try_set_focus(config)
+        if not focused:
+            self.failed_to_open = True
+            return
         config.ThunderRT6PictureBoxDC.click_input()
         if pauseafter:
             time.sleep(2)
@@ -320,7 +349,11 @@ class RS3Controller:
         save.Edit5.set_edit_text(base)
         save.Edit4.set_edit_text(startnum)
 
-        save.set_focus()
+        focused = try_set_focus(save)
+        if not focused:
+            print("ERROR: Failed to set focus on save dialog")
+            raise Exception
+            return
         okfound = False
         controls = [save.ThunderRT6PictureBoxDC3, save.ThunderRT6PictureBoxDC2, save.ThunderRT6PictureBox]
         t = 15
@@ -390,25 +423,101 @@ class ViewSpecProController:
         files = os.listdir(output_path)
         for file in files:
             if ".sco" in file:
-                os.remove(output_path + "\\" + file)
-        print("processing files")
-        self.spec.set_focus()
-        self.spec.menu_select("File -> Close")
-        self.open_files(input_path)
-        time.sleep(1)
-
-        self.set_save_directory(output_path)
-        self.splice_correction()
-        self.ascii_export(output_path, tsv_name)
-
-        print("Processing complete. Cleaning directory.")
-        self.spec.menu_select("File -> Close")
-        files = os.listdir(output_path)
+                os.remove(os.path.join(output_path, file))
+        files = os.listdir(input_path)
         for file in files:
             if ".sco" in file:
-                os.remove(output_path + "\\" + file)
+                os.remove(os.path.join(input_path, file))
 
-        print("Finished.")
+        files_to_process = os.listdir(input_path) # TODO: make this include only files with the right extension
+        files_to_remove = []
+        for j, file in enumerate(files_to_process):
+            # if not os.path.isfile(os.path.join(input_path, file)): #take the directories out
+            if os.path.isdir(os.path.join(input_path, file)):
+                files_to_remove.append(file)
+
+        for file in files_to_remove:
+            files_to_process.remove(file)
+
+        #If we have over 50 files, do the processing in batches.
+        num_batches = 1
+        next_folder = os.path.join(os.path.join(input_path, f"tanager_batch_{num_batches}"))
+        self.safe_make_dir(next_folder)
+        batch_folders = [next_folder]
+        for j, file in enumerate(files_to_process):
+            if j > 0 and j % 50 == 0 and j != len(files_to_process)-1:
+                num_batches += 1
+                next_folder = os.path.join(os.path.join(input_path, f"tanager_batch_{num_batches}"))
+                self.safe_make_dir(next_folder)
+                batch_folders.append(next_folder)
+            source = os.path.join(input_path, file)
+            destination = os.path.join(next_folder, file)
+            shutil.copyfile(source, destination)
+
+        print("Processing files")
+        self.spec.set_focus()
+        self.spec.menu_select("File -> Close")
+
+        for j, folder in enumerate(batch_folders):
+            print("NEXT FOLDER")
+            print(folder)
+            self.open_files(folder)
+            time.sleep(1)
+            self.set_save_directory(input_path)
+            self.splice_correction()
+            self.ascii_export(input_path, tsv_name.split(".csv")[0]+f"_{j}.csv")
+            print(f"Processing batch {j} complete. Cleaning directory.")
+            self.spec.menu_select("File -> Close")
+
+        self.concatenate_files(batch_folders, os.path.join(output_path, tsv_name))
+        self.clear_batch_folders(batch_folders)
+
+        print("Processing complete.")
+
+    def safe_make_dir(self, dir):
+        if os.path.isdir(dir):
+            shutil.rmtree(dir)
+        os.mkdir(dir)
+
+    def concatenate_files(self, batch_folders, destination):
+        files_to_concatenate = []
+        for folder in batch_folders:
+            files = os.listdir(folder)
+            for file in files:
+                if ".csv" in file:
+                    files_to_concatenate.append(os.path.join(folder, file))
+
+        all_data = []
+        headers = ""
+        for j, file in enumerate(files_to_concatenate):
+            with open(file, "r") as f:
+                headers = f.readline().strip("\n")
+            data = np.genfromtxt(
+                file, skip_header=1, dtype=float, delimiter="\t", encoding=None, deletechars=""
+            )
+            for k, row in enumerate(data):
+                print(row)
+                if k == len(all_data):
+                    all_data.append(list(row))
+                else:
+                    all_data[k] = all_data[k] + list(row[1:])
+
+        with open(destination, "w+") as file:
+            file.write(headers+"\n")
+            for row in all_data:
+                row = [str(j) for j in row]
+                file.write("\t".join(row)+"\n")
+
+        print("Batched data recombined.")
+
+    def clear_batch_folders(self, batch_folders):
+        for folder in batch_folders:
+            try:
+                shutil.rmtree(folder)
+            except PermissionError:
+                time.sleep(2)
+                shutil.rmtree(folder)
+
 
     def open_files(self, path):
         print("Opening files from " + path)
@@ -648,10 +757,19 @@ def wait_for_window(app, title, timeout=5):
 
 
 def find_image(image, rect=None, loc=None):
-
+    print("Finding")
     if rect != None:
         screenshot = pyautogui.screenshot(region=(rect.left, rect.top, rect.width(), rect.height()))
     else:
         screenshot = pyautogui.screenshot(region=loc)
     location = pyautogui.locate(image, screenshot)
+    print("Done")
     return location
+
+def try_set_focus(target):
+    try:
+        target.set_focus()
+        return True
+    except pywintypes.error as e:
+        return False
+

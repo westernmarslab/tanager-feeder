@@ -1,11 +1,12 @@
 # Plotter takes a Tk root object and uses it as a base to spawn Tk Toplevel plot windows.
-from tkinter import TclError
+from tkinter import TclError, filedialog
 
 import matplotlib.pyplot as plt
 
 from tanager_feeder import utils
 from tanager_feeder.plotter.tab import Tab
 from tanager_data_io.data_io import DataIO
+
 
 class Plotter(DataIO):
     def __init__(self, controller, dpi, style):
@@ -14,8 +15,8 @@ class Plotter(DataIO):
         self.controller = controller
         self.notebook = self.controller.view_notebook
         self.dpi = dpi
-        self.titles = [] # Tab titles
-        self.dataset_names = [] # 1 per file plotted
+        self.titles = []  # Tab titles
+        self.dataset_names = []  # 1 per file plotted
         self.style = style
         plt.style.use(style)
 
@@ -31,21 +32,22 @@ class Plotter(DataIO):
         # if the user saves a plot so that the next time they click save plot, the save dialog opens into the same
         # directory where they just saved.
 
-    # def get_path(self):
-    #     initialdir = self.save_dir
-    #     if initialdir is not None:
-    #         print("initial dir set to " + self.save_dir)
-    #         path = filedialog.asksaveasfilename(initialdir=initialdir)
-    #     else:
-    #         path = filedialog.asksaveasfilename()
-    #
-    #     self.save_dir = path
-    #     if "\\" in path:
-    #         self.save_dir = "\\".join(path.split("\\")[0:-1])
-    #     elif "/" in path:
-    #         self.save_dir = "/".join(path.split("/")[0:-1])
-    #     print("return")
-    #     return path
+    #called from Plot.save()
+    def get_path(self):
+        initialdir = self.save_dir
+        if initialdir is not None:
+            print("initial dir set to " + self.save_dir)
+            path = filedialog.asksaveasfilename(initialdir=initialdir)
+        else:
+            path = filedialog.asksaveasfilename()
+
+        self.save_dir = path
+        if "\\" in path:
+            self.save_dir = "\\".join(path.split("\\")[0:-1])
+        elif "/" in path:
+            self.save_dir = "/".join(path.split("/")[0:-1])
+        print("return")
+        return path
 
     def notebook_click(self, event):
         self.close_right_click_menus(event)

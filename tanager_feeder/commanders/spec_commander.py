@@ -1,3 +1,4 @@
+import time
 from typing import Optional
 
 from tanager_feeder.commanders.commander import Commander
@@ -31,6 +32,18 @@ class SpecCommander(Commander):
     def optimize(self):
         self.remove_from_listener_queue(["nonumspectra", "optsuccess", "optfailure"])
         filename = self.encrypt("opt")
+        self.send(filename)
+        return filename
+
+    def restart_computer(self):
+        self.remove_from_listener_queue(["restarting"])
+        filename = self.encrypt("restartcomputer")
+        self.send(filename)
+        return filename
+
+    def restart_rs3(self):
+        self.remove_from_listener_queue(["rs3restarted"])
+        filename = self.encrypt("restartrs3")
         self.send(filename)
         return filename
 
@@ -85,18 +98,10 @@ class SpecCommander(Commander):
         return filename
 
     def transfer_data(self, source: str):
-        print("COMMANDING A TRANSFER")
         self.remove_from_listener_queue(["datatransfercomplete", "datafailure", "batch"])
         filename = self.encrypt("transferdata", parameters=[source])
         self.send(filename)
         return filename
-
-    # TODO: does this need to be deleted or implemented?
-    # def send_data(self, source,destination)
-    #     self.remove_from_listener_queue(['datareceived','datafailure'])
-    #     filename=self.encrypt('getdata',parameters=[source,destination])
-    #     self.send(filename)
-    #     return filename
 
     def process(self, input_dir: str, output_dir: str, output_file: str):
         self.remove_from_listener_queue(
@@ -115,5 +120,12 @@ class SpecCommander(Commander):
         self.send(filename)
         return filename
 
-    def send(self, message):
-        return self.connection_manager.send_to_spec(message)
+    def send(self, message: str):
+        sent = False
+        while sent is False:
+            sent = self.connection_manager.send_to_spec(message)
+            if not sent:
+                print(f"Retrying command {message}")
+                time.sleep(4)
+        print(f"Sent {message}")
+        return True

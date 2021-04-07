@@ -1,5 +1,7 @@
 import os
 import time
+import traceback
+
 from tanager_tcp import TanagerServer
 from tanager_tcp import TanagerClient
 from threading import Thread
@@ -9,11 +11,9 @@ from pi_feeder import goniometer
 INTERVAL = 0.25
 ENCODER_CONFIG_PATH = os.path.join(os.path.split(__file__)[0], "config", "encoder_config.txt")
 
-
 def main():
     pi_controller = PiController()
     pi_controller.listen()
-
 
 class PiController:
     def __init__(self):
@@ -31,8 +31,6 @@ class PiController:
             dir_path = os.path.split(ENCODER_CONFIG_PATH)[0]
             print(f"Encoder config file not found, creating new one at {ENCODER_CONFIG_PATH}")
             if not os.path.isdir(dir_path):
-                print("making dir")
-                print(dir_path)
                 os.mkdir(dir_path)
             self.write_encoder_config(0, 0, 0, 0)
             self.goniometer = goniometer.Goniometer()
@@ -45,6 +43,13 @@ class PiController:
         thread.start()
 
     def listen(self):
+        while True:
+            try:
+                self._listen()
+            except:
+                traceback.print_exc()
+
+    def _listen(self):
         print("listening!")
         t = 0
         while True:
@@ -164,20 +169,22 @@ class PiController:
             config_file.write(f"{az}\n")
             config_file.write(f"{tray}\n")
 
-    def send(self, filename):
-        self.client.send(filename)
+    def send(self, message):
+        sent = self.client.send(message)
+        while not sent:
+            print("Failed to send message, retrying.")
+            print(message)
+            time.sleep(2)
+            sent = self.client.send(message)
 
     def encrypt(self, cmd, parameters=None):
         filename = cmd
-        print(filename)
         if parameters:
-            print(parameters)
             for param in parameters:
                 param = param.replace("/", "+")
                 param = param.replace("\\", "+")
                 param = param.replace(":", "=")
                 filename = filename + "&" + param
-        print(filename)
         return filename
 
     def decrypt(self, encrypted):

@@ -18,6 +18,7 @@ class RemoteFileExplorer(Dialog):
         buttons=None,
         directories_only=True,
     ):
+        print("trying to init!")
         if buttons is None:
             buttons = {"ok": {}, "cancel": {}}
 
@@ -111,7 +112,11 @@ class RemoteFileExplorer(Dialog):
             )
             self.expand(newparent=self.current_parent)
         elif status == "mkdirfailedpermission":
-            ErrorDialog(self.controller, title="Error", label="Could not create directory:\n\n" + newdir + "\n\nPermission denied.")
+            ErrorDialog(
+                self.controller,
+                title="Error",
+                label="Could not create directory:\n\n" + newdir + "\n\nPermission denied.",
+            )
             self.expand(newparent=self.current_parent)
 
         elif "mkdirfailed" in status:
@@ -137,7 +142,7 @@ class RemoteFileExplorer(Dialog):
         select: Optional[str] = None,
         destroy: bool = False,
     ):
-
+        print("expanding!")
         if newparent is None:
             index = self.listbox.curselection()[0]
             if self.listbox.itemcget(index, "foreground") == "darkblue":

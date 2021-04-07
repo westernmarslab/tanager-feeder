@@ -226,7 +226,7 @@ class PlotManager:
         plot_input_file = self.plot_input_dir_entry.get()
 
         if (
-                self.plotter.save_dir is None
+            self.plotter.save_dir is None
         ):  # If the user hasn't specified a folder where they want to save plots yet, set the default folder to be
             # the same one they got the data from. Otherwise, leave it as is.
             if self.config_info.opsys == "Windows":
@@ -254,7 +254,7 @@ class PlotManager:
         else:
             self.plot(plot_input_file)
 
-    def plot(self, plot_input_file, draw = True):
+    def plot(self, plot_input_file):
         if len(self.controller.queue) > 0:
             if self.plot in self.controller.queue[0]:
                 # Happens if we just transferred data from spec compy.
@@ -266,7 +266,8 @@ class PlotManager:
             if not data_loaded:
                 ErrorDialog(self.controller, "Error", "Error: Could not load data.")
                 print("Error: Could not load data.")
-        except (IndexError, KeyError, Exception) as e:
+        # pylint: disable = broad-except
+        except (IndexError, KeyError, Exception):
             Dialog(
                 self.controller,
                 "Plotting Error",

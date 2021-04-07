@@ -19,23 +19,23 @@ class DataHandler(CommandHandler):
         self.controller.log("Tranferring data...", newline=False)
 
     def wait(self):
-        data=[]
+        data = []
         next_batch = 0
         while self.timeout_s > 0:
             batch_string = f"batch{next_batch}"
             for item in self.listener.queue:
                 if f"datatransferstarted" in item:
-                    total_batches = float(item.replace("datatransferstarted",""))
+                    total_batches = float(item.replace("datatransferstarted", ""))
                 if batch_string in item:
                     self.listener.queue.remove(item)
-                    if next_batch +1 < total_batches:
-                        percent_complete = int((next_batch+1)/total_batches*100)
+                    if next_batch + 1 < total_batches:
+                        percent_complete = int((next_batch + 1) / total_batches * 100)
                         self.controller.log(f" {percent_complete}%", newline=False)
                     else:
                         percent_complete = 100
                         self.controller.log(f" {percent_complete}%", newline=True)
 
-                    data.append(item[len(batch_string):])
+                    data.append(item[len(batch_string) :])
                     next_batch += 1
                     self.timeout_s = 2 * utils.BUFFER
 
@@ -48,7 +48,10 @@ class DataHandler(CommandHandler):
                             file.write(batch)
                 except OSError:
                     print("Exception writing data")
-                    self.interrupt(f"Error writing data to control computer location.\nDo you have permission to write to\n{self.destination}?", retry=True)
+                    self.interrupt(
+                        f"Error writing data to control computer location.\nDo you have permission to write to\n{self.destination}?",
+                        retry=True,
+                    )
                     return
 
                 self.success()
@@ -65,4 +68,3 @@ class DataHandler(CommandHandler):
     def success(self):
         self.interrupt("Data transferred successfully.")
         super().success()
-

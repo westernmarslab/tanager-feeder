@@ -1,3 +1,4 @@
+import time
 from typing import Dict, List, Optional
 
 from tanager_feeder.connection_checkers.connection_checker import ConnectionChecker
@@ -58,15 +59,24 @@ class SpecConnectionChecker(ConnectionChecker):
             config_loc=self.config_loc,
         )
 
-    def check_connection(self, timeout: int = 3):
-        if self.connection_manager.spec_offline:
-            connected = self.connection_manager.connect_spec(timeout)
-        else:
-            connected = self.connection_manager.send_to_spec("test")
+    def check_connection(self, timeout: int = 3, show_dialog: bool = True, attempts: int = 1):
+        attempt = 1
+        connected = self.connection_manager.send_to_spec("test", connect_timeout=timeout)
 
-        if not connected:
-            self.alert_not_connected()
+        if show_dialog:
+            if not connected and attempt >= attempts:
+                self.alert_not_connected()
+            elif not connected:
+                print("Spec compy not connected. Retrying.")
+                time.sleep(2)
+                self.check_connection(timeout=timeout, attempts=attempts - 1)
         else:
+            if not connected and attempt < attempts:
+                print("Spec compy not connected. Retrying.")
+                time.sleep(2)
+                self.check_connection(timeout=timeout, attempts=attempts - 1)
+
+        if connected:
             self.func(*self.args)
 
         return connected

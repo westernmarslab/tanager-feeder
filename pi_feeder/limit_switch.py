@@ -30,3 +30,8 @@ class LimitSwitch:
         else:
             self.tripped = False
         return self.tripped
+
+
+class SwitchTrippedException(Exception):
+    def __init__(self):
+        super().__init__("Switch tripped!")

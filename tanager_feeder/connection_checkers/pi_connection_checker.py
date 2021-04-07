@@ -1,3 +1,4 @@
+import time
 from typing import Dict, List, Optional
 
 from tanager_feeder.connection_checkers.connection_checker import ConnectionChecker
@@ -61,14 +62,16 @@ class PiConnectionChecker(ConnectionChecker):
             config_loc=self.config_loc,
         )
 
-    def check_connection(self, timeout: int = 3):
-        if self.connection_manager.pi_offline:
-            connected = self.connection_manager.connect_pi(timeout)
-        else:
-            connected = self.connection_manager.send_to_pi("test")
+    def check_connection(self, timeout: int = 3, attempts: int = 1):
+        attempt = 1
+        connected = self.connection_manager.send_to_pi("test", connect_timeout=timeout)
 
-        if not connected:
+        if not connected and attempt >= attempts:
             self.alert_not_connected()
+        elif not connected:
+            print("Pi not connected. Retrying.")
+            time.sleep(2)
+            self.check_connection(timeout, attempts - 1)
         else:
             self.func(*self.args)
 
