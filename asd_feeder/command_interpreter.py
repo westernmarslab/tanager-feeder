@@ -12,15 +12,18 @@ from asd_feeder.logger import Logger
 from asd_feeder.spectralon_corrector import SpectralonCorrector
 
 class CommandInterpreter:
-    def __init__(self, client, server, spec_controller, computer, logger, corrector):
+    def __init__(self, client, server, spec_controller, process_controller, computer, logger, corrector, temp_data_loc):
         self.client = client
         self.local_server = server
         self.spec_controller = spec_controller
+        self.process_controller = process_controller
         self.computer = computer
         self.logger = logger
         self.corrector = corrector
+        self.temp_data_loc = temp_data_loc
 
         self.data_files_to_ignore = []
+
 
     def check_writeable(self, params):
         try:
@@ -34,11 +37,15 @@ class CommandInterpreter:
         except (NotADirectoryError, PermissionError, OSError) as e:
             self.send("notwriteable", [])
 
-    def restart(self, params):
-        time.sleep(20)
+    def restart(self, params, run_time):
+        if run_time < 20:
+            time.sleep(20)
         self.send("restarting", [])
-        time.sleep(10)
-        os.system("shutdown /r /t 1")
+        if run_time > 20:
+            time.sleep(10)
+            os.system("shutdown /r /t 1")
+        else:
+            print("Just restarted. Doing nothing.")
 
     def take_spectrum(self, params):
         if (
@@ -81,10 +88,8 @@ class CommandInterpreter:
         try:
             self.spec_controller.take_spectrum(filename)
         except:
-            self.spec_controller.hopefully_saved_files.pop(-1)
-            self.spec_controller.nextnum = str(int(self.spec_controller.nextnum) - 1)
-            self.send("failedtosavefile", [filename])
-            return
+            traceback.print_exc()
+
 
         # Now wait for the data file to turn up where it belongs.
         saved = False
@@ -434,13 +439,13 @@ class CommandInterpreter:
             saved = False
             t0 = time.perf_counter()
             t = time.perf_counter()
-            while t - t0 < 20 and not saved:
+            while t - t0 < 200 and not saved:
                 saved = os.path.isfile(datafile)
                 time.sleep(0.2)
                 t = time.perf_counter()
             corrected = False
             if not saved:
-                print("not saved??")
+                print("Datafile not saved.")
                 print(datafile)
             if saved:
                 # Load headers from the logfile, then apply correction
@@ -454,7 +459,8 @@ class CommandInterpreter:
                         )  # applies a correction based on measured BRDF for spectralon
                         corrected = True
                     except:
-                        print("warning! correction not applied")
+                        traceback.print_exc()
+                        print("Warning! correction not applied")
                 else:
                     print("Warning! No log file found!")
                     self.tsv_to_csv(datafile)  # still replace tabs with commas
@@ -532,7 +538,9 @@ class CommandInterpreter:
         while not sent and message != "lostconnection":
             print("Failed to send message, retrying.")
             print(message)
+            time.sleep(2)
             sent = self.client.send(message)
+        print(f"Sent {message}")
 
 
     def filename_to_cmd(self, filename):

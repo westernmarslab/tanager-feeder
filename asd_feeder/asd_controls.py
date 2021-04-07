@@ -424,16 +424,18 @@ class ViewSpecProController:
         for file in files:
             if ".sco" in file:
                 os.remove(os.path.join(output_path, file))
+
         files = os.listdir(input_path)
         for file in files:
             if ".sco" in file:
                 os.remove(os.path.join(input_path, file))
 
-        files_to_process = os.listdir(input_path) # TODO: make this include only files with the right extension
+        files_to_process = os.listdir(input_path)
         files_to_remove = []
         for j, file in enumerate(files_to_process):
-            # if not os.path.isfile(os.path.join(input_path, file)): #take the directories out
             if os.path.isdir(os.path.join(input_path, file)):
+                files_to_remove.append(file)
+            elif ".asd" not in file:
                 files_to_remove.append(file)
 
         for file in files_to_remove:
@@ -445,7 +447,7 @@ class ViewSpecProController:
         self.safe_make_dir(next_folder)
         batch_folders = [next_folder]
         for j, file in enumerate(files_to_process):
-            if j > 0 and j % 50 == 0 and j != len(files_to_process)-1:
+            if j > 0 and j % 150 == 0 and j != len(files_to_process)-1:
                 num_batches += 1
                 next_folder = os.path.join(os.path.join(input_path, f"tanager_batch_{num_batches}"))
                 self.safe_make_dir(next_folder)
@@ -458,18 +460,23 @@ class ViewSpecProController:
         self.spec.set_focus()
         self.spec.menu_select("File -> Close")
 
+        data_files = []
         for j, folder in enumerate(batch_folders):
-            print("NEXT FOLDER")
-            print(folder)
             self.open_files(folder)
             time.sleep(1)
             self.set_save_directory(input_path)
             self.splice_correction()
-            self.ascii_export(input_path, tsv_name.split(".csv")[0]+f"_{j}.csv")
+            next_file = tsv_name.split(".csv")[0]+f"_{j}.csv"
+            try:
+                os.remove(os.path.join(input_path, next_file))
+            except FileNotFoundError:
+                pass
+            self.ascii_export(input_path, next_file)
+            data_files.append(os.path.join(input_path, next_file))
             print(f"Processing batch {j} complete. Cleaning directory.")
             self.spec.menu_select("File -> Close")
 
-        self.concatenate_files(batch_folders, os.path.join(output_path, tsv_name))
+        self.concatenate_files(data_files, os.path.join(output_path, tsv_name))
         self.clear_batch_folders(batch_folders)
 
         print("Processing complete.")
@@ -479,14 +486,10 @@ class ViewSpecProController:
             shutil.rmtree(dir)
         os.mkdir(dir)
 
-    def concatenate_files(self, batch_folders, destination):
-        files_to_concatenate = []
-        for folder in batch_folders:
-            files = os.listdir(folder)
-            for file in files:
-                if ".csv" in file:
-                    files_to_concatenate.append(os.path.join(folder, file))
+    def rm_tree(self, dir):
+        shutil.rmtree(dir)
 
+    def concatenate_files(self, files_to_concatenate, destination):
         all_data = []
         headers = ""
         for j, file in enumerate(files_to_concatenate):

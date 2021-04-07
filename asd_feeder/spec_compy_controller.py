@@ -33,25 +33,18 @@ class SpecCompyController:
 
         self.logger = Logger()
         self.control_server_address = None  # Will be set when a control computer sends a message with its ip_address and the port it's listening on
-        self.command_interpreter = CommandInterpreter(self.client, self.local_server, self.spec_controller, self.computer, self.logger, self.corrector)
-        self.time_since_cycled = 0
-
-        watchdog = Watchdog(self.temp_data_loc)
-        process = Process(target=watchdog.watch)
-        process.start()
+        self.command_interpreter = CommandInterpreter(self.client, self.local_server, self.spec_controller, self.process_controller, self.computer, self.logger, self.corrector, self.temp_data_loc)
 
     def listen(self):
         print_connection_announcement = None
-        count = 0
+        run_time = 0
         while True:
-            count += 1
+            run_time += 0.25
 
-            if count%10==0:
-                with open(os.path.join(self.temp_data_loc, "watchdog"), "w+") as f:
-                    pass # This file is looked for by the watchdog.
+            with open(os.path.join(self.temp_data_loc, "watchdog"), "w+") as f:
+                pass # This file is looked for by the watchdog.
 
             # check connectivity with spectrometer
-            print("checking connection")
             connected = self.spec_controller.check_connectivity()
             if not connected:
                 try:
@@ -74,11 +67,8 @@ class SpecCompyController:
             ):  # If we weren't connected before, let everyone know we are now!
                 print_connection_announcement = False
                 print("RS³ connected to the spectrometer. Listening!")
-            print("Looking for unexpected files")
             # check for unexpected files in data directory
             self.command_interpreter.routine_file_check()
-            print("handling commands")
-
 
             # check for new commands in the tcp server queue
             while len(self.local_server.queue) > 0:
@@ -98,7 +88,7 @@ class SpecCompyController:
 #                     print("Command received: " + cmd)
 
                 if cmd == "restartcomputer":
-                    self.command_interpreter.restart(params)
+                    self.command_interpreter.restart(params, run_time)
 
                 elif cmd == "restartrs3":
                     self.command_interpreter.restartrs3(params)
@@ -148,7 +138,6 @@ class SpecCompyController:
                     self.command_interpreter.rmdir(params)
 
             time.sleep(0.25)
-            print("Reset loop")
 
     # Copied in command interpreter, Should be in a utils file.
     def send(self, cmd, params):
@@ -157,8 +146,10 @@ class SpecCompyController:
         # the lostconnection message will get resent anyway, no need to clog up lanes by retrying here.
         while not sent and message != "lostconnection":
             print("Failed to send message, retrying.")
+            time.sleep(2)
             print(message)
             sent = self.client.send(message)
+        print(f"Sent {message}")
 
 
     #Copied in command interpreter, Should be in a utils file.
@@ -179,35 +170,3 @@ class SpecCompyController:
             filename = filename + "&" + param
             i = i + 1
         return filename
-
-class Watchdog:
-    def __init__(self, folder):
-        self.folder = folder
-    def watch(self):
-        announced_minute = []
-        next_minute = 60
-        time_since_cycled = 0
-        while True:
-            print("************************************************Watching")
-            files = os.listdir(self.folder)
-            for file in files:
-                if "watchdog" in file:
-                    try:
-                        os.remove(os.path.join(self.folder, file))
-                    except: # OSError?
-                        print("Warning: Could not delete watchdog file.")
-                    time_since_cycled = 0
-            if next_minute < time_since_cycled and len(announced_minute) == next_minute/60-1:
-                print(f"************************************************{time_since_cycled/60} minutes since watchdog reset. Restarting computer at 10 minutes.")
-                announced_minute.append(1)
-                next_minute += 60
-            elif 20 < time_since_cycled:
-                home = os.path.expanduser("~")
-                with open(os.path.join(home, "watchdog_restart"), "w+") as f:
-                    f.write("watched!")
-                print("************************************************10 minutes since cycle, time for restart")
-                time.sleep(30)
-                os.system("shutdown /r /t 1")
-
-            time.sleep(10)
-            time_since_cycled += 10
