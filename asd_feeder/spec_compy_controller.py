@@ -148,6 +148,7 @@ class SpecCompyController:
         while not sent and message != "lostconnection":
             print("Failed to send message, retrying.")
             print(message)
+            time.sleep(2)
             sent = self.client.send(message)
 
 

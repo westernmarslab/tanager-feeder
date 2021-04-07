@@ -72,6 +72,9 @@ class SpecListener(Listener):
             elif cmd == "savedfile":
                 self.queue.append(cmd)
 
+            elif cmd == "restarting":
+                self.queue.append(cmd)
+
             elif "log_data" in cmd:
                 found = False
                 for item in self.queue:

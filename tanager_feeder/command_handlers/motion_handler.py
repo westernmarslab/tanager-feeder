@@ -52,6 +52,10 @@ class MotionHandler(CommandHandler):
         else:
             super().interrupt(label)
 
+    def timeout(self):
+        self.controller.log("Error: Timed out while moving. Retrying.")
+        self.controller.next_in_queue()
+
     def success(self):
         if "emission" in self.label:
             self.controller.angles_change_time = time.time()
