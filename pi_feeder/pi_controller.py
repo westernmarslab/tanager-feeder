@@ -1,5 +1,7 @@
 import os
 import time
+import traceback
+
 from tanager_tcp import TanagerServer
 from tanager_tcp import TanagerClient
 from threading import Thread
@@ -9,11 +11,9 @@ from pi_feeder import goniometer
 INTERVAL = 0.25
 ENCODER_CONFIG_PATH = os.path.join(os.path.split(__file__)[0], "config", "encoder_config.txt")
 
-
 def main():
     pi_controller = PiController()
     pi_controller.listen()
-
 
 class PiController:
     def __init__(self):
@@ -43,6 +43,13 @@ class PiController:
         thread.start()
 
     def listen(self):
+        while True:
+            try:
+                self._listen()
+            except:
+                traceback.print_exc()
+
+    def _listen(self):
         print("listening!")
         t = 0
         while True:
@@ -167,6 +174,7 @@ class PiController:
         while not sent:
             print("Failed to send message, retrying.")
             print(message)
+            time.sleep(2)
             sent = self.client.send(message)
 
     def encrypt(self, cmd, parameters=None):

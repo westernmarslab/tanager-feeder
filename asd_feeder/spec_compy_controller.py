@@ -148,6 +148,7 @@ class SpecCompyController:
             print("Failed to send message, retrying.")
             time.sleep(2)
             print(message)
+            time.sleep(2)
             sent = self.client.send(message)
         print(f"Sent {message}")
 
