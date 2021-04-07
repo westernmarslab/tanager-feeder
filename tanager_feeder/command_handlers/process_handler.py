@@ -1,5 +1,7 @@
 import time
 
+from tkinter import TclError
+
 from tanager_feeder.command_handlers.command_handler import CommandHandler
 from tanager_feeder import utils
 
@@ -9,10 +11,15 @@ class ProcessHandler(CommandHandler):
         self.listener = controller.spec_listener
         super().__init__(controller, title, label, timeout=20000 + utils.BUFFER)
         self.outputfile = destination
-        self.wait_dialog.set_buttons({})
+        self.wait_dialog.set_buttons({"cancel": {self.cancel_func: []}})
         self.wait_dialog.top.wm_geometry("376x130")
         # Normally we have a pause and a cancel option if there are additional items in the queue, but it doesn't
         # make much sense to pause processing halfway through, so let's just not have the option.
+
+    def cancel_func(self):
+        self.interrupt("Operation canceled.")
+        self.controller.reset()
+        print(self.controller.queue)
 
     def wait(self):
         # TODO: add cancel option to processing.
@@ -58,6 +65,7 @@ class ProcessHandler(CommandHandler):
                 self.interrupt("Error processing files: Output file already exists")
                 self.controller.log("Error processing files: output file exists.")
                 self.controller.complete_queue_item()
+                self.controller.complete_queue_item()
                 return
 
             if "processerrornodirectory" in self.listener.queue:
@@ -66,38 +74,54 @@ class ProcessHandler(CommandHandler):
                 self.interrupt("Error processing files.\n\nInput directory does not exist.")
                 self.wait_dialog.top.wm_geometry("376x165")
                 self.controller.log("Error processing files: Input directory does not exist.")
-                self.controller.complete_queue_item()
+                self.complete_queue_items()
                 return
 
             if "processerrorwropt" in self.listener.queue:
 
                 self.listener.queue.remove("processerrorwropt")
+                self.wait_dialog.top.wm_geometry("376x165")
                 self.interrupt(
                     "Error processing files.\n\nDid you optimize and white reference before collecting data?"
                 )
-                self.wait_dialog.top.wm_geometry("376x165")
                 self.controller.log("Error processing files")
-                self.controller.complete_queue_item()
+                self.complete_queue_items()
                 return
             if "processerrorcannotwrite" in self.listener.queue:
-
                 self.listener.queue.remove("processerrorcannotwrite")
-                self.interrupt("Error processing files.\n\nDo you have access to the source folder?")
                 self.wait_dialog.top.wm_geometry("376x165")
+                self.wait_dialog.top.wm_geometry("376x165")
+                self.interrupt("Error processing files.\n\nDo you have access to the source folder?")
                 self.controller.log("Error processing files")
-                self.controller.complete_queue_item()
+                self.complete_queue_items()
+
                 return
             if "processerror" in self.listener.queue:
                 self.listener.queue.remove("processerror")
-                self.wait_dialog.top.wm_geometry("376x175")
+                try:
+                    self.wait_dialog.top.wm_geometry("376x175")
+                except TclError:
+                    pass
                 self.interrupt("Error processing files.\n\nIs ViewSpecPro running? Do directories exist?", retry=True)
                 self.controller.log("Error processing files")
+                self.complete_queue_items()
                 return
 
             time.sleep(utils.INTERVAL)
             self.timeout_s -= utils.INTERVAL
 
         self.timeout()
+
+    def complete_queue_items(self):
+        print("In process handler, clearing queue")
+        print(self.controller.queue)
+        for i, item in enumerate(self.controller.queue):
+            if i > 1:
+                break
+            elif item in [self.controller.process, self.controller.finish_process]:
+                self.controller.complete_queue_item()
+        print(self.controller.queue)
+
 
     def success(self, warnings: str = ""):
 
@@ -107,11 +131,13 @@ class ProcessHandler(CommandHandler):
             self.controller.process_manager.plot_local_remote = "remote"
         else:
             self.controller.plot_manager.plot_local_remote = "local"
-
-        if warnings != "":
-            self.wait_dialog.top.wm_geometry("376x130")
-        else:
-            self.wait_dialog.top.wm_geometry("376x100")
+        try:
+            if warnings != "":
+                self.wait_dialog.top.wm_geometry("376x130")
+            else:
+                self.wait_dialog.top.wm_geometry("376x100")
+        except TclError:
+            pass
 
         self.controller.process_manager.process_top.destroy()
 

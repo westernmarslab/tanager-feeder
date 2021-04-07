@@ -1,2 +1,2 @@
 sleep 10
-tanager-pi-feeder
+pi-feeder
