@@ -1,2 +1,2 @@
 sleep 10
-pi-feeder
+python3 /home/pi/tanager-feeder/pi_feeder/pi_controller.py

@@ -124,7 +124,6 @@ class ProcessHandler(CommandHandler):
 
 
     def success(self, warnings: str = ""):
-
         self.controller.plot_manager.plot_input_file = self.outputfile
 
         if self.controller.process_manager.proc_local_remote == "remote":
