@@ -2439,7 +2439,6 @@ class Controller(utils.ControllerType):
             },
             "cancel": {
                 self.unfreeze: [],
-                self.set_manual_automatic: [0],
                 self.clear_queue: [],
             },
         }
@@ -2447,8 +2446,7 @@ class Controller(utils.ControllerType):
             self,
             title="Setup Required",
             label="Setup required: Unknown goniometer state.\n\nPlease enter the current incidence, emission, and tray"
-            " positions and click OK. \nNote that this will trigger the azimuth table homing routine.\n\n"
-            "Alternatively, click 'Cancel' to use the goniometer in manual mode.",
+            " positions and click OK. \nNote that this will trigger the azimuth table homing routine.\n\n",
             values={
                 "Incidence": [self.science_i, self.min_motor_i, self.max_motor_i],
                 "Emission": [self.science_e, self.min_motor_e, self.max_motor_e],
