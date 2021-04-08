@@ -95,6 +95,12 @@ class Controller(utils.ControllerType):
         self.opt_attempt = 0
         self.overwrite_all = False  # User can say yes to all for overwriting files.
 
+        self.tk_buttons = []
+        self.entries = []
+        self.radiobuttons = []
+        self.tk_check_buttons = []
+        self.option_menus = []
+
         try:
             self.spec_listener = SpecListener(connection_manager, config_info)
         except OSError as e:
@@ -281,11 +287,7 @@ class Controller(utils.ControllerType):
         self.notebook_frame = Frame(self.master)
         self.notebook_frame.pack(side=LEFT, fill=BOTH, expand=True)
         self.notebook = ttk.Notebook(self.notebook_frame)
-        self.tk_buttons = []
-        self.entries = []
-        self.radiobuttons = []
-        self.tk_check_buttons = []
-        self.option_menus = []
+
 
         self.view_frame = Frame(self.master, width=1800, height=1200, bg=self.tk_format.bg)
         self.view_frame.pack(side=RIGHT, fill=BOTH, expand=True)

@@ -93,6 +93,7 @@ class SpecListener(Listener):
             elif "lostconnection" in cmd and not self.controller.restarting_spec_compy:
                 if self.alert_lostconnection:
                     self.alert_lostconnection = False
+                    time.sleep(2)
                     self.controller.freeze()
                     buttons = {
                         "retry": {

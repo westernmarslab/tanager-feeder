@@ -62,7 +62,7 @@ class Goniometer:
                     0.006,
                     encoder.AMT212ARotaryEncoder(port="/dev/ttyUSB0", encoder_base=0x54, zero_position=tray_zero),
                     1,
-                    True,
+                    True, # ok to wrap around to reach positioin
                 ),
                 "gear ratio": 1,
                 "positions": {

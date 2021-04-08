@@ -101,6 +101,7 @@ class ProcessHandler(CommandHandler):
                 try:
                     self.wait_dialog.top.wm_geometry("376x175")
                 except TclError:
+                    print("TclError")
                     pass
                 self.interrupt("Error processing files.\n\nIs ViewSpecPro running? Do directories exist?", retry=True)
                 self.controller.log("Error processing files")
