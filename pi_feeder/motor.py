@@ -57,15 +57,19 @@ class Motor:
         if theta is None:
             self._position_degrees = theta
         else:
-            if self.target_theta < 1 and theta > 359:
+            if self.target_theta < 60 and theta > 300:
+                print("SUBTRACTING 360")
                 self._position_degrees = theta - 360
-            elif self.target_theta > 359 and theta < 1:
+            elif self.target_theta > 300 and theta < 60:
                 self._position_degrees = theta + 360
+                print("ADDING 360")
             else:
                 self._position_degrees = float(theta)
 
     def set_full_turns(self, target_turns):
+        self.target_theta = self.position_degrees # Should finish at same angle as started
         turns_needed = np.abs(target_turns - self.position_full_turns)
+
         if turns_needed == 0:
             return
         steps_needed = int(turns_needed * 360 * self.steps_per_degree)
@@ -73,6 +77,8 @@ class Motor:
             self.forward(steps_needed)
         else:
             self.backward(steps_needed)
+        self.update_position(1)
+
         self.position_full_turns = target_turns
 
     def move_to_angle(self, target_theta: int):

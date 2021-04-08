@@ -197,8 +197,10 @@ class CommandInterpreter:
         try:
             with open(source, "r") as file:
                 data = file.readlines()
-                batch_size = 500
-                utils.send(self.client, f"datatransferstarted{len(data)/500}", [])
+                # if len(data[-1]) > 100:
+                batch_size = 50
+                self.send(self.client, f"datatransferstarted{len(data)/batch_size}", [])
+
                 batch = 0
                 next_message = ""
                 for i, line in enumerate(data):

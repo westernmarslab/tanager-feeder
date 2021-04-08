@@ -122,15 +122,10 @@ class SpecCommander(Commander):
 
     def send(self, message: str):
         sent = False
-        attempt = 1
-        while sent is False and attempt < 10:
+        while sent is False:
             sent = self.connection_manager.send_to_spec(message)
-            attempt += 1
             if not sent:
                 print(f"Retrying command {message}")
                 time.sleep(4)
-        if not sent:
-            print(f"Failed to send command {message}")
-        else:
-            print(f"Sent {message}")
-        return sent
+        print(f"Sent {message}")
+        return True

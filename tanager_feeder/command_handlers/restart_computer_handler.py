@@ -11,10 +11,11 @@ class RestartComputerHandler(CommandHandler):
         self.connection_checker = SpecConnectionChecker(
             controller.connection_manager, controller.config_info, func=self.success
         )
-        super().__init__(controller, title, label, timeout=10 + utils.BUFFER)
+        super().__init__(controller, title, label, timeout=100 + utils.BUFFER)
 
     def wait(self):
-        while self.timeout_s > 0:
+        while True: # Once you try restarting, just keep listening.
+            # Spec will keep trying to send until the message goes through.
             if "restarting" in self.listener.queue:
                 print("Restarting in restart handler")
                 self.controller.restarting_spec_compy = True
@@ -37,13 +38,21 @@ class RestartComputerHandler(CommandHandler):
             time.sleep(utils.INTERVAL)
             self.timeout_s -= utils.INTERVAL
 
-        self.timeout()
+        # if self.cancel or self.pause:
+        #     self.timeout()
+        # else:
+        #     # Automatically retry if you haven't heard that it knows to restart.
+        #     # This means that even if we have to wait for the watchdog timer,
+        #     # we won't give up on restarting.
+        #     self.controller.log("Computer restart not registered. Retrying.")
+        #     self.controller.next_in_queue()
 
     def timeout(self):
+        #Timeout only gets called if the spec compy says it is going to restart but then it doesn't.
         self.controller.white_reference_attempt = 0
         self.controller.restarting_spec_compy = False
         super().timeout(
-            retry=False, dialog_string="Error: Timed out while trying\nto restart the spectrometer computer."
+            retry=True, dialog_string="Error: Timed out while trying\nto restart the spectrometer computer."
         )
         self.wait_dialog.top.geometry("376x145")
         connection_checker = SpecConnectionChecker(
@@ -56,6 +65,6 @@ class RestartComputerHandler(CommandHandler):
 
     def success(self):
         self.controller.log("Spec compy restarted.")
-        time.sleep(30)
+        time.sleep(90) #Give time for the spectrometer to reconnect
         self.controller.restarting_spec_compy = False
         super().success()

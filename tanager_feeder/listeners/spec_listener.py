@@ -72,6 +72,9 @@ class SpecListener(Listener):
             elif cmd == "savedfile":
                 self.queue.append(cmd)
 
+            elif cmd == "restarting":
+                self.queue.append(cmd)
+
             elif "log_data" in cmd:
                 found = False
                 for item in self.queue:
@@ -90,6 +93,7 @@ class SpecListener(Listener):
             elif "lostconnection" in cmd and not self.controller.restarting_spec_compy:
                 if self.alert_lostconnection:
                     self.alert_lostconnection = False
+                    time.sleep(2)
                     self.controller.freeze()
                     buttons = {
                         "retry": {

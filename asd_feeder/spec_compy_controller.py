@@ -73,7 +73,6 @@ class SpecCompyController:
 
             # check for new commands in the tcp server queue
             while len(self.local_server.queue) > 0:
-                print(".")
                 if self.local_server.remote_server_address != self.client.server_address:
                     print("Setting control computer address:")
                     self.client.server_address = self.local_server.remote_server_address
@@ -84,9 +83,6 @@ class SpecCompyController:
                 print(f"Message received: {message}")
 
                 cmd, params = utils.filename_to_cmd(message)
-#                 if cmd != "test":
-#                     print("***************")
-#                     print("Command received: " + cmd)
 
                 if cmd == "restartcomputer":
                     self.command_interpreter.restart(params, run_time)
@@ -139,3 +135,39 @@ class SpecCompyController:
                     self.command_interpreter.rmdir(params)
 
             time.sleep(0.25)
+<<<<<<< HEAD
+=======
+
+    # Copied in command interpreter, Should be in a utils file.
+    def send(self, cmd, params):
+        message = self.cmd_to_filename(cmd, params)
+        sent = self.client.send(message)
+        # the lostconnection message will get resent anyway, no need to clog up lanes by retrying here.
+        while not sent and message != "lostconnection":
+            print("Failed to send message, retrying.")
+            time.sleep(2)
+            print(message)
+            time.sleep(2)
+            sent = self.client.send(message)
+        print(f"Sent {message}")
+
+
+    #Copied in command interpreter, Should be in a utils file.
+    def filename_to_cmd(self, filename):
+        cmd = filename.split("&")[0]
+        params = filename.split("&")[1:]
+        i = 0
+        for param in params:
+            params[i] = param
+            i = i + 1
+        return cmd, params
+
+    #Copied in command interpreter, Should be in a utils file.
+    def cmd_to_filename(self, cmd, params):
+        filename = cmd
+        i = 0
+        for param in params:
+            filename = filename + "&" + param
+            i = i + 1
+        return filename
+>>>>>>> 8559570c02c77a8aa9b5a9cfd736e2c6fa216272

@@ -1,6 +1,5 @@
-from pywinauto import Application
-from pywinauto import keyboard
-from pywinauto import findwindows
+from pywinauto import Application, keyboard, findwindows
+from pywinauto.base_wrapper import ElementNotEnabled
 import pywintypes
 import pywinauto
 import warnings
@@ -523,7 +522,15 @@ class ViewSpecProController:
 
     def open_files(self, path):
         print("Opening files from " + path)
-        self.spec.menu_select("File -> Open")
+        t = 0
+        timeout = 10
+        while t < timeout:
+            try:
+                self.spec.menu_select("File -> Open")
+            except ElementNotEnabled:
+                print("Waiting for File menu...")
+                t += 1
+                time.sleep(1)
         open = wait_for_window(self.app, "Select Input File(s)")
         open.set_focus()
         open["Address Band Root"].toolbar.button(0).click()

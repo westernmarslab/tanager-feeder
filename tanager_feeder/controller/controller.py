@@ -95,6 +95,12 @@ class Controller(utils.ControllerType):
         self.opt_attempt = 0
         self.overwrite_all = False  # User can say yes to all for overwriting files.
 
+        self.tk_buttons = []
+        self.entries = []
+        self.radiobuttons = []
+        self.tk_check_buttons = []
+        self.option_menus = []
+
         try:
             self.spec_listener = SpecListener(connection_manager, config_info)
         except OSError as e:
@@ -281,11 +287,7 @@ class Controller(utils.ControllerType):
         self.notebook_frame = Frame(self.master)
         self.notebook_frame.pack(side=LEFT, fill=BOTH, expand=True)
         self.notebook = ttk.Notebook(self.notebook_frame)
-        self.tk_buttons = []
-        self.entries = []
-        self.radiobuttons = []
-        self.tk_check_buttons = []
-        self.option_menus = []
+
 
         self.view_frame = Frame(self.master, width=1800, height=1200, bg=self.tk_format.bg)
         self.view_frame.pack(side=RIGHT, fill=BOTH, expand=True)
@@ -2437,7 +2439,6 @@ class Controller(utils.ControllerType):
             },
             "cancel": {
                 self.unfreeze: [],
-                self.set_manual_automatic: [0],
                 self.clear_queue: [],
             },
         }
@@ -2445,8 +2446,7 @@ class Controller(utils.ControllerType):
             self,
             title="Setup Required",
             label="Setup required: Unknown goniometer state.\n\nPlease enter the current incidence, emission, and tray"
-            " positions and click OK. \nNote that this will trigger the azimuth table homing routine.\n\n"
-            "Alternatively, click 'Cancel' to use the goniometer in manual mode.",
+            " positions and click OK. \nNote that this will trigger the azimuth table homing routine.\n\n",
             values={
                 "Incidence": [self.science_i, self.min_motor_i, self.max_motor_i],
                 "Emission": [self.science_e, self.min_motor_e, self.max_motor_e],

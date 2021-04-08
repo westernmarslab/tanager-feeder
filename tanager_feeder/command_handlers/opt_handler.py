@@ -88,6 +88,7 @@ class OptHandler(TriggerRestartHandler):
 
     def success(self):
         self.controller.opt_time = int(time.time())
+        self.controller.opt_attempt = 0
         self.controller.log("Instrument optimized.")
         super().success()
 
