@@ -72,7 +72,6 @@ class SpecCompyController:
 
             # check for new commands in the tcp server queue
             while len(self.local_server.queue) > 0:
-                print(".")
                 if self.local_server.remote_server_address != self.client.server_address:
                     print("Setting control computer address:")
                     self.client.server_address = self.local_server.remote_server_address
@@ -83,9 +82,6 @@ class SpecCompyController:
                 print(f"Message received: {message}")
 
                 cmd, params = self.filename_to_cmd(message)
-#                 if cmd != "test":
-#                     print("***************")
-#                     print("Command received: " + cmd)
 
                 if cmd == "restartcomputer":
                     self.command_interpreter.restart(params, run_time)
