@@ -10,6 +10,7 @@ from tanager_tcp import TanagerClient, TanagerServer
 from asd_feeder.asd_controls import RS3Controller, ViewSpecProController
 from asd_feeder.logger import Logger
 from asd_feeder.spectralon_corrector import SpectralonCorrector
+from asd_feeder import utils
 
 class CommandInterpreter:
     def __init__(self, client, server, spec_controller, process_controller, computer, logger, corrector, temp_data_loc):
@@ -33,14 +34,14 @@ class CommandInterpreter:
                 pass # This could happen if an autospec temp file was left hanging
                 # (created but not deleted) earlier.
             os.rmdir(params[0] + "\\autospec_temp")
-            self.send("yeswriteable", [])
+            utils.send(self.client, "yeswriteable", [])
         except (NotADirectoryError, PermissionError, OSError) as e:
-            self.send("notwriteable", [])
+            utils.send(self.client, "notwriteable", [])
 
     def restart(self, params, run_time):
         if run_time < 20:
             time.sleep(20)
-        self.send("restarting", [])
+        utils.send(self.client, "restarting", [])
         if run_time > 20:
             time.sleep(10)
             os.system("shutdown /r /t 1")
@@ -54,12 +55,12 @@ class CommandInterpreter:
             # If there's no save configuration set on this computer, tell the control computer you need
             # one. This comes up if the script restarts on the spec compy but there is no restart on
             # the control compy.
-            self.send("noconfig", [])
+            utils.send(self.client, "noconfig", [])
             return
         if (
             self.spec_controller.numspectra is None
         ):  # Same as above, but for instrument configuration (number of spectra to average)
-            self.send("nonumspectra", [])
+            utils.send(self.client, "nonumspectra", [])
             return
 
         # We're going to need to know what filename to expect to be saved so that we can 1) check if the
@@ -79,7 +80,7 @@ class CommandInterpreter:
         # Check if the file already exists. If it does, let the user know. They will have the option
         # to remove and retry.
         if os.path.isfile(filename):
-            self.send("savespecfailedfileexists", [])
+            utils.send(self.client, "savespecfailedfileexists", [])
             return
 
         # After saving a spectrum, the spec_controller updates its list of expected files to include
@@ -104,32 +105,32 @@ class CommandInterpreter:
 
         if saved:
             self.logger.log_spectrum(self.spec_controller.numspectra, i, e, az, filename, label)
-            self.send("savedfile", [filename])
+            utils.send(self.client, "savedfile", [filename])
             print("Done")
         else:
             self.spec_controller.hopefully_saved_files.pop(-1)
             self.spec_controller.nextnum = str(int(self.spec_controller.nextnum) - 1)
-            self.send("failedtosavefile", [filename])
+            utils.send(self.client, "failedtosavefile", [filename])
 
     def listdir(self, params):
         dir = params[0]
         if not os.path.isdir(dir):
-            self.send("listdirfailed", [])
+            utils.send(self.client, "listdirfailed", [])
         else:
             try:
                 if dir[-1] != "\\":
                     dir += "\\"
-                cmdfilename = self.cmd_to_filename("listdir", [params[0]])
+                cmdfilename = utils.cmd_to_filename("listdir", [params[0]])
                 files = os.listdir(dir)
                 message = cmdfilename
                 for file in files:
                     if os.path.isdir(dir + file) and file[0] != ".":
                         message += "&" + file
-                self.send(message, [])
+                utils.send(self.client, message, [])
             except (PermissionError):
-                self.send("listdirfailedpermission", [])
+                utils.send(self.client, "listdirfailedpermission", [])
             except:
-                self.send("listdirfailed", [])
+                utils.send(self.client, "listdirfailed", [])
 
     def mkdir(self, params):
         try:
@@ -140,14 +141,14 @@ class CommandInterpreter:
                 if "\\".join(params[0].split("\\")[:-1]) == self.spec_controller.save_dir:
                     expected = params[0].split(self.spec_controller.save_dir)[1].split("\\")[1]
                     self.spec_controller.hopefully_saved_files.append(expected)
-            self.send("mkdirsuccess", [])
+            utils.send(self.client, "mkdirsuccess", [])
         except (FileExistsError):
-            self.send("mkdirfailedfileexists", [])
+            utils.send(self.client, "mkdirfailedfileexists", [])
 
         except (PermissionError):
-            self.send("mkdirfailedpermission", [])
+            utils.send(self.client, "mkdirfailedpermission", [])
         except:
-            self.send("mkdirfailed", [])
+            utils.send(self.client, "mkdirfailed", [])
 
     def rmdir(self, params):
         try:
@@ -156,21 +157,21 @@ class CommandInterpreter:
                 if params[0] in self.spec_controller.save_dir:
                     self.spec_controller.save_dir = None
 
-            self.send("rmdirsuccess", [])
+            utils.send(self.client, "rmdirsuccess", [])
 
         except (PermissionError):
 
-            self.send("rmdirfailedpermission", [])
+            utils.send(self.client, "rmdirfailedpermission", [])
 
         except:
-            self.send("rmdirfailed", [])
+            utils.send(self.client, "rmdirfailed", [])
 
     def listcontents(self, params):
         try:
             dir = params[0]
             if dir[-1] != "\\":
                 dir += "\\"
-            cmdfilename = self.cmd_to_filename("listcontents", [params[0]])
+            cmdfilename = utils.cmd_to_filename("listcontents", [params[0]])
             files = os.listdir(dir)
             sorted_files = []
             for i, file in enumerate(files):
@@ -180,13 +181,13 @@ class CommandInterpreter:
                     # This is a way for the control compy to differentiate files from directories
                     sorted_files.append("~:" + file)
             sorted_files.sort()
-            self.send(cmdfilename, sorted_files)
+            utils.send(self.client, cmdfilename, sorted_files)
         except (PermissionError):
-            self.send("listdirfailedpermission", [])
+            utils.send(self.client, "listdirfailedpermission", [])
 
         except:
             traceback.print_exc()
-            self.send("listdirfailed", [])
+            utils.send(self.client, "listdirfailed", [])
 
     def transferdata(self, params):
         source = params[0]
@@ -197,43 +198,43 @@ class CommandInterpreter:
             with open(source, "r") as file:
                 data = file.readlines()
                 batch_size = 500
-                self.send(f"datatransferstarted{len(data)/500}", [])
+                utils.send(self.client, f"datatransferstarted{len(data)/500}", [])
                 batch = 0
                 next_message = ""
                 for i, line in enumerate(data):
                     next_message += line
                     if i != 0 and i % batch_size == 0:
-                        self.send(f"batch{batch}", [next_message])
+                        utils.send(self.client, f"batch{batch}", [next_message])
                         batch += 1
                         next_message = ""
-                self.send(f"batch{batch}", [next_message])
+                utils.send(self.client, f"batch{batch}", [next_message])
                 batch += 1
-                self.send(f"datatransfercomplete{batch}", [])
+                utils.send(self.client, f"datatransfercomplete{batch}", [])
 
         except OSError:
-            self.send("datafailure", [])
+            utils.send(self.client, "datafailure", [])
     def rmfile(self, params):
         try:
             delme = params[0] + "\\" + params[1] + params[2] + ".asd"
             os.remove(delme)
-            self.send("rmsuccess", [])
+            utils.send(self.client, "rmsuccess", [])
         except:
-            self.send("rmfailure", [])
+            utils.send(self.client, "rmfailure", [])
 
     def instrumentconfig(self, params):
         instrument_config_num = params[0]
         try:
             self.spec_controller.instrument_config(instrument_config_num)
-            self.send("iconfigsuccess", [])
+            utils.send(self.client, "iconfigsuccess", [])
         except:
-            self.send("iconfigfailure", [])
+            utils.send(self.client, "iconfigfailure", [])
 
     def restartrs3(self, params):
         try:
             self.spec_controller.restart()
         except:
-            self.send("rs3restartfailed")
-        self.send("rs3restarted", [])
+            utils.send(self.client, "rs3restartfailed")
+        utils.send(self.client, "rs3restarted", [])
 
     def saveconfig(self, params):
         save_path = params[0]
@@ -245,13 +246,13 @@ class CommandInterpreter:
         while file is not None:
             found_unexpected = True
             self.data_files_to_ignore.append(file)
-            self.send("unexpectedfile", [file])
+            utils.send(self.client, "unexpectedfile", [file])
             file = self.check_for_unexpected(
                 save_path, self.spec_controller.hopefully_saved_files, self.data_files_to_ignore
             )
         if found_unexpected == True:
             time.sleep(2)
-        self.send("donelookingforunexpected", [])
+        utils.send(self.client, "donelookingforunexpected", [])
 
 
         basename = params[1]
@@ -263,14 +264,14 @@ class CommandInterpreter:
             filename = save_path + "\\" + basename + startnum + ".asd"
 
         if os.path.isfile(filename):
-            self.send("saveconfigfailedfileexists", [])
+            utils.send(self.client, "saveconfigfailedfileexists", [])
             self.skip_spectrum()
             return
         try:
             self.spec_controller.spectrum_save(save_path, basename, startnum)
             if self.spec_controller.failed_to_open:
                 self.spec_controller.failed_to_open = False
-                self.send("saveconfigerror", [])
+                utils.send(self.client, "saveconfigerror", [])
                 self.skip_spectrum()
             else:
                 self.logger.logfile = self.find_logfile(save_path)
@@ -278,14 +279,13 @@ class CommandInterpreter:
                     self.logger.logfile = self.make_logfile(save_path)
                     self.data_files_to_ignore.append(self.logger.logfile.split("\\")[-1])
                 print("saveconfigsuccess")
-                self.send("saveconfigsuccess", [])
+                utils.send(self.client, "saveconfigsuccess", [])
         except Exception as e:
-            print(e)
             self.spec_controller.failed_to_open = False
-            self.send("saveconfigerror", [])
+            utils.send(self.client, "saveconfigerror", [])
             self.skip_spectrum()
             instrument_config_num = None
-            print("Continuing")
+            traceback.print_exc()
 
     def routine_file_check(self):
         file = self.check_for_unexpected(
@@ -293,18 +293,18 @@ class CommandInterpreter:
         )
         while file is not None:
             self.data_files_to_ignore.append(file)
-            self.send("unexpectedfile", [file])
+            utils.send(self.client, "unexpectedfile", [file])
             file = self.check_for_unexpected(
                 self.spec_controller.save_dir, self.spec_controller.hopefully_saved_files, self.data_files_to_ignore
             )
 
     def white_reference(self, params):
         if self.spec_controller.save_dir == "":
-            self.send("noconfig", [])
+            utils.send(self.client, "noconfig", [])
             print("noconfig")
             return
         if self.spec_controller.numspectra is None:
-            self.send("nonumspectra", [])
+            utils.send(self.client, "nonumspectra", [])
             print("nonumspectectra")
             return
 
@@ -330,12 +330,12 @@ class CommandInterpreter:
             self.spec_controller.white_reference()
         except:
             print("Exception during white reference")
-            self.send("wrfailed", [])
+            utils.send(self.client, "wrfailed", [])
 
         if self.spec_controller.wr_success == True:
-            self.send("wrsuccess", [])
+            utils.send(self.client, "wrsuccess", [])
         else:
-            self.send("wrfailed", [])
+            utils.send(self.client, "wrfailed", [])
         self.spec_controller.wr_success = False
         self.spec_controller.wr_failure = False
     def opt(self, params):
@@ -344,23 +344,23 @@ class CommandInterpreter:
         # where to put the log file when we record that we optimized.
         if self.spec_controller.save_dir == "":
             print("Sending noconfig")
-            self.send("noconfig", [])
+            utils.send(self.client, "noconfig", [])
             return
 
         # And, we do need to know how many spectra we are averaging so we know when to time out
         if self.spec_controller.numspectra is None:
-            self.send("nonumspectra", [])
+            utils.send(self.client, "nonumspectra", [])
             return
         try:
             self.spec_controller.optimize()
             if self.spec_controller.opt_complete == True:
                 self.logger.log_opt()
-                self.send("optsuccess", [])
+                utils.send(self.client, "optsuccess", [])
             else:
-                self.send("optfailure", [])
+                utils.send(self.client, "optfailure", [])
         except:
             print("Exception occurred and optimization failed.")
-            self.send("optfailure", [])
+            utils.send(self.client, "optfailure", [])
 
     def process(self, params):
         input_path = params[0]
@@ -381,7 +381,7 @@ class CommandInterpreter:
 
         # check if the input directory exists. if not, send an error back
         if not os.path.exists(input_path):
-            self.send("processerrornodirectory", [])
+            utils.send(self.client, "processerrornodirectory", [])
             return
 
         # Look through files in data directory until you find a log file
@@ -394,26 +394,26 @@ class CommandInterpreter:
                             logfile_for_reading = input_path + "\\" + potential_log
                             break
                 except OSError as e:
-                    print(e)
+                    traceback.print_exc()
 
         if logfile_for_reading is None:
             print("ERROR: No logfile found in data directory")
 
         if os.path.isfile(output_path + "\\" + csv_name) and csv_name != "proc_temp.csv":
-            self.send("processerrorfileexists", [])
+            utils.send(self.client, "processerrorfileexists", [])
             return
 
         elif os.path.isfile(output_path + "\\" + csv_name):
             writeable = os.access(output_path, os.W_OK)
             if not writeable:
-                self.send("processerrorcannotwrite", [])
+                utils.send(self.client, "processerrorcannotwrite", [])
                 return
 
             os.remove(output_path + "\\" + csv_name)
 
         writeable = os.access(output_path, os.W_OK)
         if not writeable:
-            self.send("processerrorcannotwrite", [])
+            utils.send(self.client, "processerrorcannotwrite", [])
             return
 
         else:
@@ -430,12 +430,12 @@ class CommandInterpreter:
                 self.process_controller.process(input_path, temp_output_path, csv_name)
             except Exception as e:
                 self.process_controller.reset()
-                self.send("processerror", [])
+                utils.send(self.client, "processerror", [])
                 traceback.print_exc()
                 return
             # Check that the expected file arrived fine after processing.
             # This sometimes wasn't happening if you fed ViewSpecPro data without
-            # taking a white reference or optimizing.
+            # taking a white referencetra or optimizing.
             saved = False
             t0 = time.perf_counter()
             t = time.perf_counter()
@@ -458,7 +458,8 @@ class CommandInterpreter:
                             datafile
                         )  # applies a correction based on measured BRDF for spectralon
                         corrected = True
-                    except:
+                    except Exception as e:
+                        raise e
                         traceback.print_exc()
                         print("Warning! correction not applied")
                 else:
@@ -514,51 +515,22 @@ class CommandInterpreter:
                         self.spec_controller.hopefully_saved_files.append(expected)
 
                 if corrected == True and logfile_for_reading is not None:
-                    self.send("spec_data", [spec_data])
-                    self.send("log_data", [log_data])
-                    self.send("processsuccess", [])
+                    utils.send(self.client, "spec_data", [spec_data])
+                    utils.send(self.client, "log_data", [log_data])
+                    utils.send(self.client, "processsuccess", [])
 
                 elif logfile_for_reading is not None:
-                    self.send("spec_data", [spec_data])
-                    self.send("log_data", [log_data])
-                    self.send("processsuccessnocorrection", [])
+                    utils.send(self.client, "spec_data", [spec_data])
+                    utils.send(self.client, "log_data", [log_data])
+                    utils.send(self.client, "processsuccessnocorrection", [])
                 else:
-                    self.send("spec_data", [spec_data])
-                    self.send("processsuccessnolog", [])
+                    utils.send(self.client, "spec_data", [spec_data])
+                    utils.send(self.client, "processsuccessnolog", [])
             # We don't actually know for sure that processing failed because of failing
             # to optimize or white reference, but ViewSpecPro sometimes silently fails if
             # you haven't been doing those things.
             else:
-                self.send("processerrorwropt", [])
-
-    def send(self, cmd, params):
-        message = self.cmd_to_filename(cmd, params)
-        sent = self.client.send(message)
-        # the lostconnection message will get resent anyway, no need to clog up lanes by retrying here.
-        while not sent and message != "lostconnection":
-            print("Failed to send message, retrying.")
-            print(message)
-            time.sleep(2)
-            sent = self.client.send(message)
-        print(f"Sent {message}")
-
-
-    def filename_to_cmd(self, filename):
-        cmd = filename.split("&")[0]
-        params = filename.split("&")[1:]
-        i = 0
-        for param in params:
-            params[i] = param
-            i = i + 1
-        return cmd, params
-
-    def cmd_to_filename(self, cmd, params):
-        filename = cmd
-        i = 0
-        for param in params:
-            filename = filename + "&" + param
-            i = i + 1
-        return filename
+                utils.send(self.client, "processerrorwropt", [])
 
     def skip_spectrum(self):
         time.sleep(2)

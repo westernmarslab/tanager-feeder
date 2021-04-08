@@ -12,6 +12,7 @@ from asd_feeder.asd_controls import RS3Controller, ViewSpecProController
 from asd_feeder.logger import Logger
 from asd_feeder.spectralon_corrector import SpectralonCorrector
 from asd_feeder.command_interpreter import CommandInterpreter
+from asd_feeder import utils
 
 class SpecCompyController:
     def __init__(self, temp_data_loc: str, spectralon_data_loc: str, RS3_loc: str, ViewSpecPro_loc: str, computer: str):
@@ -57,7 +58,7 @@ class SpecCompyController:
                         )
 
                     if self.client.server_address is not None:
-                        self.send("lostconnection", [])
+                        utils.send(self.client, "lostconnection", [])
 
                 except:
                     pass
@@ -82,7 +83,7 @@ class SpecCompyController:
                     continue
                 print(f"Message received: {message}")
 
-                cmd, params = self.filename_to_cmd(message)
+                cmd, params = utils.filename_to_cmd(message)
 #                 if cmd != "test":
 #                     print("***************")
 #                     print("Command received: " + cmd)
@@ -138,35 +139,3 @@ class SpecCompyController:
                     self.command_interpreter.rmdir(params)
 
             time.sleep(0.25)
-
-    # Copied in command interpreter, Should be in a utils file.
-    def send(self, cmd, params):
-        message = self.cmd_to_filename(cmd, params)
-        sent = self.client.send(message)
-        # the lostconnection message will get resent anyway, no need to clog up lanes by retrying here.
-        while not sent and message != "lostconnection":
-            print("Failed to send message, retrying.")
-            time.sleep(2)
-            print(message)
-            sent = self.client.send(message)
-        print(f"Sent {message}")
-
-
-    #Copied in command interpreter, Should be in a utils file.
-    def filename_to_cmd(self, filename):
-        cmd = filename.split("&")[0]
-        params = filename.split("&")[1:]
-        i = 0
-        for param in params:
-            params[i] = param
-            i = i + 1
-        return cmd, params
-
-    #Copied in command interpreter, Should be in a utils file.
-    def cmd_to_filename(self, cmd, params):
-        filename = cmd
-        i = 0
-        for param in params:
-            filename = filename + "&" + param
-            i = i + 1
-        return filename
