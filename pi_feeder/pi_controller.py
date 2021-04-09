@@ -10,6 +10,7 @@ from pi_feeder import goniometer
 
 INTERVAL = 0.25
 ENCODER_CONFIG_PATH = os.path.join(os.path.split(__file__)[0], "config", "encoder_config.txt")
+ENCODER_CONFIG_PATH = os.path.join(os.path.split(__file__)[0], "config", "az_config.txt")
 
 def main():
     pi_controller = PiController()
