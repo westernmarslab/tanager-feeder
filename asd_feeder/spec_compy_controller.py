@@ -135,8 +135,6 @@ class SpecCompyController:
                     self.command_interpreter.rmdir(params)
 
             time.sleep(0.25)
-<<<<<<< HEAD
-=======
 
     # Copied in command interpreter, Should be in a utils file.
     def send(self, cmd, params):
@@ -150,24 +148,3 @@ class SpecCompyController:
             time.sleep(2)
             sent = self.client.send(message)
         print(f"Sent {message}")
-
-
-    #Copied in command interpreter, Should be in a utils file.
-    def filename_to_cmd(self, filename):
-        cmd = filename.split("&")[0]
-        params = filename.split("&")[1:]
-        i = 0
-        for param in params:
-            params[i] = param
-            i = i + 1
-        return cmd, params
-
-    #Copied in command interpreter, Should be in a utils file.
-    def cmd_to_filename(self, cmd, params):
-        filename = cmd
-        i = 0
-        for param in params:
-            filename = filename + "&" + param
-            i = i + 1
-        return filename
->>>>>>> 8559570c02c77a8aa9b5a9cfd736e2c6fa216272

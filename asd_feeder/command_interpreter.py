@@ -199,7 +199,7 @@ class CommandInterpreter:
                 data = file.readlines()
                 # if len(data[-1]) > 100:
                 batch_size = 50
-                self.send(self.client, f"datatransferstarted{len(data)/batch_size}", [])
+                utils.send(self.client, f"datatransferstarted{len(data)/batch_size}", [])
 
                 batch = 0
                 next_message = ""

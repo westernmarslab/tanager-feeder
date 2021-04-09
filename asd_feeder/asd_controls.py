@@ -473,7 +473,7 @@ class ViewSpecProController:
             self.ascii_export(input_path, next_file)
             data_files.append(os.path.join(input_path, next_file))
             print(f"Processing batch {j} complete. Cleaning directory.")
-            self.spec.menu_select("File -> Close")
+            self.wait_for_menu("File -> Close")
 
         self.concatenate_files(data_files, os.path.join(output_path, tsv_name))
         self.clear_batch_folders(batch_folders)
@@ -519,18 +519,22 @@ class ViewSpecProController:
                 time.sleep(2)
                 shutil.rmtree(folder)
 
-
-    def open_files(self, path):
-        print("Opening files from " + path)
+    def wait_for_menu(self, select_string):
         t = 0
         timeout = 10
-        while t < timeout:
+        opened = False
+        while t < timeout and not opened:
             try:
-                self.spec.menu_select("File -> Open")
+                self.spec.menu_select(select_string)
+                opened = True
             except ElementNotEnabled:
                 print("Waiting for File menu...")
                 t += 1
                 time.sleep(1)
+
+    def open_files(self, path):
+        print("Opening files from " + path)
+        self.wait_for_menu("File -> Open")
         open = wait_for_window(self.app, "Select Input File(s)")
         open.set_focus()
         open["Address Band Root"].toolbar.button(0).click()
@@ -578,12 +582,10 @@ class ViewSpecProController:
                     path_indices = [
                         j for j, x in enumerate(path_el) if x == el
                     ]  # list of all the indices of the element in the path. Will have length greater than one for nested folders with the same name.
-                    print(path_indices)
                     if len(path_indices) == 1:
                         save.ListBox.select(el)
                     else:
                         listbox_els = save.ListBox.item_texts()
-                        print(listbox_els)
                         listbox_indices = [
                             j for j, x in enumerate(listbox_els) if x == el
                         ]  # list of all the indices of the element in the listbox items
@@ -591,7 +593,6 @@ class ViewSpecProController:
                         listbox_index = listbox_indices[nesting_index]
                         save.ListBox.select(listbox_index)
 
-                print("Selecting " + el)
                 self.select_item(save.ListBox.rectangle())
         else:
             print("Invalid directory (must save to C drive)")
@@ -599,7 +600,7 @@ class ViewSpecProController:
         save.OKButton.click()
         print("Clicked ok.")
         # If a dialog box comes up asking if you want to set the default input directory the same as the output, click no. Not sure if there is a different dialog box that could come up, so this doesn't seem very robust.
-        timeout = 3
+        timeout = 15
         while not self.app["Dialog"].exists() and timeout > 0:
             time.sleep(0.25)
             timeout -= 0.25
@@ -672,7 +673,6 @@ class ViewSpecProController:
             if on_highlighted_element:
             # if pyautogui.pixelMatchesColor(x, y, COLORS["file_highlight"]):
                 pyautogui.click(x=x, y=y, clicks=2)
-                print("click")
                 return
             y = y + 3
 

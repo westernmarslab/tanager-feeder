@@ -13,9 +13,9 @@ def send(client, cmd, params):
             print(message[0:100])
         time.sleep(2)
         sent = client.send(message)
-    if len(message) < 200:
+    if len(message) < 200 and "lostconnection" not in message:
         print(f"Sent {message}")
-    else:
+    elif "lostconnection" not in message:
         print(f"Sent {message[0:100]}")
 
 
