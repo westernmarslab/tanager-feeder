@@ -207,7 +207,7 @@ class CommandInterpreter:
                         self.send(f"batch{batch}", [next_message])
                         batch += 1
                         next_message = ""
-                self.send(f"batch{batch}", [next_message])
+                self.send(f"batch{batch}+", [next_message])
                 batch += 1
                 self.send(f"datatransfercomplete{batch}", [])
 

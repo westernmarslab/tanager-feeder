@@ -108,7 +108,11 @@ class CommandHandler:
         self.wait_dialog.label = "Canceling..."
 
     def interrupt(self, label: str, info_string: Optional[str] = None, retry: bool = False):
-        self.wait_dialog.interrupt(label)
+        try:
+            self.wait_dialog.interrupt(label)
+        except TclError:
+            print("Error: failed to interrupt wait_dialog. Finishing.")
+            self.finish()
         if info_string is not None:
             self.controller.log(info_string)
         if retry:
