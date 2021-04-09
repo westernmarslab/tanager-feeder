@@ -10,7 +10,7 @@ from pi_feeder import goniometer
 
 INTERVAL = 0.25
 ENCODER_CONFIG_PATH = os.path.join(os.path.split(__file__)[0], "config", "encoder_config.txt")
-ENCODER_CONFIG_PATH = os.path.join(os.path.split(__file__)[0], "config", "az_config.txt")
+AZ_CONFIG_PATH = os.path.join(os.path.split(__file__)[0], "config", "az_config.txt")
 
 def main():
     pi_controller = PiController()
@@ -41,7 +41,7 @@ class PiController:
                 current_az = float(config_file.readline())
         except (FileNotFoundError, NotADirectoryError):
             dir_path = os.path.split(AZ_CONFIG_PATH)[0]
-            print(f"Azimuth config file not found, creating new one at {ENCODER_CONFIG_PATH}")
+            print(f"Az config file not found, creating new one at {AZ_CONFIG_PATH}")
             if not os.path.isdir(dir_path):
                 os.mkdir(dir_path)
             self.write_az_config(0)
