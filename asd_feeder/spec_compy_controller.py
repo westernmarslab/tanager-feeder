@@ -12,6 +12,7 @@ from asd_feeder.asd_controls import RS3Controller, ViewSpecProController
 from asd_feeder.logger import Logger
 from asd_feeder.spectralon_corrector import SpectralonCorrector
 from asd_feeder.command_interpreter import CommandInterpreter
+from asd_feeder import utils
 
 class SpecCompyController:
     def __init__(self, temp_data_loc: str, spectralon_data_loc: str, RS3_loc: str, ViewSpecPro_loc: str, computer: str):
@@ -57,7 +58,7 @@ class SpecCompyController:
                         )
 
                     if self.client.server_address is not None:
-                        self.send("lostconnection", [])
+                        utils.send(self.client, "lostconnection", [])
 
                 except:
                     pass
@@ -81,7 +82,7 @@ class SpecCompyController:
                     continue
                 print(f"Message received: {message}")
 
-                cmd, params = self.filename_to_cmd(message)
+                cmd, params = utils.filename_to_cmd(message)
 
                 if cmd == "restartcomputer":
                     self.command_interpreter.restart(params, run_time)
@@ -134,6 +135,8 @@ class SpecCompyController:
                     self.command_interpreter.rmdir(params)
 
             time.sleep(0.25)
+<<<<<<< HEAD
+=======
 
     # Copied in command interpreter, Should be in a utils file.
     def send(self, cmd, params):
@@ -167,3 +170,4 @@ class SpecCompyController:
             filename = filename + "&" + param
             i = i + 1
         return filename
+>>>>>>> 8559570c02c77a8aa9b5a9cfd736e2c6fa216272

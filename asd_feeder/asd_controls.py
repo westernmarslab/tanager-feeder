@@ -498,7 +498,6 @@ class ViewSpecProController:
                 file, skip_header=1, dtype=float, delimiter="\t", encoding=None, deletechars=""
             )
             for k, row in enumerate(data):
-                print(row)
                 if k == len(all_data):
                     all_data.append(list(row))
                 else:
