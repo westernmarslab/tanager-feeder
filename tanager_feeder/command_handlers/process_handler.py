@@ -11,7 +11,7 @@ class ProcessHandler(CommandHandler):
         self.listener = controller.spec_listener
         super().__init__(controller, title, label, timeout=20000 + utils.BUFFER)
         self.outputfile = destination
-        self.wait_dialog.set_buttons({"cancel": {self.cancel_process: []}})
+        # self.wait_dialog.set_buttons({"cancel": {self.cancel_process: []}})
         self.wait_dialog.top.wm_geometry("376x130")
         # Normally we have a pause and a cancel option if there are additional items in the queue, but it doesn't
         # make much sense to pause processing halfway through, so let's just not have the option.
@@ -21,6 +21,12 @@ class ProcessHandler(CommandHandler):
         self.interrupt("Operation canceled.")
         self.controller.reset()
         print(self.controller.queue)
+
+    def cancel_function(self):
+        self.cancel = True
+        self.interrupt("Operation canceled.")
+        self.controller.reset()
+        self.wait_dialog.label = "Canceled."
 
     def wait(self):
         while True:  # self.timeout_s>0: Never going to timeout

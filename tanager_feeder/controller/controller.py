@@ -2683,10 +2683,10 @@ class Controller(utils.ControllerType):
             self.plot_manager.plot_top.destroy()
         except (AttributeError, TclError):
             pass
-        try:
-            self.process_manager.process_top.destroy()
-        except (AttributeError, TclError):
-            pass
+        # try:
+        #     self.process_manager.process_top.destroy()
+        # except (AttributeError, TclError):
+        #     pass
         for button in self.tk_buttons:
             try:
                 button.configure(state="disabled")

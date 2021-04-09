@@ -23,6 +23,8 @@ class SpecListener(Listener):
         thread = Thread(target=self.local_server.listen)
         thread.start()
 
+        self.locked = False
+
     def set_control_address(self):
         self.connection_manager.send_to_spec(
             "setcontrolserveraddress&"
@@ -123,6 +125,13 @@ class SpecListener(Listener):
                     )
                 else:
                     self.unexpected_files.append(params[0])
+            elif "batch" in cmd:
+                if "batch" in cmd:
+                    self.locked = True
+                    self.queue.append(cmd + "&".join(params))
+                    self.locked = False
+                    # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@adding to queue")
+                    # print(cmd + "&".join(params)[0:100])
 
             else:
                 self.queue.append(cmd + "&".join(params))

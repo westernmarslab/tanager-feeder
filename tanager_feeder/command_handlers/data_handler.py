@@ -22,12 +22,17 @@ class DataHandler(CommandHandler):
         data = []
         next_batch = 0
         while self.timeout_s > 0:
-            batch_string = f"batch{next_batch}"
+            batch_string = f"batch{next_batch}+"
+            for item in self.listener.queue:
+                if type(item) == dict:
+                    print(item.keys())
+                else:
+                    print(item[0:20])
+            print(batch_string)
             for item in self.listener.queue:
                 if f"datatransferstarted" in item:
                     total_batches = float(item.replace("datatransferstarted", ""))
                 if batch_string in item:
-                    self.listener.queue.remove(item)
                     if next_batch + 1 < total_batches:
                         percent_complete = int((next_batch + 1) / total_batches * 100)
                         self.controller.log(f" {percent_complete}%", newline=False)
@@ -35,16 +40,21 @@ class DataHandler(CommandHandler):
                         percent_complete = 100
                         self.controller.log(f" {percent_complete}%", newline=True)
 
-                    data.append(item[len(batch_string) :])
+                    print(item[0:40])
+                    data.append(item[len(batch_string):])
                     next_batch += 1
+                    batch_string = f"batch{next_batch}+"
                     self.timeout_s = 2 * utils.BUFFER
 
             if f"datatransfercomplete{next_batch}" in self.listener.queue:
+
                 self.listener.queue.remove(f"datatransfercomplete{next_batch}")
+                self.listener.queue = []
                 self.controller.log("\n\n", newline=False)
                 try:
                     with open(self.destination, "w+") as file:
                         for batch in data:
+                            print(batch[0:10])
                             file.write(batch)
                 except OSError:
                     print("Exception writing data")
@@ -52,6 +62,7 @@ class DataHandler(CommandHandler):
                         f"Error writing data to control computer location.\nDo you have permission to write to\n{self.destination}?",
                         retry=True,
                     )
+                    self.wait_dialog.top.wm_geometry("376x175")
                     return
 
                 self.success()

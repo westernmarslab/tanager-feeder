@@ -209,7 +209,9 @@ class CommandInterpreter:
                         utils.send(self.client, f"batch{batch}", [next_message])
                         batch += 1
                         next_message = ""
-                utils.send(self.client, f"batch{batch}", [next_message])
+
+                utils.send(self.client, f"batch{batch}+", [next_message])
+
                 batch += 1
                 utils.send(self.client, f"datatransfercomplete{batch}", [])
 
