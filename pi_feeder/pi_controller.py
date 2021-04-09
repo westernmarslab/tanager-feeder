@@ -17,8 +17,7 @@ def main():
 
 class PiController:
     def __init__(self):
-        self.server = TanagerServer(12345)
-        self.client = TanagerClient(self.server.remote_server_address, 12345)
+
 
         try:
             with open(ENCODER_CONFIG_PATH, "r") as config_file:
@@ -52,6 +51,9 @@ class PiController:
 
         self.cmdfiles0 = []
         self.dir = "forward"
+
+        self.server = TanagerServer(12345)
+        self.client = TanagerClient(self.server.remote_server_address, 12345)
 
         thread = Thread(target=self.server.listen)
         thread.start()
