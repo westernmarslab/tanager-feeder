@@ -18,8 +18,6 @@ def main():
 
 class PiController:
     def __init__(self):
-
-
         try:
             with open(ENCODER_CONFIG_PATH, "r") as config_file:
                 i_zero = float(config_file.readline())
@@ -140,7 +138,7 @@ class PiController:
                         status = self.goniometer.set_position("azimuth", int(params[0]))
                         filename = self.encrypt("donemovingazimuth" + str(int(status["position"])))
                         print("Writing az config")
-                        self.write_azimuth(int(status["position"]))
+                        self.write_az_config(int(status["position"]))
                     self.send(filename)
 
                 elif cmd == "configure":
