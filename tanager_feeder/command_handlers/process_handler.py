@@ -110,7 +110,7 @@ class ProcessHandler(CommandHandler):
                     pass
                 self.interrupt("Error processing files.\n\nIs ViewSpecPro running? Do directories exist?", retry=True)
                 self.controller.log("Error processing files")
-                self.complete_queue_items()
+                # self.complete_queue_items()
                 return
 
             time.sleep(utils.INTERVAL)

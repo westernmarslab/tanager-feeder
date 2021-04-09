@@ -2052,11 +2052,17 @@ class Controller(utils.ControllerType):
         else:
             self.spec_commander.process(input_directory, output_directory, output_file)
             self.queue.insert(0, {self.process_cmd: [input_directory, output_directory, output_file]})
+        try:
+            self.process_manager.process_top.destroy()
+        except TclError:
+            print("Error: Could not close process window.")
+            pass
         ProcessHandler(self, os.path.join(output_directory, output_file))
 
     def finish_process(self, source_file, output_file) -> None:
-        print("FInishing process")
+        print("Finishing process")
         print(self.queue)
+        return
         self.spec_commander.transfer_data(source_file)
         DataHandler(
             self,
@@ -2679,10 +2685,10 @@ class Controller(utils.ControllerType):
         return False
 
     def freeze(self):
-        try:
-            self.plot_manager.plot_top.destroy()
-        except (AttributeError, TclError):
-            pass
+        # try:
+        #     self.plot_manager.plot_top.destroy()
+        # except (AttributeError, TclError):
+        #     pass
         # try:
         #     self.process_manager.process_top.destroy()
         # except (AttributeError, TclError):

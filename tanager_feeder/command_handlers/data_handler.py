@@ -24,12 +24,6 @@ class DataHandler(CommandHandler):
         while self.timeout_s > 0:
             batch_string = f"batch{next_batch}+"
             for item in self.listener.queue:
-                if type(item) == dict:
-                    print(item.keys())
-                else:
-                    print(item[0:20])
-            print(batch_string)
-            for item in self.listener.queue:
                 if f"datatransferstarted" in item:
                     total_batches = float(item.replace("datatransferstarted", ""))
                 if batch_string in item:
@@ -40,7 +34,6 @@ class DataHandler(CommandHandler):
                         percent_complete = 100
                         self.controller.log(f" {percent_complete}%", newline=True)
 
-                    print(item[0:40])
                     data.append(item[len(batch_string):])
                     next_batch += 1
                     batch_string = f"batch{next_batch}+"

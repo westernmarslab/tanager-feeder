@@ -206,7 +206,7 @@ class CommandInterpreter:
                 for i, line in enumerate(data):
                     next_message += line
                     if i != 0 and i % batch_size == 0:
-                        utils.send(self.client, f"batch{batch}", [next_message])
+                        utils.send(self.client, f"batch{batch}+", [next_message])
                         batch += 1
                         next_message = ""
 
