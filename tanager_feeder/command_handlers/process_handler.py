@@ -69,8 +69,7 @@ class ProcessHandler(CommandHandler):
                 self.listener.queue.remove("processerrorfileexists")
                 self.interrupt("Error processing files: Output file already exists")
                 self.controller.log("Error processing files: output file exists.")
-                self.controller.complete_queue_item()
-                self.controller.complete_queue_item()
+                self.complete_queue_items()
                 return
 
             if "processerrornodirectory" in self.listener.queue:
@@ -108,9 +107,9 @@ class ProcessHandler(CommandHandler):
                 except TclError:
                     print("TclError")
                     pass
-                self.interrupt("Error processing files.\n\nIs ViewSpecPro running? Do directories exist?", retry=True)
+                self.interrupt("Error processing files.\n\nIs ViewSpecPro running? Do directories exist?")
                 self.controller.log("Error processing files")
-                # self.complete_queue_items()
+                self.complete_queue_items()
                 return
 
             time.sleep(utils.INTERVAL)
@@ -119,8 +118,6 @@ class ProcessHandler(CommandHandler):
         self.timeout()
 
     def complete_queue_items(self):
-        print("In process handler, clearing queue")
-        print(self.controller.queue)
         for i, item in enumerate(self.controller.queue):
             if i > 1:
                 break

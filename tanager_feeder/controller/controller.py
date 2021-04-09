@@ -161,9 +161,7 @@ class Controller(utils.ControllerType):
         self.e_interval = None
 
         self.min_science_az = 0
-        self.max_science_az = 179
-        self.min_motor_az = -179
-        self.max_motor_az = 270
+        self.max_science_az = 180
         self.science_az = None  # current azimuth angle
         self.final_az = None
         self.az_interval = None
@@ -2589,10 +2587,6 @@ class Controller(utils.ControllerType):
     # science az from 0 to 179.
     # az=180, i=50 is the same position as az=0, i=-50
     def motor_pos_to_science_pos(self, motor_i, motor_e, motor_az):
-        if motor_az < self.min_motor_az:
-            print("UNEXPECTED AZ: " + str(motor_az))
-        if motor_az > self.max_motor_az:
-            print("UNEXPECTED AZ: " + str(motor_az))
         science_i = motor_i
         science_e = motor_e
         science_az = motor_az
