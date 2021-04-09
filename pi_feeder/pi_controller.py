@@ -1,6 +1,7 @@
 import os
 import time
 import traceback
+import sys
 
 from tanager_tcp import TanagerServer
 from tanager_tcp import TanagerClient
@@ -11,8 +12,10 @@ from pi_feeder import goniometer
 INTERVAL = 0.25
 ENCODER_CONFIG_PATH = os.path.join(os.path.split(__file__)[0], "config", "encoder_config.txt")
 AZ_CONFIG_PATH = os.path.join(os.path.split(__file__)[0], "config", "az_config.txt")
+LOG_PATH = os.path.join(os.path.split(__file__)[0], "config", "pi_feeder.log")
 
 def main():
+    sys.stdout = open(LOG_PATH, "w+")
     pi_controller = PiController()
     pi_controller.listen()
 
@@ -138,7 +141,7 @@ class PiController:
                         status = self.goniometer.set_position("azimuth", int(params[0]))
                         filename = self.encrypt("donemovingazimuth" + str(int(status["position"])))
                         print("Writing az config")
-                        self.write_az_config(int(status["position"]))
+                        self.write_az_config(self.goniometer.azimuth)
                     self.send(filename)
 
                 elif cmd == "configure":
