@@ -2062,7 +2062,6 @@ class Controller(utils.ControllerType):
     def finish_process(self, source_file, output_file) -> None:
         print("Finishing process")
         print(self.queue)
-        return
         self.spec_commander.transfer_data(source_file)
         DataHandler(
             self,
