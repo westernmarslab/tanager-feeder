@@ -36,7 +36,7 @@ class SpecListener(Listener):
     def run(self):
         i = 0
         while True:
-            if not self.connection_manager.spec_offline and i % 20 == 0 and not self.controller.restarting_spec_compy:
+            if not self.connection_manager.spec_offline and i % 100 == 0 and not self.controller.restarting_spec_compy:
                 if len(self.controller.queue) > 0:
                     attempts = 5
                 else:

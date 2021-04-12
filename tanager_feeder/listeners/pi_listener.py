@@ -29,7 +29,7 @@ class PiListener(Listener):
     def run(self):
         i = 0
         while True:
-            if not self.connection_manager.pi_offline and i % 20 == 0:
+            if not self.connection_manager.pi_offline and i % 100 == 0:
                 if len(self.controller.queue) > 0:
                     attempts = 5
                 else:

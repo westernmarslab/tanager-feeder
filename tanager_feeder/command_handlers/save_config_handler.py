@@ -53,7 +53,7 @@ class SaveConfigHandler(CommandHandler):
 
                 self.listener.queue.remove("saveconfigfailedfileexists")
 
-                if self.controller.overwrite_all:
+                if self.controller.overwrite_all or self.controller.overwrite_next:
                     # self.wait_dialog.top.destroy()
                     self.remove_retry(need_new=False)  # No need for new wait dialog
 

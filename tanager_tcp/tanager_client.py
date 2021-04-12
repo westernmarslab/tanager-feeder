@@ -13,6 +13,8 @@ class TanagerClient:
         self.sock = None
         self.connected = False
 
+        self.locked = False
+
     def connect(self, timeout: float = 5) -> bool:
         if self.connected:
             raise AlreadyConnectedException
@@ -31,6 +33,13 @@ class TanagerClient:
             return False
 
     def send(self, base_message: str) -> bool:
+        count = 0
+        while self.locked:
+            if count % 100 == 0:
+                print("Client is locked. Waiting.")
+                count += 1
+        self.locked = True
+
         if not self.connected:
             self.connect()
         if not self.connected:
@@ -84,25 +93,34 @@ class TanagerClient:
             traceback.print_exc()
             print("TCP OSError. Retrying.")
             self.connected = False
+            self.locked = False
             return self.send(base_message)
+
         except (WrongHeaderError, WrongAddressError):
             print("Wrong TCP header information returned. Retrying.")
             self.sock.sendall("Wrong Header".encode("utf-8"))
             self.connected = False
+            self.locked = False
             return self.send(base_message)
 
         except ConnectionResetError:  # Happens when one computer is restarted.
             print("Connection reset.")
             self.connected = False
+            self.locked = False
             return self.send(base_message)
 
         except (socket.timeout, socket.gaierror, TimeoutError):
+            print("Socket timeout")
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.locked = False
             return False
+
         finally:
+            self.locked = False
             self.connected = False
             self.sock.close()
 
+        self.locked = False
         return True
 
     def close(self):

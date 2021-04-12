@@ -6,7 +6,7 @@ import numpy as np
 from pi_feeder import motor, encoder, limit_switch
 
 AZIMUTH_GEAR_RATIO = 10
-AZIMUTH_HOME_OFFSET = 24
+AZIMUTH_HOME_OFFSET = 24.7
 DISTANCE_TOLERANCE = 0.5
 
 

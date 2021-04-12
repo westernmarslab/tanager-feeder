@@ -65,6 +65,6 @@ class RestartComputerHandler(CommandHandler):
 
     def success(self):
         self.controller.log("Spec compy restarted. Waiting 5 minutes for reinitialization.")
-        time.sleep(300) #Give time for the spectrometer to reconnect
+        time.sleep(300) #Give plenty of time for the spectrometer to reconnect
         self.controller.restarting_spec_compy = False
         super().success()

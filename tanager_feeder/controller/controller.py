@@ -94,6 +94,7 @@ class Controller(utils.ControllerType):
         self.white_reference_attempt = 0
         self.opt_attempt = 0
         self.overwrite_all = False  # User can say yes to all for overwriting files.
+        self.overwrite_next = False # If save spec fails and we restart, overwrite just that one without asking.
 
         self.tk_buttons = []
         self.entries = []

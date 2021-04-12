@@ -7,17 +7,18 @@ from tanager_feeder import utils
 class SpectrumHandler(TriggerRestartHandler):
     def __init__(self, controller, title: str = "Saving Spectrum...", label: str = "Saving spectrum..."):
         timeout: int = (
-            controller.spec_config_count / 8 + 5*utils.BUFFER
+            controller.spec_config_count + 5*utils.BUFFER
         )  # This timeout grows faster than the actual time to take a spectrum grows, which would be numspectra/9
         self.listener = controller.spec_listener
         super().__init__(controller, title, label, timeout=timeout)
 
     def wait(self):
         while self.timeout_s > 0:
+            if "specfailed" in self.listener.queue:
+                self.timeout("take spectrum")
+
             if "failedtosavefile" in self.listener.queue:
-                self.listener.queue.remove("failedtosavefile")
-                self.interrupt("Error: Failed to save file.\nAre you sure the spectrometer is connected?", retry=True)
-                self.wait_dialog.top.wm_geometry("420x130")
+                self.timeout("take spectrum")
                 return
 
             if "noconfig" in self.listener.queue:
@@ -44,11 +45,8 @@ class SpectrumHandler(TriggerRestartHandler):
 
             if "savespecfailedfileexists" in self.listener.queue:
                 self.listener.queue.remove("savespecfailedfileexists")
-                # print("here!")
-                # self.interrupt("Error: File exists.\nDo you want to overwrite this data?")
-                # self.wait_dialog.top.wm_geometry("420x145")
 
-                if self.controller.overwrite_all:
+                if self.controller.overwrite_all or self.controller.overwrite_next:
                     self.remove_retry(need_new=False)  # No need for a new wait_dialog
                     return
 
@@ -74,10 +72,14 @@ class SpectrumHandler(TriggerRestartHandler):
             time.sleep(utils.INTERVAL)
             self.timeout_s -= utils.INTERVAL
 
-        self.timeout("take_spectrum")
-        self.wait_dialog.top.wm_geometry("680x173")
+        self.timeout("take spectrum")
+
+    def timeout(self, operation_string):
+        self.controller.overwrite_next = True
+        super().timeout(operation_string)
 
     def success(self):
+        self.controller.overwrite_next = False
         # Build a string that tells the number for the spectrum that was just saved. We'll use this in the log (maybe)
         lastnumstr = str(self.controller.spec_num)
         while len(lastnumstr) < utils.NUMLEN:
