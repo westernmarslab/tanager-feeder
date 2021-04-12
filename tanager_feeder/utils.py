@@ -27,7 +27,7 @@ import time
 import numpy as np
 import psutil
 
-from tanager_tcp import TanagerClient
+from tanager_tcp.tanager_client import TanagerClient
 
 AZIMUTH_HOME = 0
 INTERVAL = 0.25
@@ -69,6 +69,8 @@ class ConnectionManager:
         self.spec_client = TanagerClient((spec_ip, self.REMOTE_PORT), self.LISTEN_FOR_SPEC_PORT)
         self.pi_client = TanagerClient((pi_ip, self.REMOTE_PORT), self.LISTEN_FOR_PI_PORT)
 
+        self.pi_lock = False
+        self.spec_lock = False
     @property
     def spec_ip(self):
         return self._spec_ip
@@ -88,23 +90,34 @@ class ConnectionManager:
         self.pi_client = TanagerClient((new_ip, self.REMOTE_PORT), self.LISTEN_FOR_PI_PORT)
 
     def send_to_spec(self, message: str, connect_timeout=5) -> bool:
+        while self.spec_lock: # Wait for the lock to be available
+            print("Waiting for pi lock")
+            pass
+        self.spec_lock = True
         if self.spec_offline:
             self.connect_spec(connect_timeout)
         if not self.spec_offline:
             sent = self.spec_client.send(message)
             if not sent:
                 self.spec_offline = True
+            self.spec_lock = False
             return sent
+        self.spec_lock = False
         return False
 
     def send_to_pi(self, message: str, connect_timeout=5) -> bool:
+        while self.pi_lock: # Wait for the lock to be available
+            print("Waiting for pi lock")
+            pass
         if self.pi_offline:
             self.connect_pi(connect_timeout)
         if not self.pi_offline:
             sent = self.pi_client.send(message)
             if not sent:
                 self.pi_offline = True
+            self.pi_lock = False
             return sent
+        self.pi_lock = False
         return False
 
     def connect_spec(self, timeout: float):
