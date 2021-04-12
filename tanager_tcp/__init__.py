@@ -76,8 +76,6 @@ class TanagerServer:
                     if not data:
                         raise ShortMessageError("Message shorter than expected")
 
-
-
                 # Send a return message containing the header and address info
                 connection.sendall(header + remote_server_address)
 
