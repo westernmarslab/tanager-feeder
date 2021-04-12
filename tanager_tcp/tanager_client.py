@@ -34,16 +34,22 @@ class TanagerClient:
 
     def send(self, base_message: str) -> bool:
         count = 0
+        announce = False
         while self.locked:
-            if count % 100 == 0:
-                print(f"Client is locked. Waiting to send {base_message}.")
+            announce = True
+            if count % 100 == 0 or True:
+                print(f"Client is locked. Waiting to send {base_message} {count}.")
                 count += 1
                 time.sleep(0.1)
+        if announce:
+            print("Getting the lock.")
         self.locked = True
 
         if not self.connected:
             self.connect()
+
         if not self.connected:
+            self.locked = False
             return False
         # base message may be passed as string or bytes-like object
         if isinstance(base_message, (bytes, bytearray)):
