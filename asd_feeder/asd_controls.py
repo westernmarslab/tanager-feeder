@@ -73,15 +73,33 @@ class RS3Controller:
         self.menu = RS3Menu(self.app)
 
     def restart(self):
-        print("Restarting RS³")
-        self.app.kill()
-        self.app = Application().start(self.RS3_loc)
-        self.spec = None
-        self.spec_connected = False
-        self.spec = self.app.ThunderRT6Form
-        self.spec.draw_outline()
-        self.pid = self.app.process
-        self.menu = RS3Menu(self.app)
+        self.spec.set_focus()
+        rect = self.spec.rectangle()
+        print(rect)
+        loc = find_image(IMG_LOC + "/exit.png", rect=rect)
+        if loc is not None:
+            x_left = self.spec.rectangle().left
+            y_top = self.spec.rectangle().top
+            while x_left < -10 or y_top < -10:
+                x_left = self.spec.rectangle().left
+                y_top = self.spec.rectangle().top
+                time.sleep(0.25)
+            x = loc[0] + x_left
+            y = loc[1] + y_top
+            mouse.click(coords=(x, y))
+            print("clicked x")
+            time.sleep(0.5)
+            keyboard.send_keys("{ENTER}")
+            time.sleep(10)
+            self.app = Application().start(self.RS3_loc)
+            self.spec = None
+            self.spec_connected = False
+            self.spec = self.app.ThunderRT6Form
+            self.spec.draw_outline()
+            self.pid = self.app.process
+            self.menu = RS3Menu(self.app)
+        else:
+            print("Error: Failed to restart RS3")
 
     def check_connectivity(self):
         try:
@@ -773,7 +791,7 @@ def wait_for_window(app, title, timeout=5):
     i = 0
     while spec.exists() == False and i < timeout:
         try:
-            spec = self.app[title]
+            spec = app[title]
         except:
             i = i + 1
             time.sleep(1)
@@ -781,13 +799,11 @@ def wait_for_window(app, title, timeout=5):
 
 
 def find_image(image, rect=None, loc=None):
-    print("Finding")
     if rect != None:
         screenshot = pyautogui.screenshot(region=(rect.left, rect.top, rect.width(), rect.height()))
     else:
         screenshot = pyautogui.screenshot(region=loc)
     location = pyautogui.locate(image, screenshot)
-    print("Done")
     return location
 
 def try_set_focus(target):
