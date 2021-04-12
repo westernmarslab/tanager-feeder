@@ -81,14 +81,14 @@ class TanagerServer:
                 confirmation_message = b""
                 while not confirmation_message and timeout > 0:
                     next_message = connection.recv(7)
-                    time.sleep(1)
-                    timeout -= 1
+                    time.sleep(0.5)
+                    timeout -= 0.5
                     while next_message:
                         confirmation_message += next_message
                         next_message = connection.recv(7)  # If all is as expected, should be b''. If full message didn't make
                         # it through in first sock.recv could have content.
 
-                if confirmation_message.decode("utf-8") != "Correct":
+                if "Correct" not in confirmation_message.decode("utf-8"):
                     with open(os.path.join(os.path.expanduser("~"), ".noconfirm"), "w+"):
                         pass
                     print(confirmation_message)

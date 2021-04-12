@@ -1,10 +1,10 @@
 import time
 
-from tanager_feeder.command_handlers.command_handler import CommandHandler
+from tanager_feeder.command_handlers.command_handler import TriggerRestartHandler
 from tanager_feeder import utils
 
 
-class SpectrumHandler(CommandHandler):
+class SpectrumHandler(TriggerRestartHandler):
     def __init__(self, controller, title: str = "Saving Spectrum...", label: str = "Saving spectrum..."):
         timeout: int = (
             controller.spec_config_count / 8 + 5*utils.BUFFER
@@ -73,17 +73,8 @@ class SpectrumHandler(CommandHandler):
 
             time.sleep(utils.INTERVAL)
             self.timeout_s -= utils.INTERVAL
-        dialog_string = (
-            "Error: Operation timed out while waiting to save spectrum.\n\nIf it completes later,"
-            " an unexpected file could be saved to the data directory.\nThis could cause errors."
-            " Restart the software to be safe."
-        )
-        log_string = (
-            "Error: Operation timed out while waiting to save spectrum.\n\t"
-            "If it completes later, an unexpected file could be saved to the data directory.\n\t"
-            "This could cause errors. Restart the software to be safe."
-        )
-        self.timeout(log_string=log_string, dialog_string=dialog_string, retry=True)
+
+        self.timeout("take_spectrum")
         self.wait_dialog.top.wm_geometry("680x173")
 
     def success(self):
