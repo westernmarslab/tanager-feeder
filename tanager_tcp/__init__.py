@@ -1,3 +1,4 @@
+import os
 import socket
 import time
 from typing import Optional, Tuple
@@ -75,13 +76,34 @@ class TanagerServer:
                     if not data:
                         raise ShortMessageError("Message shorter than expected")
 
-                self.queue.append(str(message, "utf-8"))
+
 
                 # Send a return message containing the header and address info
                 connection.sendall(header + remote_server_address)
 
-            except (ConnectionResetError, ConnectionAbortedError, ShortMessageError):  # Happens on restart of other computer
+                # Look for the response
+                timeout = 10
+                confirmation_message = b""
+                while not confirmation_message and timeout > 0:
+                    next_message = connection.recv(7)
+                    time.sleep(1)
+                    timeout -= 1
+                    while next_message:
+                        confirmation_message += next_message
+                        next_message = connection.recv(7)  # If all is as expected, should be b''. If full message didn't make
+                        # it through in first sock.recv could have content.
+
+                if confirmation_message.decode("utf-8") != "Correct":
+                    with open(os.path.join(os.path.expanduser("~"), ".noconfirm"), "w+"):
+                        pass
+                    raise NoConfirmationError
+
+                self.queue.append(str(message, "utf-8"))
+
+            except (ConnectionResetError, ConnectionAbortedError, ShortMessageError, NoConfirmationError):  # Happens on restart of other computer
+                print("Error receiving message. Restarting.\n")
                 self.listen()
+
             finally:
                 connection.close()
 
@@ -93,9 +115,6 @@ class TanagerClient:
         self.server_address = server_address
         self.listening_port = listening_port
         self.sock = None
-
-        # Create a TCP/IP socket
-
         self.connected = False
 
     def connect(self, timeout: float = 5) -> bool:
@@ -167,8 +186,16 @@ class TanagerClient:
             if return_address != address_info:
                 raise WrongAddressError
 
-        except (OSError, WrongHeaderError, WrongAddressError):
-            print("self.sock is not a socket, or server address is invalid argument? Retrying.")
+            # Send a confirmation that everything went through correctly.
+            self.sock.sendall("Correct".encode("utf-8"))
+
+        except (OSError):
+            print("TCP OSError. Retrying.")
+            self.connected = False
+            return self.send(base_message)
+        except (WrongHeaderError, WrongAddressError):
+            print("Wrong TCP header information returned. Retrying.")
+            self.sendall("Wrong Header".encode("utf-8"))
             self.connected = False
             return self.send(base_message)
 
@@ -205,3 +232,7 @@ class WrongHeaderError(Exception):
 class WrongAddressError(Exception):
     def __init__(self):
         super().__init__("Wrong address returned.")
+
+class NoConfirmationError(Exception):
+    def __init__(self):
+        super().__init__("No confirmation that message was correct.")

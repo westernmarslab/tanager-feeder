@@ -463,7 +463,7 @@ class ViewSpecProController:
         for j, folder in enumerate(batch_folders):
             self.open_files(folder)
             time.sleep(1)
-            self.set_save_directory(input_path)
+            self.set_save_directory(folder)
             self.splice_correction()
             next_file = tsv_name.split(".csv")[0]+f"_{j}.csv"
             try:
@@ -482,7 +482,11 @@ class ViewSpecProController:
 
     def safe_make_dir(self, dir):
         if os.path.isdir(dir):
-            shutil.rmtree(dir)
+            try:
+                shutil.rmtree(dir)
+            except PermissionError:
+                time.sleep(2)
+                shutil.rmtree(dir)
         os.mkdir(dir)
 
     def rm_tree(self, dir):
@@ -490,10 +494,10 @@ class ViewSpecProController:
 
     def concatenate_files(self, files_to_concatenate, destination):
         all_data = []
-        headers = ""
+        headers = "Wavelength"
         for j, file in enumerate(files_to_concatenate):
             with open(file, "r") as f:
-                headers = f.readline().strip("\n")
+                headers += f.readline().strip("\n").strip("Wavelength")
             data = np.genfromtxt(
                 file, skip_header=1, dtype=float, delimiter="\t", encoding=None, deletechars=""
             )
@@ -503,6 +507,7 @@ class ViewSpecProController:
                 else:
                     all_data[k] = all_data[k] + list(row[1:])
 
+        print(headers)
         with open(destination, "w+") as file:
             file.write(headers+"\n")
             for row in all_data:
@@ -510,6 +515,7 @@ class ViewSpecProController:
                 file.write("\t".join(row)+"\n")
 
         print("Batched data recombined.")
+        shutil.copyfile(destination, destination+"_copy")
 
     def clear_batch_folders(self, batch_folders):
         for folder in batch_folders:
@@ -606,6 +612,15 @@ class ViewSpecProController:
             timeout -= 0.25
         if timeout > 0:
             self.app["Dialog"].Button2.click()
+            print("Found dialog, clicked ok")
+
+        timeout = 2
+        while not self.app["Dialog"].exists() and timeout > 0:
+            time.sleep(0.25)
+            timeout -= 0.25
+        if timeout > 0:
+            self.app["Dialog"].Button2.click()
+            print("Found 2nd dialog, clicked ok")
 
     def splice_correction(self):
         print("Applying splice correction.")

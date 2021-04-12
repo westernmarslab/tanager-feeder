@@ -197,8 +197,7 @@ class CommandInterpreter:
         try:
             with open(source, "r") as file:
                 data = file.readlines()
-                # if len(data[-1]) > 100:
-                batch_size = 50
+                batch_size = 100
                 utils.send(self.client, f"datatransferstarted{len(data)/batch_size}", [])
 
                 batch = 0
@@ -206,7 +205,7 @@ class CommandInterpreter:
                 for i, line in enumerate(data):
                     next_message += line
                     if i != 0 and i % batch_size == 0:
-                        utils.send(self.client, f"batch{batch}", [next_message])
+                        utils.send(self.client, f"batch{batch}+", [next_message])
                         batch += 1
                         next_message = ""
 
@@ -437,6 +436,8 @@ class CommandInterpreter:
                 utils.send(self.client, "processerror", [])
                 traceback.print_exc()
                 return
+
+
             # Check that the expected file arrived fine after processing.
             # This sometimes wasn't happening if you fed ViewSpecPro data without
             # taking a white referencetra or optimizing.
@@ -519,16 +520,12 @@ class CommandInterpreter:
                         self.spec_controller.hopefully_saved_files.append(expected)
 
                 if corrected == True and logfile_for_reading is not None:
-                    utils.send(self.client, "spec_data", [spec_data])
-                    utils.send(self.client, "log_data", [log_data])
                     utils.send(self.client, "processsuccess", [])
 
                 elif logfile_for_reading is not None:
-                    utils.send(self.client, "spec_data", [spec_data])
-                    utils.send(self.client, "log_data", [log_data])
                     utils.send(self.client, "processsuccessnocorrection", [])
+
                 else:
-                    utils.send(self.client, "spec_data", [spec_data])
                     utils.send(self.client, "processsuccessnolog", [])
             # We don't actually know for sure that processing failed because of failing
             # to optimize or white reference, but ViewSpecPro sometimes silently fails if
@@ -638,9 +635,9 @@ class CommandInterpreter:
                         line = log.readline()
                     if "e:" in line:
                         try:
-                            nextnote = nextnote + " e=" + line.split("e: ")[-1].strip("\n") + ")"
+                            nextnote = nextnote + " e=" + line.split("e: ")[-1].strip("\n")
                         except:
-                            nextnote = nextnote + " e=?)"
+                            nextnote = nextnote + " e=?"
                     while "az: " not in line and line != "":
                         line = log.readline()
                     if "az:" in line:
@@ -672,7 +669,6 @@ class CommandInterpreter:
                         nextnote = None
                     line = log.readline()
                 if len(labels) != 0:
-
                     data_lines = []
                     with open(datafile, "r") as data:
                         line = data.readline().strip("\n")
@@ -689,7 +685,11 @@ class CommandInterpreter:
                     unknown_num = (
                         0  # This is the number of files in the datafile headers that aren't listed in the log file.
                     )
+                    print("here are all the labels")
+                    print(labels)
                     for i, filename in enumerate(datafiles):
+                        print("looking for label for spectrum")
+                        print(filename)
                         label_found = False
                         filename = filename.replace(".", "")
                         spectrum_label = filename
@@ -707,6 +707,8 @@ class CommandInterpreter:
                                 spectrum_label = labels[filename_minus_sco]
 
                         if label_found == False:
+                            print("Could not find label for spectrum")
+                            print(filename)
                             unknown_num += 1
                         spectrum_labels.append(spectrum_label)
 
