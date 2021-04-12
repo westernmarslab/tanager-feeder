@@ -124,7 +124,9 @@ class SpecListener(Listener):
                         + params[0],
                     )
                 else:
-                    self.unexpected_files.append(params[0])
+                    for param in params:
+                        print(param)
+                        self.unexpected_files.append(param)
             elif "batch" in cmd:
                 if "batch" in cmd:
                     self.locked = True
