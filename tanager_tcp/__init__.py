@@ -82,7 +82,7 @@ class TanagerServer:
                 connection.sendall(header + remote_server_address)
 
                 # Look for the response
-                timeout = 10
+                timeout = 3
                 confirmation_message = b""
                 while not confirmation_message and timeout > 0:
                     next_message = connection.recv(7)
@@ -182,9 +182,7 @@ class TanagerClient:
                 raise WrongAddressError
 
             # Send a confirmation that everything went through correctly.
-            print("Sending correct")
             self.sock.sendall("Correct".encode("utf-8"))
-            print("sent")
 
         except OSError:
             import traceback
@@ -194,7 +192,7 @@ class TanagerClient:
             return self.send(base_message)
         except (WrongHeaderError, WrongAddressError):
             print("Wrong TCP header information returned. Retrying.")
-            self.sendall("Wrong Header".encode("utf-8"))
+            self.sock.sendall("Wrong Header".encode("utf-8"))
             self.connected = False
             return self.send(base_message)
 

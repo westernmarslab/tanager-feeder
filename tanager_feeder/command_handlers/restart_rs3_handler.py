@@ -16,6 +16,11 @@ class RestartRS3Handler(CommandHandler):
                 time.sleep(30) # Give a chance for rs3 to really start
                 self.success()
                 return
+            if "rs3restartfailed" in self.listener.queue:
+                self.listener.queue.remove("rs3restartfailed")
+                time.sleep(30) # Give a chance for rs3 to really start
+                self.success()
+                return
 
             time.sleep(utils.INTERVAL)
             self.timeout_s -= utils.INTERVAL
@@ -29,4 +34,6 @@ class RestartRS3Handler(CommandHandler):
         self.controller.opt_attempt = 0
 
     def success(self):
+        self.controller.white_reference_attempt = 0
+        self.controller.opt_attempt = 0
         super().success()
