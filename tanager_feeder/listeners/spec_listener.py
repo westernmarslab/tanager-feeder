@@ -1,7 +1,7 @@
 from threading import Thread
 import time
 
-from tanager_tcp import TanagerServer
+from tanager_tcp.tanager_server import TanagerServer
 
 from tanager_feeder.listeners.listener import Listener
 from tanager_feeder import utils

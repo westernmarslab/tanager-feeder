@@ -3,8 +3,8 @@ import time
 import traceback
 import sys
 
-from tanager_tcp import TanagerServer
-from tanager_tcp import TanagerClient
+from tanager_tcp.tanager_server import TanagerServer
+from tanager_tcp.tanager_client import TanagerClient
 from threading import Thread
 from pi_feeder import goniometer
 
