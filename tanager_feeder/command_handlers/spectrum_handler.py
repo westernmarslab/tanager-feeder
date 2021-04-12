@@ -1,6 +1,6 @@
 import time
 
-from tanager_feeder.command_handlers.command_handler import TriggerRestartHandler
+from tanager_feeder.command_handlers.trigger_restart_handler import TriggerRestartHandler
 from tanager_feeder import utils
 
 
