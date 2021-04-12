@@ -36,8 +36,9 @@ class TanagerClient:
         count = 0
         while self.locked:
             if count % 100 == 0:
-                print("Client is locked. Waiting.")
+                print(f"Client is locked. Waiting to send {base_message}.")
                 count += 1
+                time.sleep(0.1)
         self.locked = True
 
         if not self.connected:
