@@ -14,7 +14,7 @@ INTERVAL = 0.25
 CONFIG_LOC = os.path.join(os.path.expanduser("~"), ".tanager_config")
 ENCODER_CONFIG_PATH = os.path.join(CONFIG_LOC, "encoder_config.txt")
 AZ_CONFIG_PATH = os.path.join(CONFIG_LOC, "az_config.txt")
-LOG_PATH = os.path.join(CONFIG_LOC, "config", "pi_feeder.log")
+LOG_PATH = os.path.join(CONFIG_LOC, "pi_feeder.log")
 
 def main():
     if not os.path.isdir(CONFIG_LOC):
