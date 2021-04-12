@@ -10,11 +10,15 @@ from pi_feeder import goniometer
 
 
 INTERVAL = 0.25
-ENCODER_CONFIG_PATH = os.path.join(os.path.split(__file__)[0], "config", "encoder_config.txt")
-AZ_CONFIG_PATH = os.path.join(os.path.split(__file__)[0], "config", "az_config.txt")
-LOG_PATH = os.path.join(os.path.split(__file__)[0], "config", "pi_feeder.log")
+
+CONFIG_LOC = os.path.join(os.expanduser("~"), ".tanager_config")
+ENCODER_CONFIG_PATH = os.path.join(CONFIG_LOC, "encoder_config.txt")
+AZ_CONFIG_PATH = os.path.join(CONFIG_LOC, "az_config.txt")
+LOG_PATH = os.path.join(CONFIG_LOC, "config", "pi_feeder.log")
 
 def main():
+    if not os.path.isdir(CONFIG_LOC):
+        os.mkdir(CONFIG_LOC)
     sys.stdout = open(LOG_PATH, "w+")
     pi_controller = PiController()
     pi_controller.listen()

@@ -164,16 +164,10 @@ class TanagerClient:
             self.sock.sendall(full_message)
 
             # Look for the response
-            next_message = self.sock.recv(HEADER_LEN + ADDRESS_LEN)
-            return_message = b""
-            while next_message:
-                return_message += next_message
-                next_message = self.sock.recv(
-                    HEADER_LEN + ADDRESS_LEN
-                )  # If all is as expected, should be b''. If full message didn't make
-                # it through in first sock.recv could have content.
-                if len(return_message) > HEADER_LEN + ADDRESS_LEN:
-                    raise ShortMessageError
+            return_message = self.sock.recv(HEADER_LEN + ADDRESS_LEN)
+
+            if len(return_message) > HEADER_LEN + ADDRESS_LEN:
+                raise ShortMessageError
 
             # Check that the remote server received the correct message length
             return_header = return_message[0:HEADER_LEN].decode("utf-8")
