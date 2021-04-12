@@ -96,6 +96,7 @@ class TanagerServer:
                 if confirmation_message.decode("utf-8") != "Correct":
                     with open(os.path.join(os.path.expanduser("~"), ".noconfirm"), "w+"):
                         pass
+                    print(confirmation_message)
                     raise NoConfirmationError
 
                 self.queue.append(str(message, "utf-8"))
@@ -187,9 +188,13 @@ class TanagerClient:
                 raise WrongAddressError
 
             # Send a confirmation that everything went through correctly.
+            print("Sending correct")
             self.sock.sendall("Correct".encode("utf-8"))
+            print("sent")
 
-        except (OSError):
+        except OSError:
+            import traceback
+            traceback.print_exc()
             print("TCP OSError. Retrying.")
             self.connected = False
             return self.send(base_message)
