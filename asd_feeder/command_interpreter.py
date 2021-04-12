@@ -235,26 +235,17 @@ class CommandInterpreter:
     def restartrs3(self, params):
         try:
             self.spec_controller.restart()
+            utils.send(self.client, "rs3restarted", [])
         except:
-            utils.send(self.client, "rs3restartfailed")
-        utils.send(self.client, "rs3restarted", [])
+            traceback.print_exc()
+            utils.send(self.client, "rs3restartfailed", [])
+
 
     def saveconfig(self, params):
         save_path = params[0]
-
-        file = self.check_for_unexpected(
-            save_path, self.spec_controller.hopefully_saved_files, self.data_files_to_ignore
-        )
-        found_unexpected = False
-        while file is not None:
-            found_unexpected = True
-            self.data_files_to_ignore.append(file)
-            utils.send(self.client, "unexpectedfile", [file])
-            file = self.check_for_unexpected(
-                save_path, self.spec_controller.hopefully_saved_files, self.data_files_to_ignore
-            )
-        if found_unexpected == True:
-            time.sleep(2)
+        print("Checking for unexpected files")
+        self.routine_file_check(save_path)
+        print("Done.")
         utils.send(self.client, "donelookingforunexpected", [])
 
 
@@ -290,16 +281,22 @@ class CommandInterpreter:
             instrument_config_num = None
             traceback.print_exc()
 
-    def routine_file_check(self):
+    def routine_file_check(self, path=None):
+        if path is None:
+            path = self.spec_controller.save_dir
+
         file = self.check_for_unexpected(
-            self.spec_controller.save_dir, self.spec_controller.hopefully_saved_files, self.data_files_to_ignore
+            path, self.spec_controller.hopefully_saved_files, self.data_files_to_ignore
         )
+        unexpected_files = []
         while file is not None:
             self.data_files_to_ignore.append(file)
-            utils.send(self.client, "unexpectedfile", [file])
+            unexpected_files.append(file)
             file = self.check_for_unexpected(
-                self.spec_controller.save_dir, self.spec_controller.hopefully_saved_files, self.data_files_to_ignore
+                path, self.spec_controller.hopefully_saved_files, self.data_files_to_ignore
             )
+        if len(unexpected_files) > 0:
+            utils.send(self.client, "unexpectedfile", unexpected_files)
 
     def white_reference(self, params):
         if self.spec_controller.save_dir == "":

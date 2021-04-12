@@ -24,14 +24,14 @@ class Watchdog:
                     time_since_cycled = 0
             print(time_since_cycled)
             if next_minute < time_since_cycled and len(announced_minute) == next_minute/60-1:
-                print(f"{time_since_cycled/60} minutes since watchdog reset. Restarting computer at 15 minutes.")
+                print(f"{time_since_cycled/60} minutes since watchdog reset. Restarting computer at 30 minutes.")
                 announced_minute.append(1)
                 next_minute += 60
-            elif 900 < time_since_cycled:
+            elif 1800 < time_since_cycled:
                 home = os.path.expanduser("~")
                 with open(os.path.join(home, "watchdog_restart"), "w+") as f:
                     f.write("watched!")
-                print("15 minutes since cycle, time for restart")
+                print("30 minutes since cycle, time for restart")
                 time.sleep(30)
                 os.system("shutdown /r /t 1")
 
