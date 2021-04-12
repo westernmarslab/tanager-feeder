@@ -6,7 +6,8 @@ import time
 from threading import Thread
 from multiprocessing import Process
 
-from tanager_tcp import TanagerClient, TanagerServer
+from tanager_tcp.tanager_server import TanagerServer
+from tanager_tcp.tanager_client import TanagerClient
 
 from asd_feeder.asd_controls import RS3Controller, ViewSpecProController
 from asd_feeder.logger import Logger
