@@ -62,8 +62,6 @@ class Console:
         self.console_entry.focus()
 
     def log(self, info_string: str, newline: Optional[bool] = True) -> None:
-        print("logging")
-        # self.controller.master.update()
         if newline:
             space = self.console_log.winfo_width()
             space = int(space / 8.5)
@@ -118,7 +116,6 @@ class Console:
         # these are stored in user_cmds with the index of the most recent command at 0
         # Every time the user enters a command, the user_cmd_index is changed to -1
         self.console_log.see(END)
-        print("done")
 
     # when the focus is on the console entry box, the user can scroll through past commands.
     # these are stored in user_cmds with the index of the most recent command at 0
