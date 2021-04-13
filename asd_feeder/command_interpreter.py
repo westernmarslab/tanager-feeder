@@ -421,7 +421,7 @@ class CommandInterpreter:
             datafile = temp_output_path + "\\" + csv_name
 
             try:
-                self.process_controller.process(input_path, temp_output_path, csv_name)
+                self.process_controller.process(input_path, temp_output_path, csv_name, self.watchdog_monitor)
             except Exception as e:
                 self.process_controller.reset()
                 utils.send(self.client, "processerror", [])
@@ -604,6 +604,10 @@ class CommandInterpreter:
                     else:
                         file.write(line)
         print("converted to .csv")
+
+    def watchdog_monitor(self):
+        with open(os.path.join(self.temp_data_loc, "watchdog"), "w+") as f:
+            pass  # This file is looked for by the watchdog.
 
     def set_headers(self, datafile, logfile):
 
