@@ -428,7 +428,7 @@ class CommandInterpreter:
             if input_path == self.spec_controller.save_dir:
                 self.data_files_to_ignore.append(csv_name)
                 batches = int(len(self.data_files_to_ignore)/self.process_controller.batch_size)+1
-                base = csv_name.split(".")
+                base = csv_name.split(".csv")[0]
                 for i in range(batches):
                     ignore_file = f"{base}_{i}"
                     print(ignore_file)
