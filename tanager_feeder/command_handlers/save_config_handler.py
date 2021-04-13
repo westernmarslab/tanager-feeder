@@ -23,13 +23,13 @@ class SaveConfigHandler(CommandHandler):
         super().__init__(controller, title, label=label, timeout=timeout)
 
     def wait(self):
-        t = 100
+        t = 200
 
         while "donelookingforunexpected" not in self.listener.queue and t > 0:
             t = t - utils.INTERVAL
             time.sleep(utils.INTERVAL)
         if t <= 0:
-            print("IN save config handler, timeout looking for unexpected.")
+            print("In save config handler, timeout looking for unexpected.")
             self.timeout("Error: Operation timed out while waiting to set save configuration.")
             return
 
