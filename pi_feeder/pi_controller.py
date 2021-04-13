@@ -2,7 +2,7 @@ import os
 import time
 import traceback
 import sys
-from datetime import date
+from datetime import date, datetime
 
 from tanager_tcp.tanager_server import TanagerServer
 from tanager_tcp.tanager_client import TanagerClient
@@ -16,14 +16,15 @@ CONFIG_LOC = os.path.join(os.path.expanduser("~"), ".tanager_config")
 ENCODER_CONFIG_PATH = os.path.join(CONFIG_LOC, "encoder_config.txt")
 AZ_CONFIG_PATH = os.path.join(CONFIG_LOC, "az_config.txt")
 
-LOG_PATH = os.path.join(CONFIG_LOC, "pi_feeder.log")
+LOG_PATH = os.path.join(CONFIG_LOC, "pi_feeder")
 
 def main():
     if not os.path.isdir(CONFIG_LOC):
         os.mkdir(CONFIG_LOC)
     today = date.today()
     now = today.strftime("%b-%d-%Y")
-    log_path = LOG_PATH.split(".")[0]+"_"+now+LOG_PATH.split(".")[1]
+    now += f"_{datetime.now().hour}_{datetime.now().minute}"
+    log_path = f"{LOG_PATH}_{now}.log"
     sys.stdout = open(log_path, "w+")
     pi_controller = PiController()
     pi_controller.listen()
