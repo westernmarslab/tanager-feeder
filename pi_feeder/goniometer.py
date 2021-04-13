@@ -6,7 +6,7 @@ import numpy as np
 from pi_feeder import motor, encoder, limit_switch
 
 AZIMUTH_GEAR_RATIO = 10
-AZIMUTH_HOME_OFFSET = 25.2
+AZIMUTH_HOME_OFFSET = 24.7
 DISTANCE_TOLERANCE = 0.5
 
 
@@ -62,7 +62,7 @@ class Goniometer:
                     0.006,
                     encoder.AMT212ARotaryEncoder(port="/dev/ttyUSB0", encoder_base=0x54, zero_position=tray_zero),
                     1,
-                    True,
+                    True, # ok to wrap around to reach positioin
                 ),
                 "gear ratio": 1,
                 "positions": {

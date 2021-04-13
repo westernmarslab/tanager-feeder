@@ -62,7 +62,6 @@ class Console:
         self.console_entry.focus()
 
     def log(self, info_string: str, newline: Optional[bool] = True) -> None:
-        # self.controller.master.update()
         if newline:
             space = self.console_log.winfo_width()
             space = int(space / 8.5)
@@ -79,9 +78,13 @@ class Console:
                 info_string = info_string[1:]
 
             first_space = int(space) - 15
+            if first_space < 1:
+                first_space = 1
             if "\n" not in info_string:
                 if len(info_string) > first_space:
                     i = first_space - 7
+                    if i < 0:
+                        i = 0
                     while True:
                         if i == 0:
                             info_string = (
@@ -89,7 +92,7 @@ class Console:
                             )
                             break
                         if info_string[i] == " ":
-                            info_string = info_string[0:i] + "\n" + info_string[i + 1 :]
+                            info_string = info_string[0:i] + "\n" + info_string[i + 1:]
                             break
                         i -= 1
 
@@ -108,7 +111,6 @@ class Console:
             self.console_log.insert(END, "\n")
         else:
             self.console_log.insert(END, info_string)
-        self.console_log.see(END)
 
         # when the focus is on the console entry box, the user can scroll through past commands.
         # these are stored in user_cmds with the index of the most recent command at 0

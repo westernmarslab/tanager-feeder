@@ -1,3 +1,5 @@
 include README.txt
 include tanager_feeder/global_config/*
 include tanager_feeder/sounds/*
+include asd_feeder/img2/*
+include asd_feeder/spectralon_data/*

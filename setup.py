@@ -31,6 +31,7 @@ setup(
             "tanager-feeder = tanager_feeder.__main__:main",
             "asd-feeder = asd_feeder.__main__:main",
             "pi-feeder = pi_feeder.pi_controller:main",
+            "asd-watchdog = asd_feeder.asd_watchdog:main"
         ],
     },
     install_requires=install_requires,

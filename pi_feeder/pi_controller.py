@@ -1,25 +1,35 @@
 import os
 import time
 import traceback
+import sys
+from datetime import date
 
-from tanager_tcp import TanagerServer
-from tanager_tcp import TanagerClient
+from tanager_tcp.tanager_server import TanagerServer
+from tanager_tcp.tanager_client import TanagerClient
 from threading import Thread
 from pi_feeder import goniometer
 
 
 INTERVAL = 0.25
-ENCODER_CONFIG_PATH = os.path.join(os.path.split(__file__)[0], "config", "encoder_config.txt")
+
+CONFIG_LOC = os.path.join(os.path.expanduser("~"), ".tanager_config")
+ENCODER_CONFIG_PATH = os.path.join(CONFIG_LOC, "encoder_config.txt")
+AZ_CONFIG_PATH = os.path.join(CONFIG_LOC, "az_config.txt")
+
+LOG_PATH = os.path.join(CONFIG_LOC, "pi_feeder.log")
 
 def main():
+    if not os.path.isdir(CONFIG_LOC):
+        os.mkdir(CONFIG_LOC)
+    today = date.today()
+    now = today.strftime("%b-%d-%Y")
+    log_path = LOG_PATH.split(".")[0]+"_"+now+LOG_PATH.split(".")[1]
+    sys.stdout = open(log_path, "w+")
     pi_controller = PiController()
     pi_controller.listen()
 
 class PiController:
     def __init__(self):
-        self.server = TanagerServer(12345)
-        self.client = TanagerClient(self.server.remote_server_address, 12345)
-
         try:
             with open(ENCODER_CONFIG_PATH, "r") as config_file:
                 i_zero = float(config_file.readline())
@@ -34,10 +44,27 @@ class PiController:
                 os.mkdir(dir_path)
             self.write_encoder_config(0, 0, 0, 0)
             self.goniometer = goniometer.Goniometer()
+
+        current_az = 0
+        try:
+            with open(AZ_CONFIG_PATH, "r") as config_file:
+                current_az = float(config_file.readline())
+        except (FileNotFoundError, NotADirectoryError):
+            dir_path = os.path.split(AZ_CONFIG_PATH)[0]
+            print(f"Az config file not found, creating new one at {AZ_CONFIG_PATH}")
+            if not os.path.isdir(dir_path):
+                os.mkdir(dir_path)
+            self.write_az_config(0)
+        print("Homing azimuth")
         self.goniometer.home_azimuth()
+        print(f"Setting to last known azimuth: {current_az}")
+        self.goniometer.set_position("azimuth", current_az)
 
         self.cmdfiles0 = []
         self.dir = "forward"
+
+        self.server = TanagerServer(12345)
+        self.client = TanagerClient(self.server.remote_server_address, 12345)
 
         thread = Thread(target=self.server.listen)
         thread.start()
@@ -122,7 +149,8 @@ class PiController:
                     else:
                         status = self.goniometer.set_position("azimuth", int(params[0]))
                         filename = self.encrypt("donemovingazimuth" + str(int(status["position"])))
-
+                        print("Writing az config")
+                        self.write_az_config(self.goniometer.azimuth)
                     self.send(filename)
 
                 elif cmd == "configure":
@@ -168,6 +196,10 @@ class PiController:
             config_file.write(f"{e}\n")
             config_file.write(f"{az}\n")
             config_file.write(f"{tray}\n")
+
+    def write_az_config(self, az):
+        with open(AZ_CONFIG_PATH, "w+") as config_file:
+            config_file.write(f"{az}\n")
 
     def send(self, message):
         sent = self.client.send(message)

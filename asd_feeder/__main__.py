@@ -12,8 +12,9 @@ def main():
         print(f"Creating temporary data directory at {temp_data_loc}")
         os.makedirs(temp_data_loc)
 
-    data_loc = os.path.join(os.path.split(os.path.split(__file__)[0])[0], "data")
+    data_loc = os.path.join(os.path.split(__file__)[0], "spectralon_data")
     spectralon_data_loc = os.path.join(data_loc, "spectralon.csv")
+    print(spectralon_data_loc)
 
     RS3_loc = ""
     ViewSpecPro_loc = ""
