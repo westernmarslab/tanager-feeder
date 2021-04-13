@@ -13,12 +13,11 @@ class RestartRS3Handler(CommandHandler):
         while self.timeout_s > 0:
             if "rs3restarted" in self.listener.queue:
                 self.listener.queue.remove("rs3restarted")
-                time.sleep(90) # Give a chance for rs3 to really start
+                time.sleep(120) # Give a chance for rs3 to really start
                 self.success()
                 return
             if "rs3restartfailed" in self.listener.queue:
                 self.listener.queue.remove("rs3restartfailed")
-                time.sleep(30) # Give a chance for rs3 to really start
                 self.success()
                 return
 
