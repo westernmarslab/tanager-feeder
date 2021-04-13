@@ -96,6 +96,10 @@ class Controller(utils.ControllerType):
         self.overwrite_all = False  # User can say yes to all for overwriting files.
         self.overwrite_next = False # If save spec fails and we restart, overwrite just that one without asking.
 
+        self.opt_time = None
+        self.wr_time = None
+        self.angles_change_time = None
+
         self.tk_buttons = []
         self.entries = []
         self.radiobuttons = []
@@ -1121,7 +1125,7 @@ class Controller(utils.ControllerType):
         print(valid_i)
         if valid_i:
             if str(self.science_i) != self.incidence_entries[0].get():
-                self.failsafes_manager.angles_change_time = time.time()
+                self.angles_change_time = time.time()
             self.science_i = int(self.incidence_entries[0].get())
 
         else:
@@ -1130,7 +1134,7 @@ class Controller(utils.ControllerType):
         valid_e = utils.validate_int_input(self.emission_entries[0].get(), -90, 90)
         if valid_e:
             if str(self.science_e) != self.emission_entries[0].get():
-                self.failsafes_manager.angles_change_time = time.time()
+                self.angles_change_time = time.time()
             self.science_e = int(self.emission_entries[0].get())
         else:
             warnings += "The emission angle is invalid (Min:" + str(-90) + ", Max:" + str(90) + ").\n\n"
@@ -1138,7 +1142,7 @@ class Controller(utils.ControllerType):
         valid_az = utils.validate_int_input(self.azimuth_entries[0].get(), 0, 179)
         if valid_az:
             if str(self.science_az) != self.azimuth_entries[0].get():
-                self.failsafes_manager.angles_change_time = time.time()
+                self.angles_change_time = time.time()
             self.science_az = int(self.azimuth_entries[0].get())
         else:
             warnings += "The azimuth angle is invalid (Min:" + str(0) + ", Max:" + str(179) + ").\n\n"
@@ -1476,7 +1480,7 @@ class Controller(utils.ControllerType):
                 next_science_az = None
 
         if self.science_i != next_science_i or self.science_e != next_science_e or self.science_az != next_science_az:
-            self.failsafes_manager.angles_change_time = time.time()
+            self.angles_change_time = time.time()
 
         self.science_i = next_science_i
         self.science_e = next_science_e

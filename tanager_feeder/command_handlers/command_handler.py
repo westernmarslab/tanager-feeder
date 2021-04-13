@@ -122,7 +122,10 @@ class CommandHandler:
         try:
             self.wait_dialog.ok_button.focus_set()
         except (AttributeError, TclError):
-            self.wait_dialog.top.focus_set()
+            try:
+                self.wait_dialog.top.focus_set()
+            except TclError:
+                print("Tcl error in command_handler.interrupt.")
 
         if self.controller.audio_signals:
             if "Success" in label:
