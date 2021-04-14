@@ -430,7 +430,7 @@ class CommandInterpreter:
                 batches = int(len(self.data_files_to_ignore)/self.process_controller.batch_size)+1
                 base = csv_name.split(".csv")[0]
                 for i in range(batches):
-                    ignore_file = f"{base}_{i}"
+                    ignore_file = f"{base}_{i}.csv"
                     print(ignore_file)
                     self.data_files_to_ignore.append(ignore_file)
 
@@ -694,11 +694,7 @@ class CommandInterpreter:
                     unknown_num = (
                         0  # This is the number of files in the datafile headers that aren't listed in the log file.
                     )
-                    print("here are all the labels")
-                    print(labels)
                     for i, filename in enumerate(datafiles):
-                        print("looking for label for spectrum")
-                        print(filename)
                         label_found = False
                         filename = filename.replace(".", "")
                         spectrum_label = filename
