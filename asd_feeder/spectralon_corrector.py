@@ -9,6 +9,7 @@ class SpectralonCorrector:
         self.spectralon_data_loc = spectralon_data_loc
 
     def correct(self, data_to_correct_loc):
+        print("Loading data")
         self.data_io.load_samples("spectralon", self.spectralon_data_loc, 0)
         self.data_io.load_samples("data to correct", data_to_correct_loc, 0)
 
@@ -31,8 +32,9 @@ class SpectralonCorrector:
         for sample_name in self.data_io.samples["data to correct"]:
             samples_to_write.append(self.data_io.samples["data to correct"][sample_name])
 
+        print("Getting headers.")
         headers = self.data_io.get_headers(data_to_correct_loc)
-
+        print("Writing data.")
         self.data_io.write_samples(data_to_correct_loc.strip(".csv")+"_corrected.csv", samples_to_write, headers)
 
     def get_distance(self, geom1, geom2):
