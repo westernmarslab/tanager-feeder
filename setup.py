@@ -12,9 +12,9 @@ def is_raspberrypi():
 
 opsys: str = platform.system()
 if opsys == "Windows":
-    install_requires = ["pywinauto", "pyautogui", "tanager_tcp", "numpy", "matplotlib","colorutils", "cython", "numpy", "playsound", "psutil", "pygame", "tanager-tcp"]
+    install_requires = ["pywinauto", "pyautogui", "tanager_tcp", "numpy", "matplotlib","colorutils", "cython", "numpy", "playsound", "psutil", "pygame>=1.9.5,<1.9.7", "tanager-tcp"]
 else:
-    install_requires = ["colorutils", "cython", "matplotlib", "numpy", "playsound", "psutil", "pygame", "tanager-tcp"]
+    install_requires = ["colorutils", "cython", "matplotlib", "numpy", "playsound", "psutil", "pygame>=1.9.5,<1.9.7", "tanager-tcp"]
 
 setup(
     name='tanager-feeder',

@@ -18,7 +18,7 @@ class CheckWriteableHandler(CommandHandler):
                 return
             if "notwriteable" in self.listener.queue:
                 self.listener.queue.remove("notwriteable")
-                self.interupt(self, label="Error: Permission denied.\nCannot write to specified directory.")
+                self.interrupt(label="Error: Permission denied.\nCannot write to specified directory.")
                 return
             time.sleep(utils.INTERVAL)
             self.timeout_s -= utils.INTERVAL
