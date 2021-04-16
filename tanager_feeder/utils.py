@@ -27,7 +27,7 @@ import time
 import numpy as np
 import psutil
 
-from tanager_tcp import TanagerClient
+from tanager_tcp.tanager_client import TanagerClient
 
 AZIMUTH_HOME = 0
 INTERVAL = 0.25

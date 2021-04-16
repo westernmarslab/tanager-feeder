@@ -261,6 +261,7 @@ class PlotManager:
                 self.controller.complete_queue_item()
                 self.controller.wait_dialog.top.destroy()
 
+
         try:
             data_loaded = self.plotter.load_samples(self.dataset_name, plot_input_file)
             if not data_loaded:

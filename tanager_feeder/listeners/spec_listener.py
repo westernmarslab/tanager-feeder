@@ -1,7 +1,7 @@
 from threading import Thread
 import time
 
-from tanager_tcp import TanagerServer
+from tanager_tcp.tanager_server import TanagerServer
 
 from tanager_feeder.listeners.listener import Listener
 from tanager_feeder import utils
@@ -23,6 +23,8 @@ class SpecListener(Listener):
         thread = Thread(target=self.local_server.listen)
         thread.start()
 
+        self.locked = False
+
     def set_control_address(self):
         self.connection_manager.send_to_spec(
             "setcontrolserveraddress&"
@@ -34,7 +36,7 @@ class SpecListener(Listener):
     def run(self):
         i = 0
         while True:
-            if not self.connection_manager.spec_offline and i % 20 == 0 and not self.controller.restarting_spec_compy:
+            if not self.connection_manager.spec_offline and i % 100 == 0 and not self.controller.restarting_spec_compy:
                 if len(self.controller.queue) > 0:
                     attempts = 5
                 else:
@@ -93,6 +95,7 @@ class SpecListener(Listener):
             elif "lostconnection" in cmd and not self.controller.restarting_spec_compy:
                 if self.alert_lostconnection:
                     self.alert_lostconnection = False
+                    time.sleep(4)
                     self.controller.freeze()
                     buttons = {
                         "retry": {
@@ -121,7 +124,16 @@ class SpecListener(Listener):
                         + params[0],
                     )
                 else:
-                    self.unexpected_files.append(params[0])
+                    for param in params:
+                        print(param)
+                        self.unexpected_files.append(param)
+            elif "batch" in cmd:
+                if "batch" in cmd:
+                    self.locked = True
+                    self.queue.append(cmd + "&".join(params))
+                    self.locked = False
+                    # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@adding to queue")
+                    # print(cmd + "&".join(params)[0:100])
 
             else:
                 self.queue.append(cmd + "&".join(params))

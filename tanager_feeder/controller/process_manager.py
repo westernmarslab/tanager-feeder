@@ -309,9 +309,6 @@ class ProcessManager:
             file.write(output_file + "\n")
             file.close()
 
-        print("local data destination?????????????????")
-        print(self.proc_local.get())
-        print(type(self.proc_local.get()))
         if self.proc_local.get() == 1:
             self.controller.plot_manager.plot_local_remote = "local"
             check = self.check_local_file(self.output_dir_entry.get(), output_file, self.controller.process_cmd)
@@ -324,16 +321,11 @@ class ProcessManager:
             self.controller.plot_manager.plot_local_remote = "local"
             return input_directory, output_directory, output_file
         if self.proc_local.get() == 0:
-            print("Remote and checking!!")
             check = self.check_remote_folder(output_directory, self.controller.process_cmd)
             if not check:
                 raise ProcessFileError
             self.controller.plot_manager.plot_local_remote = "remote"
 
-        print("INPUT< OUTPUT< FILE")
-        print(input_directory)
-        print(output_directory)
-        print(output_file)
         return input_directory, output_directory, output_file
 
     def finish_processing(self) -> Tuple[str, str]:

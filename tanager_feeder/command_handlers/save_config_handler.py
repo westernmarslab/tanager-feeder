@@ -23,13 +23,13 @@ class SaveConfigHandler(CommandHandler):
         super().__init__(controller, title, label=label, timeout=timeout)
 
     def wait(self):
-        t = 30
+        t = 200
 
         while "donelookingforunexpected" not in self.listener.queue and t > 0:
             t = t - utils.INTERVAL
             time.sleep(utils.INTERVAL)
         if t <= 0:
-            print("IN save config handler, timeout looking for unexpected.")
+            print("In save config handler, timeout looking for unexpected.")
             self.timeout("Error: Operation timed out while waiting to set save configuration.")
             return
 
@@ -53,7 +53,7 @@ class SaveConfigHandler(CommandHandler):
 
                 self.listener.queue.remove("saveconfigfailedfileexists")
 
-                if self.controller.overwrite_all:
+                if self.controller.overwrite_all or self.controller.overwrite_next:
                     # self.wait_dialog.top.destroy()
                     self.remove_retry(need_new=False)  # No need for new wait dialog
 

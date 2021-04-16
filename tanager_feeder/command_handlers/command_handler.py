@@ -108,7 +108,11 @@ class CommandHandler:
         self.wait_dialog.label = "Canceling..."
 
     def interrupt(self, label: str, info_string: Optional[str] = None, retry: bool = False):
-        self.wait_dialog.interrupt(label)
+        try:
+            self.wait_dialog.interrupt(label)
+        except TclError:
+            print("Error: failed to interrupt wait_dialog. Finishing.")
+            self.finish()
         if info_string is not None:
             self.controller.log(info_string)
         if retry:
@@ -118,7 +122,10 @@ class CommandHandler:
         try:
             self.wait_dialog.ok_button.focus_set()
         except (AttributeError, TclError):
-            self.wait_dialog.top.focus_set()
+            try:
+                self.wait_dialog.top.focus_set()
+            except TclError:
+                print("Tcl error in command_handler.interrupt.")
 
         if self.controller.audio_signals:
             if "Success" in label:

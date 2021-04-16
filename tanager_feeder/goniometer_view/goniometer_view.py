@@ -613,8 +613,8 @@ class GoniometerView:
             next_pos(next_delta_theta)
 
     def set_azimuth(self, motor_az: int, config: bool = False) -> None:
-        if motor_az > self.controller.max_motor_az or motor_az < self.controller.min_motor_az:
-            raise Exception("MOTOR AZ OUTSIDE RANGE: " + str(motor_az))
+        if motor_az > self.controller.max_science_az or motor_az < self.controller.min_science_az:
+            print("Error: Azimuth outside expected range.")
 
         def next_pos(delta_theta: int) -> None:
             next_drawing_az = self.wireframes["i"].az + delta_theta

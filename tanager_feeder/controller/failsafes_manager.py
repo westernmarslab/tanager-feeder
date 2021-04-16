@@ -26,9 +26,6 @@ class FailsafesManager:
         self.anglechangefailsafe = IntVar()
         self.anglechangefailsafe.set(1)
 
-        self.wr_time = None
-        self.opt_time = None
-        self.angles_change_time = None
         self.settings_top = None
 
         self.wrfailsafe_check = None
@@ -40,8 +37,12 @@ class FailsafesManager:
         self.wr_angles_failsafe_check = None
         self.anglechangefailsafe_check = None
 
+    def on_closing(self):
+        self.settings_top.withdraw()
+
     def show(self) -> None:
         self.settings_top = Toplevel(self.controller.master)
+        self.settings_top.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.settings_top.wm_title("Failsafe Settings")
         settings_frame = Frame(self.settings_top, bg=self.tk_format.bg, pady=2 * self.tk_format.pady, padx=15)
         settings_frame.pack()
@@ -218,14 +219,14 @@ class FailsafesManager:
 
             if self.optfailsafe.get() and func != self.controller.opt:
                 try:
-                    opt_limit = int(float(self.opt_timeout_entry.get())) * 60
+                    opt_limit = int(float(self.controller.opt_timeout_entry.get())) * 60
                 except (ValueError, AttributeError):
                     opt_limit = sys.maxsize
-                if self.opt_time is None:
+                if self.controller.opt_time is None:
                     label += "The instrument has not been optimized.\n\n"
-                elif now - self.opt_time > opt_limit:
-                    minutes = str(int((now - self.opt_time) / 60))
-                    seconds = str((now - self.opt_time) % 60)
+                elif now - self.controller.opt_time > opt_limit:
+                    minutes = str(int((now - self.controller.opt_time) / 60))
+                    seconds = str((now - self.controller.opt_time) % 60)
                     if int(minutes) > 0:
                         label += (
                             "The instrument has not been optimized for "
@@ -236,10 +237,10 @@ class FailsafesManager:
                         )
                     else:
                         label += "The instrument has not been optimized for " + seconds + " seconds.\n\n"
-                if self.opt_time is not None:
-                    if self.angles_change_time is None:
+                if self.controller.opt_time is not None:
+                    if self.controller.angles_change_time is None:
                         pass
-                    elif self.opt_time < self.angles_change_time:
+                    elif self.controller.opt_time < self.controller.angles_change_time:
                         valid_i = utils.validate_int_input(
                             incidence, self.controller.min_science_i, self.controller.max_science_i
                         )
@@ -253,22 +254,21 @@ class FailsafesManager:
                             label += "The instrument has not been optimized at this geometry.\n\n"
 
             if self.wrfailsafe.get() and func != self.controller.wr and func != self.controller.opt:
-
                 try:
                     wr_limit = int(float(self.wr_timeout_entry.get())) * 60
                 except (ValueError, AttributeError):
                     wr_limit = sys.maxsize
-                if self.wr_time is None:
+                if self.controller.wr_time is None:
                     label += "No white reference has been taken.\n\n"
-                elif self.opt_time is not None and self.opt_time > self.wr_time:
+                elif self.controller.opt_time is not None and self.controller.opt_time > self.controller.wr_time:
                     label += "No white reference has been taken since the instrument was optimized.\n\n"
                 elif int(self.controller.instrument_config_entry.get()) != int(self.controller.spec_config_count):
                     label += "No white reference has been taken while averaging this number of spectra.\n\n"
                 elif self.controller.spec_config_count is None:
                     label += "No white reference has been taken while averaging this number of spectra.\n\n"
-                elif now - self.wr_time > wr_limit:
-                    minutes = str(int((now - self.wr_time) / 60))
-                    seconds = str((now - self.wr_time) % 60)
+                elif now - self.controller.wr_time > wr_limit:
+                    minutes = str(int((now - self.controller.wr_time) / 60))
+                    seconds = str((now - self.controller.wr_time) % 60)
                     if int(minutes) > 0:
                         label += (
                             " No white reference has been taken for "
@@ -281,8 +281,8 @@ class FailsafesManager:
                         label += " No white reference has been taken for " + seconds + " seconds.\n\n"
             if self.wr_angles_failsafe.get() and func != self.controller.wr:
 
-                if self.angles_change_time is not None and self.wr_time is not None and func != self.controller.opt:
-                    if self.angles_change_time > self.wr_time + 1:
+                if self.controller.angles_change_time is not None and self.controller.wr_time is not None and func != self.controller.opt:
+                    if self.controller.angles_change_time > self.controller.wr_time + 1:
                         valid_i = utils.validate_int_input(
                             incidence, self.controller.min_science_i, self.controller.max_science_i
                         )

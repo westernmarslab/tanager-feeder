@@ -94,6 +94,17 @@ class Controller(utils.ControllerType):
         self.white_reference_attempt = 0
         self.opt_attempt = 0
         self.overwrite_all = False  # User can say yes to all for overwriting files.
+        self.overwrite_next = False # If save spec fails and we restart, overwrite just that one without asking.
+
+        self.opt_time = None
+        self.wr_time = None
+        self.angles_change_time = None
+
+        self.tk_buttons = []
+        self.entries = []
+        self.radiobuttons = []
+        self.tk_check_buttons = []
+        self.option_menus = []
 
         try:
             self.spec_listener = SpecListener(connection_manager, config_info)
@@ -155,9 +166,7 @@ class Controller(utils.ControllerType):
         self.e_interval = None
 
         self.min_science_az = 0
-        self.max_science_az = 179
-        self.min_motor_az = -179
-        self.max_motor_az = 270
+        self.max_science_az = 180
         self.science_az = None  # current azimuth angle
         self.final_az = None
         self.az_interval = None
@@ -281,11 +290,7 @@ class Controller(utils.ControllerType):
         self.notebook_frame = Frame(self.master)
         self.notebook_frame.pack(side=LEFT, fill=BOTH, expand=True)
         self.notebook = ttk.Notebook(self.notebook_frame)
-        self.tk_buttons = []
-        self.entries = []
-        self.radiobuttons = []
-        self.tk_check_buttons = []
-        self.option_menus = []
+
 
         self.view_frame = Frame(self.master, width=1800, height=1200, bg=self.tk_format.bg)
         self.view_frame.pack(side=RIGHT, fill=BOTH, expand=True)
@@ -1120,7 +1125,7 @@ class Controller(utils.ControllerType):
         print(valid_i)
         if valid_i:
             if str(self.science_i) != self.incidence_entries[0].get():
-                self.failsafes_manager.angles_change_time = time.time()
+                self.angles_change_time = time.time()
             self.science_i = int(self.incidence_entries[0].get())
 
         else:
@@ -1129,7 +1134,7 @@ class Controller(utils.ControllerType):
         valid_e = utils.validate_int_input(self.emission_entries[0].get(), -90, 90)
         if valid_e:
             if str(self.science_e) != self.emission_entries[0].get():
-                self.failsafes_manager.angles_change_time = time.time()
+                self.angles_change_time = time.time()
             self.science_e = int(self.emission_entries[0].get())
         else:
             warnings += "The emission angle is invalid (Min:" + str(-90) + ", Max:" + str(90) + ").\n\n"
@@ -1137,7 +1142,7 @@ class Controller(utils.ControllerType):
         valid_az = utils.validate_int_input(self.azimuth_entries[0].get(), 0, 179)
         if valid_az:
             if str(self.science_az) != self.azimuth_entries[0].get():
-                self.failsafes_manager.angles_change_time = time.time()
+                self.angles_change_time = time.time()
             self.science_az = int(self.azimuth_entries[0].get())
         else:
             warnings += "The azimuth angle is invalid (Min:" + str(0) + ", Max:" + str(179) + ").\n\n"
@@ -1475,7 +1480,7 @@ class Controller(utils.ControllerType):
                 next_science_az = None
 
         if self.science_i != next_science_i or self.science_e != next_science_e or self.science_az != next_science_az:
-            self.failsafes_manager.angles_change_time = time.time()
+            self.angles_change_time = time.time()
 
         self.science_i = next_science_i
         self.science_e = next_science_e
@@ -2050,10 +2055,15 @@ class Controller(utils.ControllerType):
         else:
             self.spec_commander.process(input_directory, output_directory, output_file)
             self.queue.insert(0, {self.process_cmd: [input_directory, output_directory, output_file]})
+        try:
+            self.process_manager.process_top.destroy()
+        except TclError:
+            print("Error: Could not close process window.")
+            pass
         ProcessHandler(self, os.path.join(output_directory, output_file))
 
     def finish_process(self, source_file, output_file) -> None:
-        print("FInishing process")
+        print("Finishing process")
         print(self.queue)
         self.spec_commander.transfer_data(source_file)
         DataHandler(
@@ -2437,7 +2447,6 @@ class Controller(utils.ControllerType):
             },
             "cancel": {
                 self.unfreeze: [],
-                self.set_manual_automatic: [0],
                 self.clear_queue: [],
             },
         }
@@ -2445,8 +2454,7 @@ class Controller(utils.ControllerType):
             self,
             title="Setup Required",
             label="Setup required: Unknown goniometer state.\n\nPlease enter the current incidence, emission, and tray"
-            " positions and click OK. \nNote that this will trigger the azimuth table homing routine.\n\n"
-            "Alternatively, click 'Cancel' to use the goniometer in manual mode.",
+            " positions and click OK. \nNote that this will trigger the azimuth table homing routine.\n\n",
             values={
                 "Incidence": [self.science_i, self.min_motor_i, self.max_motor_i],
                 "Emission": [self.science_e, self.min_motor_e, self.max_motor_e],
@@ -2584,10 +2592,6 @@ class Controller(utils.ControllerType):
     # science az from 0 to 179.
     # az=180, i=50 is the same position as az=0, i=-50
     def motor_pos_to_science_pos(self, motor_i, motor_e, motor_az):
-        if motor_az < self.min_motor_az:
-            print("UNEXPECTED AZ: " + str(motor_az))
-        if motor_az > self.max_motor_az:
-            print("UNEXPECTED AZ: " + str(motor_az))
         science_i = motor_i
         science_e = motor_e
         science_az = motor_az
@@ -2679,14 +2683,14 @@ class Controller(utils.ControllerType):
         return False
 
     def freeze(self):
-        try:
-            self.plot_manager.plot_top.destroy()
-        except (AttributeError, TclError):
-            pass
-        try:
-            self.process_manager.process_top.destroy()
-        except (AttributeError, TclError):
-            pass
+        # try:
+        #     self.plot_manager.plot_top.destroy()
+        # except (AttributeError, TclError):
+        #     pass
+        # try:
+        #     self.process_manager.process_top.destroy()
+        # except (AttributeError, TclError):
+        #     pass
         for button in self.tk_buttons:
             try:
                 button.configure(state="disabled")

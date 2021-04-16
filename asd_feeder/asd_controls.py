@@ -1,6 +1,5 @@
-from pywinauto import Application
-from pywinauto import keyboard
-from pywinauto import findwindows
+from pywinauto import Application, keyboard, findwindows
+from pywinauto.base_wrapper import ElementNotEnabled
 import pywintypes
 import pywinauto
 import warnings
@@ -74,15 +73,33 @@ class RS3Controller:
         self.menu = RS3Menu(self.app)
 
     def restart(self):
-        print("Restarting RS³")
-        self.app.kill()
-        self.app = Application().start(self.RS3_loc)
-        self.spec = None
-        self.spec_connected = False
-        self.spec = self.app.ThunderRT6Form
-        self.spec.draw_outline()
-        self.pid = self.app.process
-        self.menu = RS3Menu(self.app)
+        self.spec.set_focus()
+        rect = self.spec.rectangle()
+        print(rect)
+        loc = find_image(IMG_LOC + "/exit.png", rect=rect)
+        if loc is not None:
+            x_left = self.spec.rectangle().left
+            y_top = self.spec.rectangle().top
+            while x_left < -10 or y_top < -10:
+                x_left = self.spec.rectangle().left
+                y_top = self.spec.rectangle().top
+                time.sleep(0.25)
+            x = loc[0] + x_left
+            y = loc[1] + y_top
+            mouse.click(coords=(x, y))
+            print("clicked x")
+            time.sleep(0.5)
+            keyboard.send_keys("{ENTER}")
+            time.sleep(10)
+            self.app = Application().start(self.RS3_loc)
+            self.spec = None
+            self.spec_connected = False
+            self.spec = self.app.ThunderRT6Form
+            self.spec.draw_outline()
+            self.pid = self.app.process
+            self.menu = RS3Menu(self.app)
+        else:
+            print("Error: Failed to restart RS3")
 
     def check_connectivity(self):
         try:
@@ -383,9 +400,9 @@ class RS3Controller:
 class ViewSpecProController:
     def __init__(self, share_loc, ViewSpecPro_loc):
         self.app = Application()
-        # self.logdir=logdir
         self.ViewSpecPro_loc = ViewSpecPro_loc
         self.share_loc = share_loc
+        self.batch_size = 150
 
         try:
             self.app = Application().connect(path=self.ViewSpecPro_loc)
@@ -419,33 +436,37 @@ class ViewSpecProController:
         except:
             pass
 
-    def process(self, input_path, output_path, tsv_name):
+    # Need the watchdog func because this can take a long time and we don't want
+    # the watchdog to trigger a restart in the middle of it.
+    def process(self, input_path, output_path, tsv_name, watchdog_func):
         files = os.listdir(output_path)
         for file in files:
             if ".sco" in file:
                 os.remove(os.path.join(output_path, file))
+
         files = os.listdir(input_path)
         for file in files:
             if ".sco" in file:
                 os.remove(os.path.join(input_path, file))
 
-        files_to_process = os.listdir(input_path) # TODO: make this include only files with the right extension
+        files_to_process = os.listdir(input_path)
         files_to_remove = []
         for j, file in enumerate(files_to_process):
-            # if not os.path.isfile(os.path.join(input_path, file)): #take the directories out
             if os.path.isdir(os.path.join(input_path, file)):
+                files_to_remove.append(file)
+            elif ".asd" not in file:
                 files_to_remove.append(file)
 
         for file in files_to_remove:
             files_to_process.remove(file)
 
-        #If we have over 50 files, do the processing in batches.
+        # Do the processing in batches so it works with large amounts of data
         num_batches = 1
         next_folder = os.path.join(os.path.join(input_path, f"tanager_batch_{num_batches}"))
         self.safe_make_dir(next_folder)
         batch_folders = [next_folder]
         for j, file in enumerate(files_to_process):
-            if j > 0 and j % 50 == 0 and j != len(files_to_process)-1:
+            if j > 0 and j % self.batch_size == 0 and j != len(files_to_process)-1:
                 num_batches += 1
                 next_folder = os.path.join(os.path.join(input_path, f"tanager_batch_{num_batches}"))
                 self.safe_make_dir(next_folder)
@@ -458,50 +479,56 @@ class ViewSpecProController:
         self.spec.set_focus()
         self.spec.menu_select("File -> Close")
 
+        data_files = []
         for j, folder in enumerate(batch_folders):
-            print("NEXT FOLDER")
-            print(folder)
+            watchdog_func()
             self.open_files(folder)
             time.sleep(1)
-            self.set_save_directory(input_path)
+            self.set_save_directory(folder)
             self.splice_correction()
-            self.ascii_export(input_path, tsv_name.split(".csv")[0]+f"_{j}.csv")
+            next_file = tsv_name.split(".csv")[0]+f"_{j}.csv"
+            try:
+                os.remove(os.path.join(input_path, next_file))
+            except FileNotFoundError:
+                pass
+            self.ascii_export(input_path, next_file)
+            data_files.append(os.path.join(input_path, next_file))
             print(f"Processing batch {j} complete. Cleaning directory.")
-            self.spec.menu_select("File -> Close")
+            self.wait_for_menu("File -> Close")
 
-        self.concatenate_files(batch_folders, os.path.join(output_path, tsv_name))
+        self.concatenate_files(data_files, os.path.join(output_path, tsv_name))
         self.clear_batch_folders(batch_folders)
 
         print("Processing complete.")
 
     def safe_make_dir(self, dir):
         if os.path.isdir(dir):
-            shutil.rmtree(dir)
+            try:
+                shutil.rmtree(dir)
+            except PermissionError:
+                time.sleep(2)
+                shutil.rmtree(dir)
         os.mkdir(dir)
 
-    def concatenate_files(self, batch_folders, destination):
-        files_to_concatenate = []
-        for folder in batch_folders:
-            files = os.listdir(folder)
-            for file in files:
-                if ".csv" in file:
-                    files_to_concatenate.append(os.path.join(folder, file))
+    def rm_tree(self, dir):
+        shutil.rmtree(dir)
 
+    def concatenate_files(self, files_to_concatenate, destination):
         all_data = []
-        headers = ""
+        headers = "Wavelength"
         for j, file in enumerate(files_to_concatenate):
             with open(file, "r") as f:
-                headers = f.readline().strip("\n")
+                headers += f.readline().strip("\n").strip("Wavelength")
             data = np.genfromtxt(
                 file, skip_header=1, dtype=float, delimiter="\t", encoding=None, deletechars=""
             )
             for k, row in enumerate(data):
-                print(row)
                 if k == len(all_data):
                     all_data.append(list(row))
                 else:
                     all_data[k] = all_data[k] + list(row[1:])
 
+        print(headers)
         with open(destination, "w+") as file:
             file.write(headers+"\n")
             for row in all_data:
@@ -509,6 +536,7 @@ class ViewSpecProController:
                 file.write("\t".join(row)+"\n")
 
         print("Batched data recombined.")
+        shutil.copyfile(destination, destination+"_copy")
 
     def clear_batch_folders(self, batch_folders):
         for folder in batch_folders:
@@ -518,10 +546,22 @@ class ViewSpecProController:
                 time.sleep(2)
                 shutil.rmtree(folder)
 
+    def wait_for_menu(self, select_string):
+        t = 0
+        timeout = 10
+        opened = False
+        while t < timeout and not opened:
+            try:
+                self.spec.menu_select(select_string)
+                opened = True
+            except ElementNotEnabled:
+                print("Waiting for File menu...")
+                t += 1
+                time.sleep(1)
 
     def open_files(self, path):
         print("Opening files from " + path)
-        self.spec.menu_select("File -> Open")
+        self.wait_for_menu("File -> Open")
         open = wait_for_window(self.app, "Select Input File(s)")
         open.set_focus()
         open["Address Band Root"].toolbar.button(0).click()
@@ -569,12 +609,10 @@ class ViewSpecProController:
                     path_indices = [
                         j for j, x in enumerate(path_el) if x == el
                     ]  # list of all the indices of the element in the path. Will have length greater than one for nested folders with the same name.
-                    print(path_indices)
                     if len(path_indices) == 1:
                         save.ListBox.select(el)
                     else:
                         listbox_els = save.ListBox.item_texts()
-                        print(listbox_els)
                         listbox_indices = [
                             j for j, x in enumerate(listbox_els) if x == el
                         ]  # list of all the indices of the element in the listbox items
@@ -582,7 +620,6 @@ class ViewSpecProController:
                         listbox_index = listbox_indices[nesting_index]
                         save.ListBox.select(listbox_index)
 
-                print("Selecting " + el)
                 self.select_item(save.ListBox.rectangle())
         else:
             print("Invalid directory (must save to C drive)")
@@ -590,12 +627,21 @@ class ViewSpecProController:
         save.OKButton.click()
         print("Clicked ok.")
         # If a dialog box comes up asking if you want to set the default input directory the same as the output, click no. Not sure if there is a different dialog box that could come up, so this doesn't seem very robust.
-        timeout = 3
+        timeout = 15
         while not self.app["Dialog"].exists() and timeout > 0:
             time.sleep(0.25)
             timeout -= 0.25
         if timeout > 0:
             self.app["Dialog"].Button2.click()
+            print("Found dialog, clicked ok")
+
+        timeout = 2
+        while not self.app["Dialog"].exists() and timeout > 0:
+            time.sleep(0.25)
+            timeout -= 0.25
+        if timeout > 0:
+            self.app["Dialog"].Button2.click()
+            print("Found 2nd dialog, clicked ok")
 
     def splice_correction(self):
         print("Applying splice correction.")
@@ -663,7 +709,6 @@ class ViewSpecProController:
             if on_highlighted_element:
             # if pyautogui.pixelMatchesColor(x, y, COLORS["file_highlight"]):
                 pyautogui.click(x=x, y=y, clicks=2)
-                print("click")
                 return
             y = y + 3
 
@@ -734,10 +779,6 @@ class RS3Menu:
                     else:
                         print("Searching for menu item")
                         time.sleep(0.25)
-                # mouse.click(coords=(self.x_left+self.control_delta_x, self.y_menu))
-                # for i in range(number):
-                #     keyboard.send_keys('{DOWN}')
-                # keyboard.send_keys('{ENTER}')
                 break
         if not found:
             print("Menu item not found")
@@ -749,7 +790,7 @@ def wait_for_window(app, title, timeout=5):
     i = 0
     while spec.exists() == False and i < timeout:
         try:
-            spec = self.app[title]
+            spec = app[title]
         except:
             i = i + 1
             time.sleep(1)
@@ -757,13 +798,11 @@ def wait_for_window(app, title, timeout=5):
 
 
 def find_image(image, rect=None, loc=None):
-    print("Finding")
     if rect != None:
         screenshot = pyautogui.screenshot(region=(rect.left, rect.top, rect.width(), rect.height()))
     else:
         screenshot = pyautogui.screenshot(region=loc)
     location = pyautogui.locate(image, screenshot)
-    print("Done")
     return location
 
 def try_set_focus(target):
