@@ -2453,7 +2453,7 @@ class Controller(utils.ControllerType):
         ConfigDialog(
             self,
             title="Setup Required",
-            label="Setup required: Unknown goniometer state.\n\nPlease enter the current incidence, emission, and tray"
+            label="\n\nPlease enter the current incidence, emission, and tray"
             " positions and click OK. \nNote that this will trigger the azimuth table homing routine.\n\n",
             values={
                 "Incidence": [self.science_i, self.min_motor_i, self.max_motor_i],
