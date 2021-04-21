@@ -1,1 +1,2 @@
 asd-feeder
+cmd /k

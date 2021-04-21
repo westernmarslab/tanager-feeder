@@ -1,1 +1,2 @@
 asd-watchdog
+cmd /k
