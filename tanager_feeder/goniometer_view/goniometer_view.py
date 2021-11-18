@@ -78,7 +78,6 @@ class GoniometerView:
         # pylint: disable = no-member
         pygame.init()
 
-
     def rotate_display(self, angle):
         self.set_goniometer_tilt(0)
 
