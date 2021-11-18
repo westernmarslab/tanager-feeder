@@ -73,8 +73,26 @@ class GoniometerView:
         self.standard_delay = 0.0001
         self.config_delay = 0.005
 
+        self.rotate_display(220)
+
         # pylint: disable = no-member
         pygame.init()
+
+
+    def rotate_display(self, angle):
+        self.set_goniometer_tilt(0)
+
+        self.wireframes["i"].rotate_az(angle)
+        self.wireframes["light"].rotate_az(angle)
+        self.wireframes["light guide"].rotate_az(angle)
+        self.wireframes["motor az guide"].rotate_az(angle)
+        self.wireframes["science az guide"].rotate_az(angle)
+
+        self.wireframes["e"].rotate_az(angle)
+        self.wireframes["detector"].rotate_az(angle)
+        self.wireframes["detector guide"].rotate_az(angle)
+
+        self.set_goniometer_tilt(20)
 
     def tab_switch(self, event: Event) -> None:
         # pylint: disable=unused-argument
@@ -616,7 +634,7 @@ class GoniometerView:
         if motor_az > self.controller.max_science_az or motor_az < self.controller.min_science_az:
             print("Error: Azimuth outside expected range.")
 
-        motor_az = -1 * motor_az  # Flip 180 to better match computer position in lab at WWU
+        # motor_az = -1 * motor_az  # Flip 180 to better match computer position in lab at WWU
 
         def next_pos(delta_theta: int) -> None:
             next_drawing_az = self.wireframes["i"].az + delta_theta
