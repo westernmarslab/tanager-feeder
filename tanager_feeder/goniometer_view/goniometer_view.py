@@ -616,6 +616,8 @@ class GoniometerView:
         if motor_az > self.controller.max_science_az or motor_az < self.controller.min_science_az:
             print("Error: Azimuth outside expected range.")
 
+        motor_az = -1 * motor_az  # Flip 180 to better match computer position in lab at WWU
+
         def next_pos(delta_theta: int) -> None:
             next_drawing_az = self.wireframes["i"].az + delta_theta
 
