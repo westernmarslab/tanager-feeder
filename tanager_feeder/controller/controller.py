@@ -182,10 +182,6 @@ class Controller(utils.ControllerType):
         self.text_only = False  # for running scripts.
         self.frozen = False
 
-
-
-        self.audio_signals = False
-
         # These will get set via user input.
         self.spec_save_path = ""
         self.spec_basename = ""
@@ -243,6 +239,14 @@ class Controller(utils.ControllerType):
         # When the window closes, send a command to set the geometry to i=0, e=30.
         self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
 
+        try:
+            with open(self.config_info.local_config_loc + "audio_config.txt", "r") as audio_config:
+                self.audio_signals = int(audio_config.readline().strip("\n"))
+        except OSError:
+            with open(self.config_info.local_config_loc + "audio_config.txt", "w+") as audio_config:
+                audio_config.write("0")
+                self.audio_signals = 0
+
         self.menubar = Menu(self.master)
         # create a pulldown menu, and add it to the menu bar
         self.filemenu = Menu(self.menubar, tearoff=0)
@@ -261,8 +265,12 @@ class Controller(utils.ControllerType):
         editmenu.add_command(label="Failsafes...", command=self.show_settings_frame)
         #         editmenu.add_command(label="Plot settings...", command=self.show_plot_settings_frame)
         self.audiomenu = Menu(editmenu, tearoff=0)
-        self.audiomenu.add_command(label="  Enabled", command=self.enable_audio)
-        self.audiomenu.add_command(label="X Disabled", command=self.disable_audio)
+        if self.audio_signals:
+            self.audiomenu.add_command(label="X  Enabled", command=self.enable_audio)
+            self.audiomenu.add_command(label=" Disabled", command=self.disable_audio)
+        else:
+            self.audiomenu.add_command(label="  Enabled", command=self.enable_audio)
+            self.audiomenu.add_command(label="X Disabled", command=self.disable_audio)
         editmenu.add_cascade(label="Audio signals", menu=self.audiomenu)
 
         self.goniometermenu = Menu(editmenu, tearoff=0)
@@ -321,6 +329,8 @@ class Controller(utils.ControllerType):
         self.analysis_tools_manager = AnalysisToolsManager(self)
         self.cli_manager = CliManager(self)
 
+
+
         try:
             with open(self.config_info.local_config_loc + "spec_save.txt", "r") as spec_save_config:
                 self.spec_save_path = spec_save_config.readline().strip("\n")
@@ -333,12 +343,14 @@ class Controller(utils.ControllerType):
                 f.write("C:\\Users\n")
                 f.write("basename\n")
                 f.write("-1\n")
+                f.write("0")
 
                 self.spec_save_path = "C:\\Users"
                 self.spec_basename = "basename"
                 self.spec_startnum = "0"
                 while len(self.spec_startnum) < self.config_info.num_len:
                     self.spec_startnum = "0" + self.spec_startnum
+                self.audio_enabled = 0
 
         try:
             with open(self.config_info.local_config_loc + "script_config.txt", "r") as script_config:
@@ -1023,11 +1035,15 @@ class Controller(utils.ControllerType):
         self.audio_signals = True
         self.audiomenu.entryconfigure(0, label="X Enabled")
         self.audiomenu.entryconfigure(1, label="  Disabled")
+        with open(self.config_info.local_config_loc + "audio_config.txt", "w+") as audio_config:
+            audio_config.write("1")
 
     def disable_audio(self) -> None:
         self.audio_signals = False
         self.audiomenu.entryconfigure(0, label="  Enabled")
         self.audiomenu.entryconfigure(1, label="X Disabled")
+        with open(self.config_info.local_config_loc + "audio_config.txt", "w+") as audio_config:
+            audio_config.write("0")
 
     # Show failsafes settings frame
     def show_settings_frame(self) -> None:
