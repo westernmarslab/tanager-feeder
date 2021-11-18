@@ -895,19 +895,7 @@ class CliManager:
                 return False
 
             angle = int(angle)
-            self.controller.goniometer_view.set_goniometer_tilt(0)
-
-            self.controller.goniometer_view.wireframes["i"].rotate_az(angle)
-            self.controller.goniometer_view.wireframes["light"].rotate_az(angle)
-            self.controller.goniometer_view.wireframes["light guide"].rotate_az(angle)
-            self.controller.goniometer_view.wireframes["motor az guide"].rotate_az(angle)
-            self.controller.goniometer_view.wireframes["science az guide"].rotate_az(angle)
-
-            self.controller.goniometer_view.wireframes["e"].rotate_az(angle)
-            self.controller.goniometer_view.wireframes["detector"].rotate_az(angle)
-            self.controller.goniometer_view.wireframes["detector guide"].rotate_az(angle)
-
-            self.controller.goniometer_view.set_goniometer_tilt(20)
+            self.controller.goniometer_view.rotate_display(angle)
 
             self.controller.goniometer_view.draw_3D_goniometer(
                 self.controller.goniometer_view.width, self.controller.goniometer_view.height
