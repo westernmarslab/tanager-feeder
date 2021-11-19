@@ -1138,7 +1138,6 @@ class Controller(utils.ControllerType):
         warnings = ""
 
         valid_i = utils.validate_int_input(self.incidence_entries[0].get(), -90, 90)
-        print(valid_i)
         if valid_i:
             if str(self.science_i) != self.incidence_entries[0].get():
                 self.angles_change_time = time.time()
@@ -1561,9 +1560,7 @@ class Controller(utils.ControllerType):
                 current_az >= 115 and next_science_az < 115
             ):  # passing through/into danger zone
                 movement_order = [{"i": -60}, {"e": next_science_e}, {"az": next_science_az}, {"i": next_science_i}]
-                print("Moving through or into danger!")
             elif 65 < current_az < 115 and current_i < -65:  # Already in danger zone
-                print("Starting in danger!")
                 if next_science_az != current_az:
                     movement_order = [{"i": -60}, {"e": next_science_e}, {"az": next_science_az}, {"i": next_science_i}]
         return movement_order
@@ -2080,7 +2077,6 @@ class Controller(utils.ControllerType):
 
     def finish_process(self, source_file, output_file) -> None:
         print("Finishing process")
-        print(self.queue)
         self.spec_commander.transfer_data(source_file)
         DataHandler(
             self,

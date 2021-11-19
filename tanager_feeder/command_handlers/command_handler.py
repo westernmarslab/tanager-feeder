@@ -130,11 +130,9 @@ class CommandHandler:
 
         if self.controller.audio_signals:
             sound_loc = os.path.split(os.path.split(__file__)[0])[0]
-            print(sound_loc)
             if "Success" in label:
                 playsound.playsound(os.path.join(sound_loc, "sounds\\beep.wav"))
             else:
-                print(os.getcwd())
                 playsound.playsound(os.path.join(sound_loc, "sounds\\broken.wav"))
 
     def remove_retry(self, need_new: bool = True):
