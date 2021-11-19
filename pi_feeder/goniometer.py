@@ -7,7 +7,7 @@ from pi_feeder import motor, encoder, limit_switch
 
 AZIMUTH_GEAR_RATIO = 10
 AZIMUTH_HOME_OFFSET = 24.7
-DISTANCE_TOLERANCE = 3
+DISTANCE_TOLERANCE = 5 # Both how close we can be to the target angle to ignore a little backwards progress, and how much backwards progress we'll tolerate.
 
 
 class Goniometer:
@@ -171,17 +171,17 @@ class Goniometer:
         last_distance, _ = self.motors[motor_name]["motor"].get_distance_and_direction(motor_angle)
         thread = Thread(target=self.motors[motor_name]["motor"].move_to_angle, args=(motor_angle,))
         thread.start()
-        t = 0
-        kill_when_done = False
         while thread.is_alive():
-            time.sleep(0.5)
-            t += 0.5
+            time.sleep(1)
 
             updated_distance, _ = self.motors[motor_name]["motor"].get_distance_and_direction(motor_angle)
-            limit = 4
+
+            # Incidence arm has potential for large rebound at high incidence angles if a minor obstruction is hit.
+            # Allow for this rebound without stopping.
             if (
-                updated_distance > limit and updated_distance - last_distance > DISTANCE_TOLERANCE
+                updated_distance > DISTANCE_TOLERANCE and updated_distance - last_distance > DISTANCE_TOLERANCE
             ):  # If we're moving away from the target. It's possible to overshoot the intended position by a few degrees, so don't do this check if the current position is close to the target.
+                
                 print("ERROR: NOT MAKING PROGRESS")
                 if motor_name != "sample tray":
                     self.motors[motor_name]["motor"].kill_now = True
