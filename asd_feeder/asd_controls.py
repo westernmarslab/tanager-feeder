@@ -24,7 +24,6 @@ if computer == "new" or computer == "desktop":
     IMG_LOC = os.path.join(package_loc, "img2")
 elif computer == "old":
     IMG_LOC = os.path.join(package_loc, "img")
-print(IMG_LOC)
 
 global COLORS
 COLORS = {"status": None, "file_highlight": "", "tolerance": 10}

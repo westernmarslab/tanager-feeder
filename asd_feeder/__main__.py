@@ -14,7 +14,6 @@ def main():
 
     data_loc = os.path.join(os.path.split(__file__)[0], "spectralon_data")
     spectralon_data_loc = os.path.join(data_loc, "spectralon.csv")
-    print(spectralon_data_loc)
 
     RS3_loc = ""
     ViewSpecPro_loc = ""
