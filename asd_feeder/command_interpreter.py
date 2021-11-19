@@ -84,18 +84,19 @@ class CommandInterpreter:
             self.spec_controller.take_spectrum(filename)
         except:
             traceback.print_exc()
+            utils.send(self.client, "specfailed", [])
+            return
 
 
         # Now wait for the data file to turn up where it belongs.
         saved = False
-        t0 = time.perf_counter()
-        t = time.perf_counter()
+        timeout = int(self.spec_controller.numspectra)
         while (
-            t - t0 < int(self.spec_controller.numspectra) * 4 and saved == False
+            timeout > 0 and saved is False
         ):  # Depending on the number of spectra we are averaging, this might take a while.
             saved = os.path.isfile(filename)
             time.sleep(0.2)
-            t = time.perf_counter()
+            timeout -= 0.2
 
         if saved:
             self.logger.log_spectrum(self.spec_controller.numspectra, i, e, az, filename, label)
@@ -420,8 +421,21 @@ class CommandInterpreter:
 
             datafile = temp_output_path + "\\" + csv_name
 
+            #Don't give warnings about all the temp files that get dropped into the save directroy
+            print("*************************************************")
+            print(input_path)
+            print(self.spec_controller.save_dir)
+            if input_path == self.spec_controller.save_dir:
+                self.data_files_to_ignore.append(csv_name)
+                batches = int(len(self.data_files_to_ignore)/self.process_controller.batch_size)+1
+                base = csv_name.split(".csv")[0]
+                for i in range(batches):
+                    ignore_file = f"{base}_{i}.csv"
+                    print(ignore_file)
+                    self.data_files_to_ignore.append(ignore_file)
+
             try:
-                self.process_controller.process(input_path, temp_output_path, csv_name)
+                self.process_controller.process(input_path, temp_output_path, csv_name, self.watchdog_monitor)
             except Exception as e:
                 self.process_controller.reset()
                 utils.send(self.client, "processerror", [])
@@ -605,6 +619,10 @@ class CommandInterpreter:
                         file.write(line)
         print("converted to .csv")
 
+    def watchdog_monitor(self):
+        with open(os.path.join(self.temp_data_loc, "watchdog"), "w+") as f:
+            pass  # This file is looked for by the watchdog.
+
     def set_headers(self, datafile, logfile):
 
         labels = {}
@@ -676,11 +694,7 @@ class CommandInterpreter:
                     unknown_num = (
                         0  # This is the number of files in the datafile headers that aren't listed in the log file.
                     )
-                    print("here are all the labels")
-                    print(labels)
                     for i, filename in enumerate(datafiles):
-                        print("looking for label for spectrum")
-                        print(filename)
                         label_found = False
                         filename = filename.replace(".", "")
                         spectrum_label = filename

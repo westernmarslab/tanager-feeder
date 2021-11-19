@@ -520,10 +520,7 @@ class CliManager:
             return True
 
         if "move_tray(" in cmd:
-            if self.controller.manual_automatic.get() == 0:
-                self.controller.fail_script_command("Error: Not in automatic mode")
-                return False
-            elif self.controller.connection_manager.pi_offline:
+            if self.controller.connection_manager.pi_offline:
                 self.controller.fail_script_command("Error: Pi offline.")
                 return False
             try:
@@ -579,10 +576,7 @@ class CliManager:
             return True
 
         if "set_emission(" in cmd:
-            if self.controller.manual_automatic.get() == 0:
-                self.controller.fail_script_command("Error: Not in automatic mode")
-                return False
-            elif self.controller.connection_manager.pi_offline:
+            if self.controller.connection_manager.pi_offline:
                 self.controller.fail_script_command("Error: Pi offline.")
                 return False
             try:
@@ -628,10 +622,7 @@ class CliManager:
             return True
 
         if "set_azimuth(" in cmd:
-            if self.controller.manual_automatic.get() == 0:
-                self.controller.fail_script_command("Error: Not in automatic mode")
-                return False
-            elif self.controller.connection_manager.pi_offline:
+            if self.controller.connection_manager.pi_offline:
                 self.controller.fail_script_command("Error: Pi offline.")
                 return False
             try:
@@ -677,10 +668,7 @@ class CliManager:
 
         # Accepts incidence angle in degrees, converts to motor position. OR accepts motor steps to move.
         if "set_incidence(" in cmd:
-            if self.controller.manual_automatic.get() == 0:
-                self.controller.fail_script_command("Error: Not in automatic mode.")
-                return False
-            elif self.controller.connection_manager.pi_offline:
+            if self.controller.connection_manager.pi_offline:
                 self.controller.fail_script_command("Error: Pi offline.")
                 return False
             try:
@@ -751,11 +739,6 @@ class CliManager:
             return True
 
         if "set_goniometer" in cmd:
-            if self.controller.manual_automatic.get() == 0:
-                self.controller.log("Error: Not in automatic mode")
-                self.controller.queue = []
-                self.controller.script_running = False
-                return False
             try:
                 params = cmd.split("set_goniometer(")[1].strip(")").split(",")
             except IndexError:
@@ -912,19 +895,7 @@ class CliManager:
                 return False
 
             angle = int(angle)
-            self.controller.goniometer_view.set_goniometer_tilt(0)
-
-            self.controller.goniometer_view.wireframes["i"].rotate_az(angle)
-            self.controller.goniometer_view.wireframes["light"].rotate_az(angle)
-            self.controller.goniometer_view.wireframes["light guide"].rotate_az(angle)
-            self.controller.goniometer_view.wireframes["motor az guide"].rotate_az(angle)
-            self.controller.goniometer_view.wireframes["science az guide"].rotate_az(angle)
-
-            self.controller.goniometer_view.wireframes["e"].rotate_az(angle)
-            self.controller.goniometer_view.wireframes["detector"].rotate_az(angle)
-            self.controller.goniometer_view.wireframes["detector guide"].rotate_az(angle)
-
-            self.controller.goniometer_view.set_goniometer_tilt(20)
+            self.controller.goniometer_view.rotate_display(angle)
 
             self.controller.goniometer_view.draw_3D_goniometer(
                 self.controller.goniometer_view.width, self.controller.goniometer_view.height

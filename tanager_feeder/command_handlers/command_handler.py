@@ -2,6 +2,7 @@ from threading import Thread
 import time
 from tkinter import TclError
 from typing import Dict, Optional
+import os
 
 import playsound
 
@@ -122,13 +123,17 @@ class CommandHandler:
         try:
             self.wait_dialog.ok_button.focus_set()
         except (AttributeError, TclError):
-            self.wait_dialog.top.focus_set()
+            try:
+                self.wait_dialog.top.focus_set()
+            except TclError:
+                print("Tcl error in command_handler.interrupt.")
 
         if self.controller.audio_signals:
+            sound_loc = os.path.split(os.path.split(__file__)[0])[0]
             if "Success" in label:
-                playsound.playsound("beep.wav")
+                playsound.playsound(os.path.join(sound_loc, "sounds\\beep.wav"))
             else:
-                playsound.playsound("broken.wav")
+                playsound.playsound(os.path.join(sound_loc, "sounds\\broken.wav"))
 
     def remove_retry(self, need_new: bool = True):
         if need_new:

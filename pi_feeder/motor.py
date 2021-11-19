@@ -9,7 +9,7 @@ from pi_feeder.limit_switch import SwitchTrippedException
 
 MAX_NUM_STEPS = 50000
 GPIO.setwarnings(False)
-
+BREAK_TIME = 0
 
 class Motor:
     BACKWARD = "backward"
@@ -58,11 +58,9 @@ class Motor:
             self._position_degrees = theta
         else:
             if self.target_theta < 60 and theta > 300:
-                print("SUBTRACTING 360")
                 self._position_degrees = theta - 360
             elif self.target_theta > 300 and theta < 60:
                 self._position_degrees = theta + 360
-                print("ADDING 360")
             else:
                 self._position_degrees = float(theta)
 
@@ -143,7 +141,7 @@ class Motor:
             self.update_position()
 
     def get_distance_and_direction(self, target_theta):
-        if self.wrap_around:
+        if self.wrap_around: # Azimuth only
             if target_theta < self.position_degrees:  # e.g. at 300, want to reach 0
                 forward_distance = (360 - self.position_degrees) + target_theta  # e.g. 60 for 0, 70 for 10
                 backward_distance = self.position_degrees - target_theta
@@ -204,13 +202,13 @@ class Motor:
                         self.forward(10, False)
                         raise SwitchTrippedException()
                         return
-            if i < steps - 15:
+            if i < steps - 30:
                 self.set_step(1, 1)
                 time.sleep(self.delay)
                 self.set_step(0, 1)
                 time.sleep(self.delay)
             else:
-                delay_scaling_factor = 4/np.sqrt(steps - i)
+                delay_scaling_factor = 6/np.sqrt(steps - i)
                 self.set_step(1, 1)
                 time.sleep(delay_scaling_factor*self.delay)
                 self.set_step(0, 1)

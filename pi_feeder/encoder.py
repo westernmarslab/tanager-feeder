@@ -99,7 +99,6 @@ class AMT212ARotaryEncoder:
     # https://www.cuidevices.com/product/resource/amt21.pdf
     # page 4.
     def zeroize_encoder(self):
-        print("BASE: " + str(self._encoder_base))
         # cmd = [self._encoder_base + ENCODER_EXTENDED_CMD_OFFSET, ENCODER_ZERO_CMD]
         # self._serial.write(bytes(cmd))
         # self._serial.read(len(cmd))  # Flush out the echoed command.
@@ -115,7 +114,7 @@ class AMT212ARotaryEncoder:
                 try:
                     response = self._read_encoder_raw()
                 except ValueError:
-                    print("Error. Failed to read encoder. Retrying.")
+                    logging.info("Error. Failed to read encoder. Retrying.")
             self._check_encoder_response_parity(response)
             position = (response >> 2) & 0x0FFF  # Throw away the lowest 2 bits for 12-bit encoder.
             position_degrees = 360 * position / 0x0FFF

@@ -24,7 +24,6 @@ if computer == "new" or computer == "desktop":
     IMG_LOC = os.path.join(package_loc, "img2")
 elif computer == "old":
     IMG_LOC = os.path.join(package_loc, "img")
-print(IMG_LOC)
 
 global COLORS
 COLORS = {"status": None, "file_highlight": "", "tolerance": 10}
@@ -400,9 +399,9 @@ class RS3Controller:
 class ViewSpecProController:
     def __init__(self, share_loc, ViewSpecPro_loc):
         self.app = Application()
-        # self.logdir=logdir
         self.ViewSpecPro_loc = ViewSpecPro_loc
         self.share_loc = share_loc
+        self.batch_size = 150
 
         try:
             self.app = Application().connect(path=self.ViewSpecPro_loc)
@@ -436,7 +435,9 @@ class ViewSpecProController:
         except:
             pass
 
-    def process(self, input_path, output_path, tsv_name):
+    # Need the watchdog func because this can take a long time and we don't want
+    # the watchdog to trigger a restart in the middle of it.
+    def process(self, input_path, output_path, tsv_name, watchdog_func):
         files = os.listdir(output_path)
         for file in files:
             if ".sco" in file:
@@ -458,13 +459,13 @@ class ViewSpecProController:
         for file in files_to_remove:
             files_to_process.remove(file)
 
-        #If we have over 50 files, do the processing in batches.
+        # Do the processing in batches so it works with large amounts of data
         num_batches = 1
         next_folder = os.path.join(os.path.join(input_path, f"tanager_batch_{num_batches}"))
         self.safe_make_dir(next_folder)
         batch_folders = [next_folder]
         for j, file in enumerate(files_to_process):
-            if j > 0 and j % 150 == 0 and j != len(files_to_process)-1:
+            if j > 0 and j % self.batch_size == 0 and j != len(files_to_process)-1:
                 num_batches += 1
                 next_folder = os.path.join(os.path.join(input_path, f"tanager_batch_{num_batches}"))
                 self.safe_make_dir(next_folder)
@@ -479,6 +480,7 @@ class ViewSpecProController:
 
         data_files = []
         for j, folder in enumerate(batch_folders):
+            watchdog_func()
             self.open_files(folder)
             time.sleep(1)
             self.set_save_directory(folder)
@@ -776,10 +778,6 @@ class RS3Menu:
                     else:
                         print("Searching for menu item")
                         time.sleep(0.25)
-                # mouse.click(coords=(self.x_left+self.control_delta_x, self.y_menu))
-                # for i in range(number):
-                #     keyboard.send_keys('{DOWN}')
-                # keyboard.send_keys('{ENTER}')
                 break
         if not found:
             print("Menu item not found")

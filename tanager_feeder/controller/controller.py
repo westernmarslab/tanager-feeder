@@ -96,6 +96,10 @@ class Controller(utils.ControllerType):
         self.overwrite_all = False  # User can say yes to all for overwriting files.
         self.overwrite_next = False # If save spec fails and we restart, overwrite just that one without asking.
 
+        self.opt_time = None
+        self.wr_time = None
+        self.angles_change_time = None
+
         self.tk_buttons = []
         self.entries = []
         self.radiobuttons = []
@@ -178,10 +182,6 @@ class Controller(utils.ControllerType):
         self.text_only = False  # for running scripts.
         self.frozen = False
 
-
-
-        self.audio_signals = False
-
         # These will get set via user input.
         self.spec_save_path = ""
         self.spec_basename = ""
@@ -239,6 +239,14 @@ class Controller(utils.ControllerType):
         # When the window closes, send a command to set the geometry to i=0, e=30.
         self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
 
+        try:
+            with open(self.config_info.local_config_loc + "audio_config.txt", "r") as audio_config:
+                self.audio_signals = int(audio_config.readline().strip("\n"))
+        except OSError:
+            with open(self.config_info.local_config_loc + "audio_config.txt", "w+") as audio_config:
+                audio_config.write("0")
+                self.audio_signals = 0
+
         self.menubar = Menu(self.master)
         # create a pulldown menu, and add it to the menu bar
         self.filemenu = Menu(self.menubar, tearoff=0)
@@ -257,8 +265,12 @@ class Controller(utils.ControllerType):
         editmenu.add_command(label="Failsafes...", command=self.show_settings_frame)
         #         editmenu.add_command(label="Plot settings...", command=self.show_plot_settings_frame)
         self.audiomenu = Menu(editmenu, tearoff=0)
-        self.audiomenu.add_command(label="  Enabled", command=self.enable_audio)
-        self.audiomenu.add_command(label="X Disabled", command=self.disable_audio)
+        if self.audio_signals:
+            self.audiomenu.add_command(label="X  Enabled", command=self.enable_audio)
+            self.audiomenu.add_command(label=" Disabled", command=self.disable_audio)
+        else:
+            self.audiomenu.add_command(label="  Enabled", command=self.enable_audio)
+            self.audiomenu.add_command(label="X Disabled", command=self.disable_audio)
         editmenu.add_cascade(label="Audio signals", menu=self.audiomenu)
 
         self.goniometermenu = Menu(editmenu, tearoff=0)
@@ -317,6 +329,8 @@ class Controller(utils.ControllerType):
         self.analysis_tools_manager = AnalysisToolsManager(self)
         self.cli_manager = CliManager(self)
 
+
+
         try:
             with open(self.config_info.local_config_loc + "spec_save.txt", "r") as spec_save_config:
                 self.spec_save_path = spec_save_config.readline().strip("\n")
@@ -329,12 +343,14 @@ class Controller(utils.ControllerType):
                 f.write("C:\\Users\n")
                 f.write("basename\n")
                 f.write("-1\n")
+                f.write("0")
 
                 self.spec_save_path = "C:\\Users"
                 self.spec_basename = "basename"
                 self.spec_startnum = "0"
                 while len(self.spec_startnum) < self.config_info.num_len:
                     self.spec_startnum = "0" + self.spec_startnum
+                self.audio_enabled = 0
 
         try:
             with open(self.config_info.local_config_loc + "script_config.txt", "r") as script_config:
@@ -1019,11 +1035,15 @@ class Controller(utils.ControllerType):
         self.audio_signals = True
         self.audiomenu.entryconfigure(0, label="X Enabled")
         self.audiomenu.entryconfigure(1, label="  Disabled")
+        with open(self.config_info.local_config_loc + "audio_config.txt", "w+") as audio_config:
+            audio_config.write("1")
 
     def disable_audio(self) -> None:
         self.audio_signals = False
         self.audiomenu.entryconfigure(0, label="  Enabled")
         self.audiomenu.entryconfigure(1, label="X Disabled")
+        with open(self.config_info.local_config_loc + "audio_config.txt", "w+") as audio_config:
+            audio_config.write("0")
 
     # Show failsafes settings frame
     def show_settings_frame(self) -> None:
@@ -1118,10 +1138,9 @@ class Controller(utils.ControllerType):
         warnings = ""
 
         valid_i = utils.validate_int_input(self.incidence_entries[0].get(), -90, 90)
-        print(valid_i)
         if valid_i:
             if str(self.science_i) != self.incidence_entries[0].get():
-                self.failsafes_manager.angles_change_time = time.time()
+                self.angles_change_time = time.time()
             self.science_i = int(self.incidence_entries[0].get())
 
         else:
@@ -1130,7 +1149,7 @@ class Controller(utils.ControllerType):
         valid_e = utils.validate_int_input(self.emission_entries[0].get(), -90, 90)
         if valid_e:
             if str(self.science_e) != self.emission_entries[0].get():
-                self.failsafes_manager.angles_change_time = time.time()
+                self.angles_change_time = time.time()
             self.science_e = int(self.emission_entries[0].get())
         else:
             warnings += "The emission angle is invalid (Min:" + str(-90) + ", Max:" + str(90) + ").\n\n"
@@ -1138,7 +1157,7 @@ class Controller(utils.ControllerType):
         valid_az = utils.validate_int_input(self.azimuth_entries[0].get(), 0, 179)
         if valid_az:
             if str(self.science_az) != self.azimuth_entries[0].get():
-                self.failsafes_manager.angles_change_time = time.time()
+                self.angles_change_time = time.time()
             self.science_az = int(self.azimuth_entries[0].get())
         else:
             warnings += "The azimuth angle is invalid (Min:" + str(0) + ", Max:" + str(179) + ").\n\n"
@@ -1476,7 +1495,7 @@ class Controller(utils.ControllerType):
                 next_science_az = None
 
         if self.science_i != next_science_i or self.science_e != next_science_e or self.science_az != next_science_az:
-            self.failsafes_manager.angles_change_time = time.time()
+            self.angles_change_time = time.time()
 
         self.science_i = next_science_i
         self.science_e = next_science_e
@@ -1541,9 +1560,7 @@ class Controller(utils.ControllerType):
                 current_az >= 115 and next_science_az < 115
             ):  # passing through/into danger zone
                 movement_order = [{"i": -60}, {"e": next_science_e}, {"az": next_science_az}, {"i": next_science_i}]
-                print("Moving through or into danger!")
             elif 65 < current_az < 115 and current_i < -65:  # Already in danger zone
-                print("Starting in danger!")
                 if next_science_az != current_az:
                     movement_order = [{"i": -60}, {"e": next_science_e}, {"az": next_science_az}, {"i": next_science_i}]
         return movement_order
@@ -2060,7 +2077,6 @@ class Controller(utils.ControllerType):
 
     def finish_process(self, source_file, output_file) -> None:
         print("Finishing process")
-        print(self.queue)
         self.spec_commander.transfer_data(source_file)
         DataHandler(
             self,
@@ -2449,7 +2465,7 @@ class Controller(utils.ControllerType):
         ConfigDialog(
             self,
             title="Setup Required",
-            label="Setup required: Unknown goniometer state.\n\nPlease enter the current incidence, emission, and tray"
+            label="\n\nPlease enter the current incidence, emission, and tray"
             " positions and click OK. \nNote that this will trigger the azimuth table homing routine.\n\n",
             values={
                 "Incidence": [self.science_i, self.min_motor_i, self.max_motor_i],

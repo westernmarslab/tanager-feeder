@@ -1,8 +1,9 @@
+import logging
 import os
 import time
 import traceback
 import sys
-from datetime import date
+from datetime import date, datetime
 
 from tanager_tcp.tanager_server import TanagerServer
 from tanager_tcp.tanager_client import TanagerClient
@@ -16,15 +17,17 @@ CONFIG_LOC = os.path.join(os.path.expanduser("~"), ".tanager_config")
 ENCODER_CONFIG_PATH = os.path.join(CONFIG_LOC, "encoder_config.txt")
 AZ_CONFIG_PATH = os.path.join(CONFIG_LOC, "az_config.txt")
 
-LOG_PATH = os.path.join(CONFIG_LOC, "pi_feeder.log")
+LOG_PATH = os.path.join(CONFIG_LOC, "pi_feeder")
 
 def main():
     if not os.path.isdir(CONFIG_LOC):
         os.mkdir(CONFIG_LOC)
     today = date.today()
     now = today.strftime("%b-%d-%Y")
-    log_path = LOG_PATH.split(".")[0]+"_"+now+LOG_PATH.split(".")[1]
-    sys.stdout = open(log_path, "w+")
+    now += f"_{datetime.now().hour}_{datetime.now().minute}"
+    log_path = f"{LOG_PATH}_{now}.log"
+    logging.basicConfig(filename=log_path, level=logging.DEBUG)
+    print(f"Logging to {log_path}")
     pi_controller = PiController()
     pi_controller.listen()
 
@@ -39,7 +42,7 @@ class PiController:
                 self.goniometer = goniometer.Goniometer(i_zero, e_zero, az_zero, tray_zero)
         except (FileNotFoundError, NotADirectoryError):
             dir_path = os.path.split(ENCODER_CONFIG_PATH)[0]
-            print(f"Encoder config file not found, creating new one at {ENCODER_CONFIG_PATH}")
+            logging.info(f"Encoder config file not found, creating new one at {ENCODER_CONFIG_PATH}")
             if not os.path.isdir(dir_path):
                 os.mkdir(dir_path)
             self.write_encoder_config(0, 0, 0, 0)
@@ -51,13 +54,13 @@ class PiController:
                 current_az = float(config_file.readline())
         except (FileNotFoundError, NotADirectoryError):
             dir_path = os.path.split(AZ_CONFIG_PATH)[0]
-            print(f"Az config file not found, creating new one at {AZ_CONFIG_PATH}")
+            logging.info(f"Az config file not found, creating new one at {AZ_CONFIG_PATH}")
             if not os.path.isdir(dir_path):
                 os.mkdir(dir_path)
             self.write_az_config(0)
-        print("Homing azimuth")
+        logging.info("Homing azimuth")
         self.goniometer.home_azimuth()
-        print(f"Setting to last known azimuth: {current_az}")
+        logging.info(f"Setting to last known azimuth: {current_az}")
         self.goniometer.set_position("azimuth", current_az)
 
         self.cmdfiles0 = []
@@ -74,24 +77,24 @@ class PiController:
             try:
                 self._listen()
             except:
-                traceback.print_exc()
+                logging.info(traceback.print_exc())
 
     def _listen(self):
-        print("listening!")
+        logging.info("listening!")
         t = 0
         while True:
             while len(self.server.queue) > 0:
                 if self.server.remote_server_address != self.client.server_address:
-                    print("Setting control computer address:")
+                    logging.info("Setting control computer address:")
                     self.client.server_address = self.server.remote_server_address
-                    print(self.client.server_address)
+                    logging.info(self.client.server_address)
                 message = self.server.queue.pop(0)
 
                 cmd, params = self.decrypt(message)
                 for x in range(10):
                     cmd = cmd.replace(str(x), "")
                 if cmd != "test":
-                    print(cmd)
+                    logging.info(cmd)
 
                 if cmd == "movetray":
                     if "steps" in params:
@@ -149,7 +152,7 @@ class PiController:
                     else:
                         status = self.goniometer.set_position("azimuth", int(params[0]))
                         filename = self.encrypt("donemovingazimuth" + str(int(status["position"])))
-                        print("Writing az config")
+                        logging.info("Writing az config")
                         self.write_az_config(self.goniometer.azimuth)
                     self.send(filename)
 
@@ -204,8 +207,8 @@ class PiController:
     def send(self, message):
         sent = self.client.send(message)
         while not sent:
-            print("Failed to send message, retrying.")
-            print(message)
+            logging.info("Failed to send message, retrying.")
+            logging.info(message)
             time.sleep(2)
             sent = self.client.send(message)
 
