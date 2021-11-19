@@ -33,7 +33,7 @@ class Goniometer:
                     [23, 22],
                     [],
                     4.4,  # 1600 steps/rev
-                    0.003,
+                    0.005,
                     encoder.AMT212ARotaryEncoder(port="/dev/ttyUSB0", encoder_base=0x4C, zero_position=e_zero),
                     1,
                 ),
@@ -151,7 +151,7 @@ class Goniometer:
         try:
             return pos_options[position_degrees]
         except KeyError:
-            print("UNKNOWN")
+            logging.info("UNKNOWN")
             return "unknown"
 
     @tray_pos.setter
@@ -182,7 +182,7 @@ class Goniometer:
                 updated_distance > DISTANCE_TOLERANCE and updated_distance - last_distance > DISTANCE_TOLERANCE
             ):  # If we're moving away from the target. It's possible to overshoot the intended position by a few degrees, so don't do this check if the current position is close to the target.
                 
-                print("ERROR: NOT MAKING PROGRESS")
+                logging.info("ERROR: NOT MAKING PROGRESS")
                 if motor_name != "sample tray":
                     self.motors[motor_name]["motor"].kill_now = True
                     return {"complete": False, "position": self.motors[motor_name]["motor"].position_degrees}
@@ -277,17 +277,17 @@ class Goniometer:
             time.sleep(3)
 
     def emission_sweep(self):
-        print("Moving to 70")
+        logging.info("Moving to 70")
         self.set_position("emission", 70)
         time.sleep(2)
-        print("Moving to -70")
+        logging.info("Moving to -70")
         self.set_position("emission", -70)
         time.sleep(2)
         for i in range(-60, 80, 10):
-            print("Moving to " + str(i))
+            logging.info("Moving to " + str(i))
             self.set_position("emission", i)
             time.sleep(2)
-        print("Moving to -70")
+        logging.info("Moving to -70")
         self.set_position("emission", -70)
         
     def move_tray_to_nearest(self):
