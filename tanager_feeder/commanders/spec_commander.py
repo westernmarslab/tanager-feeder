@@ -61,9 +61,9 @@ class SpecCommander(Commander):
         self.send(filename)
         return filename
 
-    def configure_instrument(self, number: int):
+    def configure_instrument(self, spectra_number: int, calfile_target: str):
         self.remove_from_listener_queue(["iconfigsuccess", "iconfigfailure"])
-        filename = self.encrypt("instrumentconfig", [number])
+        filename = self.encrypt("instrumentconfig", [spectra_number, calfile_target])
         self.send(filename)
         return filename
 

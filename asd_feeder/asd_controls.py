@@ -57,6 +57,7 @@ class RS3Controller:
         self.wr_failure = False
         self.opt_complete = False
         self.interval = 0.25
+        self.calfile = None
 
         try:
             self.app = Application().connect(path=self.RS3_loc)
@@ -306,7 +307,9 @@ class RS3Controller:
         print("Instrument ready")
         self.opt_complete = True
 
-    def instrument_config(self, numspectra):
+    def instrument_config(self, numspectra, calfile):
+        print("Setting calfile target!")
+        print(calfile)
         pauseafter = False
         if self.numspectra == None or int(self.numspectra) < 20 or True:
             pauseafter = True

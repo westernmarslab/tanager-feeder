@@ -221,8 +221,9 @@ class CommandInterpreter:
 
     def instrumentconfig(self, params):
         instrument_config_num = params[0]
+        calfile_num = params[1]
         try:
-            self.spec_controller.instrument_config(instrument_config_num)
+            self.spec_controller.instrument_config(instrument_config_num, calfile_num)
             utils.send(self.client, "iconfigsuccess", [])
         except:
             utils.send(self.client, "iconfigfailure", [])
