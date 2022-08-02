@@ -17,20 +17,24 @@ def main():
 
     RS3_loc = ""
     ViewSpecPro_loc = ""
+    RS3_config_loc = ""
 
     if computer == "old":
         RS3_loc = r"C:\Program Files\ASD\RS3\RS3.exe"
         ViewSpecPro_loc = r"C:\Program Files\ASD\ViewSpecPro\ViewSpecPro.exe"
+        RS3_config_loc = r"C:\ProgramData\ASD\RS3\RS3.ini"
 
     elif computer == "new":
         RS3_loc = r"C:\Program Files (x86)\ASD\RS3\RS3.exe"
         ViewSpecPro_loc = r"C:\Program Files (x86)\ASD\ViewSpecPro\ViewSpecPro.exe"
+        RS3_config_loc = r"C:\ProgramData\ASD\RS3\RS3.ini"
 
     elif computer == "desktop":
         RS3_loc = r"C:\Program Files (x86)\ASD\RS3\RS3.exe"
         ViewSpecPro_loc = r"C:\Program Files (x86)\ASD\ViewSpecPro\ViewSpecPro.exe"
+        RS3_config_loc = r"C:\ProgramData\ASD\RS3\RS3.ini"
 
-    controller = SpecCompyController(temp_data_loc, spectralon_data_loc, RS3_loc, ViewSpecPro_loc, computer)
+    controller = SpecCompyController(temp_data_loc, spectralon_data_loc, RS3_loc, ViewSpecPro_loc, RS3_config_loc, computer)
     controller.listen()
 
 if __name__ == "__main__":

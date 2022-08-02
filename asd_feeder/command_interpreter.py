@@ -7,7 +7,7 @@ import time
 from asd_feeder import utils
 
 class CommandInterpreter:
-    def __init__(self, client, server, spec_controller, process_controller, computer, logger, corrector, temp_data_loc):
+    def __init__(self, client, server, spec_controller, process_controller, computer, logger, corrector, temp_data_loc, RS3_config_loc):
         self.client = client
         self.local_server = server
         self.spec_controller = spec_controller
@@ -16,7 +16,7 @@ class CommandInterpreter:
         self.logger = logger
         self.corrector = corrector
         self.temp_data_loc = temp_data_loc
-
+        self.RS3_config_loc = RS3_config_loc
         self.data_files_to_ignore = []
 
 
@@ -222,11 +222,54 @@ class CommandInterpreter:
     def instrumentconfig(self, params):
         instrument_config_num = params[0]
         calfile_num = params[1]
+
+        if calfile_num in ['3" Puck', '5" Square']:
+            print("***************** setting calfile path **********************")
+            self.set_calfile_path(calfile_num)
+
         try:
             self.spec_controller.instrument_config(instrument_config_num, calfile_num)
             utils.send(self.client, "iconfigsuccess", [])
         except:
             utils.send(self.client, "iconfigfailure", [])
+
+    def set_calfile_path(self, calfile_num):
+        if calfile_num == '3" Puck':
+            calfile_path = r"C:\ProgramData\ASD\RS3\abs184831_3.ref"
+        elif calfile_num == '5" Square':
+            calfile_path = r"C:\ProgramData\ASD\RS3\abs184831_5.ref"
+        buffer = []
+        with open(self.RS3_config_loc, 'r') as RS3_config:
+            buffer.append(RS3_config.readline())
+            while buffer[-1]:
+                buffer.append(RS3_config.readline())
+        for line in buffer:
+            if "AbsoluteReflectanceFile" in line:
+                if calfile_path in line:
+                    print("!!!!!!!!!!!!!!!!!!!!!!!!!!! Already set to what you want")
+                    print(calfile_path)
+                    print(line)
+                    return
+
+        self.spec_controller.quit_RS3()
+        time.sleep(10) #Make sure it's fully quit before re-writing the file
+
+        with open(self.RS3_config_loc, "w") as RS3_config:
+            for line in buffer:
+                if "AbsoluteReflectanceFile" not in line:
+                    RS3_config.write(line)
+                else:
+                    RS3_config.write(f"AbsoluteReflectanceFile={calfile_path}\n")
+        self.spec_controller.start_RS3()
+        print("%%%%%%%%%%%%%% done restarting %%%%%%%%%%%%%%%%%%%%%%%%%%%")
+        print("set spec save!")
+        time.sleep(3)
+        self.spec_controller.spectrum_save(
+            self.spec_controller.save_dir,
+            self.spec_controller.basename,
+            self.spec_controller.nextnum
+        )
+
 
     def restartrs3(self, params):
         try:
