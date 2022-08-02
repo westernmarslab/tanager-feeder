@@ -17,7 +17,6 @@ class RestartComputerHandler(CommandHandler):
         while True: # Once you try restarting, just keep listening.
             # Spec will keep trying to send until the message goes through.
             if "restarting" in self.listener.queue:
-                print("Restarting in restart handler")
                 self.controller.restarting_spec_compy = True
                 self.listener.queue.remove("restarting")
                 time.sleep(30)
