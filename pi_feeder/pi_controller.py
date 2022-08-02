@@ -9,6 +9,7 @@ from tanager_tcp.tanager_server import TanagerServer
 from tanager_tcp.tanager_client import TanagerClient
 from threading import Thread
 from pi_feeder import goniometer
+from pi_feeder.motor import SwitchTrippedException
 
 
 INTERVAL = 0.25
@@ -76,8 +77,14 @@ class PiController:
         while True:
             try:
                 self._listen()
-            except:
-                logging.info(traceback.print_exc())
+            except SwitchTrippedException as e:
+                logging.info(e)
+                self.goniometer.home_azimuth()
+
+            except Exception as e:
+                logging.info(f"Error in pi_controller._listen.\n"
+                             f"Traceback: {e}")
+
 
     def _listen(self):
         logging.info("listening!")
@@ -152,7 +159,6 @@ class PiController:
                     else:
                         status = self.goniometer.set_position("azimuth", int(params[0]))
                         filename = self.encrypt("donemovingazimuth" + str(int(status["position"])))
-                        logging.info("Writing az config")
                         self.write_az_config(self.goniometer.azimuth)
                     self.send(filename)
 
