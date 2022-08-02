@@ -1,3 +1,4 @@
+import logging
 from threading import Thread
 import time
 from typing import Tuple, Union
@@ -170,7 +171,11 @@ class Goniometer:
 
         last_distance, _ = self.motors[motor_name]["motor"].get_distance_and_direction(motor_angle)
         thread = Thread(target=self.motors[motor_name]["motor"].move_to_angle, args=(motor_angle,))
-        thread.start()
+        try:
+            thread.start()
+        except motor.SwitchTrippedException:
+            print("HOMING AZIMUTH")
+            self.home_azimuth()
         while thread.is_alive():
             time.sleep(1)
 
