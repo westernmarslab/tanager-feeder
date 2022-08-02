@@ -10,7 +10,7 @@ class InstrumentConfigHandler(CommandHandler):
         controller,
         title: str = "Configuring instrument...",
         label: str = "Configuring instrument...",
-        timeout: int = 30,
+        timeout: int = 100,
     ):
         self.listener = controller.spec_listener
         super().__init__(controller, title, label, timeout=timeout)

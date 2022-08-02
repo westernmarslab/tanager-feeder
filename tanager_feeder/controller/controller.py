@@ -188,6 +188,8 @@ class Controller(utils.ControllerType):
         self.spec_num = None
         self.spec_config_count = None
         self.take_spectrum_with_bad_i_or_e = False
+        self.calfile = None # self.target_calfile will be set based on the config file and dropdown menu;
+        # self.calfile is only set after talking to the spectrometer computer.
 
         self.current_label = ""
 
@@ -1378,7 +1380,7 @@ class Controller(utils.ControllerType):
 
         # Requested instrument config is guaranteed to be valid because of input checks above.
         new_spec_config_count = int(self.instrument_config_entry.get())
-        if self.spec_config_count is None or str(new_spec_config_count) != str(self.spec_config_count):
+        if self.spec_config_count is None or str(new_spec_config_count) != str(self.spec_config_count) or self.target_calfile != self.calfile:
             self.complete_queue_item()
             self.queue.insert(0, nextaction)
             self.queue.insert(0, {self.configure_instrument: []})
@@ -2083,7 +2085,7 @@ class Controller(utils.ControllerType):
         RestartRS3Handler(self)
 
     def configure_instrument(self) -> None:
-        self.spec_commander.configure_instrument(self.instrument_config_entry.get())
+        self.spec_commander.configure_instrument(self.instrument_config_entry.get(), self.target_calfile)
         InstrumentConfigHandler(self)
 
     def check_writeable(self):
