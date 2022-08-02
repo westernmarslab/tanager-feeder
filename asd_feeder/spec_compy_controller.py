@@ -16,7 +16,15 @@ from asd_feeder.command_interpreter import CommandInterpreter
 from asd_feeder import utils
 
 class SpecCompyController:
-    def __init__(self, temp_data_loc: str, spectralon_data_loc: str, RS3_loc: str, ViewSpecPro_loc: str, computer: str):
+    def __init__(
+            self,
+            temp_data_loc: str,
+            spectralon_data_loc: str,
+            RS3_loc: str,
+            ViewSpecPro_loc: str,
+            RS3_config_loc: str,
+            computer: str
+    ):
         self.computer = computer
         self.temp_data_loc = temp_data_loc
         self.corrector = SpectralonCorrector(spectralon_data_loc)
@@ -35,7 +43,7 @@ class SpecCompyController:
 
         self.logger = Logger()
         self.control_server_address = None  # Will be set when a control computer sends a message with its ip_address and the port it's listening on
-        self.command_interpreter = CommandInterpreter(self.client, self.local_server, self.spec_controller, self.process_controller, self.computer, self.logger, self.corrector, self.temp_data_loc)
+        self.command_interpreter = CommandInterpreter(self.client, self.local_server, self.spec_controller, self.process_controller, self.computer, self.logger, self.corrector, self.temp_data_loc, RS3_config_loc)
 
     def listen(self):
         print_connection_announcement = None

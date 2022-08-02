@@ -73,10 +73,26 @@ class RS3Controller:
         self.menu = RS3Menu(self.app)
 
     def restart(self):
+            self.quit_RS3()
+            time.sleep(10)
+            self.start_rs3()
+            time.sleep(3)
+            self.spectrum_save(
+                self.save_dir,
+                self.basename,
+                self.nextnum
+            )
+
+    def quit_RS3(self):
         self.spec.set_focus()
         rect = self.spec.rectangle()
-        print(rect)
-        loc = find_image(IMG_LOC + "/exit.png", rect=rect)
+        timeout = 8
+        t = 0
+        loc = None
+        while t < timeout and loc is None:
+            loc = find_image(IMG_LOC + "/exit.png", rect=rect)
+            time.sleep(0.5)
+            t += 0.5
         if loc is not None:
             x_left = self.spec.rectangle().left
             y_top = self.spec.rectangle().top
@@ -87,19 +103,31 @@ class RS3Controller:
             x = loc[0] + x_left
             y = loc[1] + y_top
             mouse.click(coords=(x, y))
-            print("clicked x")
             time.sleep(0.5)
             keyboard.send_keys("{ENTER}")
-            time.sleep(10)
-            self.app = Application().start(self.RS3_loc)
-            self.spec = None
-            self.spec_connected = False
-            self.spec = self.app.ThunderRT6Form
-            self.spec.draw_outline()
-            self.pid = self.app.process
-            self.menu = RS3Menu(self.app)
         else:
-            print("Error: Failed to restart RS3")
+            print("Error: Failed to quit RS3")
+
+    def start_RS3(self):
+        self.app = Application().start(self.RS3_loc)
+        self.spec = None
+        self.spec_connected = False
+        while True:
+            print("Waiting for RS3 to come back...")
+            try:
+                self.spec = self.app.ThunderRT6Form
+                self.spec.draw_outline()
+                break
+            except:
+                time.sleep(1)
+        connected = self.check_connectivity()
+        while not connected:
+            print("Waiting for RS3 to connect to the spectrometer...")
+            connected = self.check_connectivity()
+            time.sleep(1)
+
+        self.pid = self.app.process
+        self.menu = RS3Menu(self.app)
 
     def check_connectivity(self):
         try:
@@ -332,6 +360,15 @@ class RS3Controller:
 
         config.Edit3.set_edit_text(str(numspectra))  # probably done twice to set numspectra for wr and taking spectra.
         config.Edit.set_edit_text(str(numspectra))
+
+        if calfile in ['3" Puck', '5" Square']:
+            config['Absolute Reflectance'].check()
+        elif calfile == "None (Probe)":
+            config['Absolute Reflectance'].uncheck()
+        else:
+            raise Exception(f"Failed to set abs/relative reflectance for {calfile}")
+        time.sleep(2)
+
         focused = try_set_focus(config)
         if not focused:
             self.failed_to_open = True
@@ -341,7 +378,7 @@ class RS3Controller:
             time.sleep(2)
         print("Instrument configuration set with " + str(numspectra) + " spectra being averaged")
 
-    def spectrum_save(self, dir, base, startnum, numfiles=1, interval=0, comment=None, new_file_format=False):
+    def spectrum_save(self, dir, base, startnum):
         self.save_dir = dir
         self.basename = base
         self.nextnum = str(startnum)
