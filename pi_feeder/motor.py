@@ -41,6 +41,7 @@ class Motor:
         self.wrap_around = wrap_around
 
         self.kill_now = False  # Referenced during movements to see if the goniometer wants the motor to stop.
+        self.switch_tripped = False # Referenced by the goniometer to see if the az movement tripped the limit switch
         self.position_full_turns = None
         self._position_degrees = None
         # For azimuth motor, can have problems if rotational position is zero degrees
@@ -109,11 +110,12 @@ class Motor:
             try:
                 self.backward(MAX_NUM_STEPS)
             except SwitchTrippedException:
-                pass
+                self.switch_tripped = False # No need for the goniometer to be worried.
         elif direction == self.FORWARD:
             try:
                 self.forward(MAX_NUM_STEPS)
             except SwitchTrippedException:
+                self.switch_tripped = False  # No need for the goniometer to be worried.
                 pass
         else:
             raise Exception("Invalid direction")
@@ -177,6 +179,7 @@ class Motor:
                 for switch in self.limit_sws:
                     if switch.get_tripped():
                         self.backward(10, False)
+                        self.switch_tripped = True
                         raise SwitchTrippedException()
                         return
 
@@ -200,6 +203,7 @@ class Motor:
                 for switch in self.limit_sws:
                     if switch.get_tripped():
                         self.forward(10, False)
+                        self.switch_tripped = True
                         raise SwitchTrippedException()
                         return
             if i < steps - 30:

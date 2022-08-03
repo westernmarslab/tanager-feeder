@@ -191,6 +191,12 @@ class Goniometer:
 
             last_distance = updated_distance
         thread.join()
+        # If the azimuth motor hits a homing switch midway through the switch will be tripped.
+        # This is caught and reported up in listen()
+        if self.motors[motor_name]["motor"].switch_tripped:
+            self.motors[motor_name]["motor"].switch_tripped = False
+            logging.info("Catching switch in move_to_angle")
+            raise motor.SwitchTrippedException
         return {"complete": True, "position": self.motors[motor_name]["motor"].position_degrees}
 
     def configure(self, i: float, e: float, tray_pos: int):

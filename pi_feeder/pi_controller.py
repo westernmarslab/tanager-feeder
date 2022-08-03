@@ -78,7 +78,9 @@ class PiController:
             try:
                 self._listen()
             except SwitchTrippedException as e:
+                logging.info(datetime.now().strftime("%d.%b %Y %H:%M:%S"))
                 logging.info(e)
+                self.send("switchtripped")
                 self.goniometer.home_azimuth()
 
             except Exception as e:
