@@ -20,6 +20,7 @@ class MotionHandler(CommandHandler):
         self.listener = controller.pi_listener
         self.new_sample_loc = new_sample_loc
         self.destination = destination
+        self.log_timeout_message = True
         super().__init__(controller, title, label, timeout=timeout)
 
     def wait(self):
@@ -33,6 +34,10 @@ class MotionHandler(CommandHandler):
                     self.listener.queue.remove(item)
                     self.interrupt("Failure moving...")
                     return
+                if "switchtripped" in item:
+                    self.listener.queue.remove(item)
+                    self.controller.log("WARNING: Azimuth homing switch tripped.")
+                    self.log_timeout_message = False
 
             time.sleep(utils.INTERVAL)
             self.timeout_s -= utils.INTERVAL
@@ -54,7 +59,8 @@ class MotionHandler(CommandHandler):
 
     def timeout(self):
         if not self.pause and not self.cancel:
-            self.controller.log("Error: Timed out while moving. Retrying.")
+            if self.log_timeout_message:
+                self.controller.log("Error: Timed out while moving. Retrying.")
             self.controller.next_in_queue()
         else:
             super().timeout()

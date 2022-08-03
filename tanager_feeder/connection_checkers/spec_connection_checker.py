@@ -62,7 +62,6 @@ class SpecConnectionChecker(ConnectionChecker):
     def check_connection(self, timeout: int = 3, show_dialog: bool = True, attempts: int = 1):
         attempt = 1
         connected = self.connection_manager.send_to_spec("test", connect_timeout=timeout)
-        print(connected)
 
         if show_dialog:
             if not connected and attempt >= attempts:
