@@ -52,7 +52,7 @@ class CommandInterpreter:
             utils.send(self.client, "noconfig", [])
             return
         if (
-            self.spec_controller.numspectra is None
+            self.spec_controller.numspectra is None or self.spec_controller.calfile is None
         ):  # Same as above, but for instrument configuration (number of spectra to average)
             utils.send(self.client, "nonumspectra", [])
             return
@@ -87,7 +87,6 @@ class CommandInterpreter:
             utils.send(self.client, "specfailed", [])
             return
 
-
         # Now wait for the data file to turn up where it belongs.
         saved = False
         timeout = int(self.spec_controller.numspectra)
@@ -99,7 +98,10 @@ class CommandInterpreter:
             timeout -= 0.2
 
         if saved:
-            self.logger.log_spectrum(self.spec_controller.numspectra, i, e, az, filename, label)
+            print("Going to log!")
+            print(self.spec_controller.numspectra)
+            print(self.spec_controller.calfile)
+            self.logger.log_spectrum(self.spec_controller.numspectra, i, e, az, filename, self.spec_controller.calfile, label)
             utils.send(self.client, "savedfile", [filename])
             print("Done")
         else:
@@ -155,7 +157,6 @@ class CommandInterpreter:
             utils.send(self.client, "rmdirsuccess", [])
 
         except (PermissionError):
-
             utils.send(self.client, "rmdirfailedpermission", [])
 
         except:
@@ -224,7 +225,6 @@ class CommandInterpreter:
         calfile_num = params[1]
 
         if calfile_num in ['3" Puck', '5" Square']:
-            print("***************** setting calfile path **********************")
             self.set_calfile_path(calfile_num)
 
         try:
@@ -246,9 +246,6 @@ class CommandInterpreter:
         for line in buffer:
             if "AbsoluteReflectanceFile" in line:
                 if calfile_path in line:
-                    print("!!!!!!!!!!!!!!!!!!!!!!!!!!! Already set to what you want")
-                    print(calfile_path)
-                    print(line)
                     return
 
         self.spec_controller.quit_RS3()
@@ -261,9 +258,8 @@ class CommandInterpreter:
                 else:
                     RS3_config.write(f"AbsoluteReflectanceFile={calfile_path}\n")
         self.spec_controller.start_RS3()
-        print("%%%%%%%%%%%%%% done restarting %%%%%%%%%%%%%%%%%%%%%%%%%%%")
-        print("set spec save!")
         time.sleep(3)
+
         self.spec_controller.spectrum_save(
             self.spec_controller.save_dir,
             self.spec_controller.basename,
@@ -342,7 +338,11 @@ class CommandInterpreter:
             utils.send(self.client, "noconfig", [])
             print("noconfig")
             return
-        if self.spec_controller.numspectra is None:
+        print("In white reference")
+        print(self.spec_controller.numspectra)
+        print(self.spec_controller.calfile)
+        print(type(self.spec_controller.calfile))
+        if self.spec_controller.numspectra is None or self.spec_controller.calfile is None:
             utils.send(self.client, "nonumspectra", [])
             print("nonumspectectra")
             return

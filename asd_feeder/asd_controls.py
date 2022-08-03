@@ -341,14 +341,18 @@ class RS3Controller:
         pauseafter = False
         if self.numspectra == None or int(self.numspectra) < 20 or True:
             pauseafter = True
+
         self.numspectra = numspectra
+        self.calfile = calfile
+        print("Setting numspectra!")
+        print(self.numspectra)
 
         config = self.app["Instrument Configuration"]
         if config.exists() == False:
             self.menu.open_control_dialog([IMG_LOC + "/rs3adjustconfig.png", IMG_LOC + "/rs3adjustconfig2.png"])
 
         t = 0
-        while config.exists() == False and t < 10:
+        while config.exists() == False and t < 20:
             print("waiting for instrument config panel")
             time.sleep(self.interval)
             t += self.interval
@@ -362,17 +366,26 @@ class RS3Controller:
         config.Edit.set_edit_text(str(numspectra))
 
         if calfile in ['3" Puck', '5" Square']:
-            config['Absolute Reflectance'].check()
-        elif calfile == "None (Probe)":
-            config['Absolute Reflectance'].uncheck()
+            try:
+                config['Absolute Reflectance'].check()
+            except Exception as e:
+                print(e)
+        elif calfile == "None":
+            try:
+                config['Absolute Reflectance'].uncheck()
+            except Exception as e:
+                print(e)
         else:
+            print(calfile)
+            print("Failed to set abs/rel")
             raise Exception(f"Failed to set abs/relative reflectance for {calfile}")
         time.sleep(2)
-
+        print("time to close the dialog")
         focused = try_set_focus(config)
         if not focused:
             self.failed_to_open = True
             return
+        print("yep going to click it")
         config.ThunderRT6PictureBoxDC.click_input()
         if pauseafter:
             time.sleep(2)

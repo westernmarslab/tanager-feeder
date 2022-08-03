@@ -303,17 +303,17 @@ class Controller(utils.ControllerType):
         if self.target_calfile == '3" Puck':
             self.calfilemenu.add_command(label='X 3" Puck', command=self.set_calfile_3)
             self.calfilemenu.add_command(label='  5" Square', command=self.set_calfile_5)
-            self.calfilemenu.add_command(label='  None (Probe)', command=self.set_calfile_none)
+            self.calfilemenu.add_command(label='  None', command=self.set_calfile_none)
 
         elif self.target_calfile == '5" Puck':
             self.calfilemenu.add_command(label='  3" Puck', command=self.set_calfile_3)
             self.calfilemenu.add_command(label='X 5" Square', command=self.set_calfile_5)
-            self.calfilemenu.add_command(label='  None (Probe)', command=self.set_calfile_none)
+            self.calfilemenu.add_command(label='  None', command=self.set_calfile_none)
 
-        elif self.target_calfile == 'None (Probe)':
+        elif self.target_calfile == 'None':
             self.calfilemenu.add_command(label='  3" Puck', command=self.set_calfile_3)
             self.calfilemenu.add_command(label='  5" Square', command=self.set_calfile_5)
-            self.calfilemenu.add_command(label='X None (Probe)', command=self.set_calfile_none)
+            self.calfilemenu.add_command(label='X None', command=self.set_calfile_none)
 
         editmenu.add_cascade(label="Calibration file", menu=self.calfilemenu)
 
@@ -546,7 +546,7 @@ class Controller(utils.ControllerType):
         self.calfile_menu = OptionMenu(
             self.calfile_frame,
             self.target_calfile_str_var,
-            *['3" Puck','5" Square','None (Probe)'],
+            *['3" Puck','5" Square','None'],
             command=self.set_target_calfile
         )
         self.calfile_menu.configure(width=10, height=1, highlightbackground=self.tk_format.highlightbackgroundcolor)
@@ -1085,7 +1085,7 @@ class Controller(utils.ControllerType):
 
     @target_calfile.setter
     def target_calfile(self, value):
-        if value in ['None (Probe)', '3" Puck', '5" Square']:
+        if value in ['None', '3" Puck', '5" Square']:
             self.__target_calfile = value
         else:
             err_string = "Invalid calfile value: " + str(value)
@@ -1130,7 +1130,7 @@ class Controller(utils.ControllerType):
 
         self.calfilemenu.entryconfigure(0, label='X 3" Puck')
         self.calfilemenu.entryconfigure(1, label='  5" Square')
-        self.calfilemenu.entryconfigure(2, label='  None (Probe)')
+        self.calfilemenu.entryconfigure(2, label='  None')
 
         self.log('Spectralon calibration file set to 3" Square.')
 
@@ -1142,7 +1142,7 @@ class Controller(utils.ControllerType):
 
         self.calfilemenu.entryconfigure(0, label='  3" Puck')
         self.calfilemenu.entryconfigure(1, label='X 5" Square')
-        self.calfilemenu.entryconfigure(2, label='  None (Probe)')
+        self.calfilemenu.entryconfigure(2, label='  None')
 
         self.log('Spectralon calibration file set to 5" Square.')
 
@@ -1150,11 +1150,11 @@ class Controller(utils.ControllerType):
             calfile_config.write("5")
 
     def set_calfile_none(self):
-        self.target_calfile = 'None (Probe)'
+        self.target_calfile = 'None'
 
         self.calfilemenu.entryconfigure(0, label='  3" Puck')
         self.calfilemenu.entryconfigure(1, label='  5" Square')
-        self.calfilemenu.entryconfigure(2, label='X None (Probe)')
+        self.calfilemenu.entryconfigure(2, label='X None')
 
         self.log('Spectralon calibration file set to None.')
 
