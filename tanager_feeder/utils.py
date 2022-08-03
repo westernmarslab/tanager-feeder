@@ -110,9 +110,6 @@ class ConnectionManager:
 
     def connect_spec(self, timeout: float):
         self.spec_offline = not self.spec_client.connect(timeout)
-        print("how did connect_spec go?")
-        print("offline? ")
-        print(self.spec_offline)
         return not self.spec_offline
 
     def connect_pi(self, timeout: float):
