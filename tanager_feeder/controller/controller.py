@@ -257,6 +257,8 @@ class Controller(utils.ControllerType):
                 calfile_config.write('3" Puck')
                 self.target_calfile = '3" Puck'
 
+        print(self.config_info.local_config_loc)
+
         self.target_calfile_str_var = StringVar()
         self.target_calfile_str_var.set(self.target_calfile)
 
@@ -1135,7 +1137,7 @@ class Controller(utils.ControllerType):
         self.log('Spectralon calibration file set to 3" Square.')
 
         with open(self.config_info.local_config_loc + "calfile_config.txt", "w+") as calfile_config:
-            calfile_config.write("3")
+            calfile_config.write('3" Puck')
 
     def set_calfile_5(self):
         self.target_calfile = '5" Square'
@@ -1147,7 +1149,7 @@ class Controller(utils.ControllerType):
         self.log('Spectralon calibration file set to 5" Square.')
 
         with open(self.config_info.local_config_loc + "calfile_config.txt", "w+") as calfile_config:
-            calfile_config.write("5")
+            calfile_config.write('5" Square')
 
     def set_calfile_none(self):
         self.target_calfile = 'None'
@@ -1159,7 +1161,7 @@ class Controller(utils.ControllerType):
         self.log('Spectralon calibration file set to None.')
 
         with open(self.config_info.local_config_loc + "calfile_config.txt", "w+") as calfile_config:
-            calfile_config.write("0")
+            calfile_config.write("None")
 
     def show_plot_frame(self) -> None:
         self.plot_manager.show()

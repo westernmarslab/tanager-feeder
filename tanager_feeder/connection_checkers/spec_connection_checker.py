@@ -62,7 +62,6 @@ class SpecConnectionChecker(ConnectionChecker):
     def check_connection(self, timeout: int = 3, show_dialog: bool = True, attempts: int = 1):
         attempt = 1
         connected = self.connection_manager.send_to_spec("test", connect_timeout=timeout)
-        print(connected)
 
         if show_dialog:
             if not connected and attempt >= attempts:
@@ -72,7 +71,7 @@ class SpecConnectionChecker(ConnectionChecker):
                 time.sleep(2)
                 self.check_connection(timeout=timeout, attempts=attempts - 1)
         else:
-            if not connected and attempt < attempts:
+            if not connected and attempt < attempts: #attempts > 1 while there is a queue being executed
                 print("Spec compy not connected. Retrying.")
                 time.sleep(2)
                 self.check_connection(timeout=timeout, attempts=attempts - 1)
