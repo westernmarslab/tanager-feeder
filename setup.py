@@ -18,7 +18,7 @@ else:
 
 setup(
     name='tanager-feeder',
-    version='1.0',
+    version='1.1',
     packages=find_packages(),
     license='Creative Commons Attribution-Noncommercial-Share Alike license',
     description='Control software for spectroscopy using ASD RS3 and ViewSpec Pro',

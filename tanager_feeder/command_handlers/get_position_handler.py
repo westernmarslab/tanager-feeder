@@ -65,9 +65,12 @@ class GetPositionHandler(CommandHandler):
         self.controller.goniometer_view.set_current_sample(tray_position_string)
 
         self.controller.log(
-            f"Current position:\ti = {self.i} \te = {self.e}\taz = {self.az}\ttray position: " + tray_position_string
+            f"Current position:\n"
+            f"\tGeometry: i = {self.i} \te = {self.e}\taz = {self.az}\n"
+            f"\tTray position: {tray_position_string}\n\n"
         )
-        super().success("Ready to use automatic mode.")
+
+        super().success(f"Ready to use automatic mode.")
 
     def timeout(self):
         super().timeout("Error: Failed to get current goniometer position.")

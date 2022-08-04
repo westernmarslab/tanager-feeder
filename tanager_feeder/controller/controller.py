@@ -182,16 +182,14 @@ class Controller(utils.ControllerType):
         self.text_only = False  # for running scripts.
         self.frozen = False
 
-
-
-        self.audio_signals = False
-
         # These will get set via user input.
         self.spec_save_path = ""
         self.spec_basename = ""
         self.spec_num = None
         self.spec_config_count = None
         self.take_spectrum_with_bad_i_or_e = False
+        self.calfile = None # self.target_calfile will be set based on the config file and dropdown menu;
+        # self.calfile is only set after talking to the spectrometer computer.
 
         self.current_label = ""
 
@@ -243,6 +241,27 @@ class Controller(utils.ControllerType):
         # When the window closes, send a command to set the geometry to i=0, e=30.
         self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
 
+        try:
+            with open(self.config_info.local_config_loc + "audio_config.txt", "r") as audio_config:
+                self.audio_signals = int(audio_config.readline().strip("\n"))
+        except (OSError, ValueError):
+            with open(self.config_info.local_config_loc + "audio_config.txt", "w+") as audio_config:
+                audio_config.write("0")
+                self.audio_signals = 0
+
+        try:
+            with open(self.config_info.local_config_loc + "calfile_config.txt", "r") as calfile_config:
+                self.target_calfile = calfile_config.readline().strip("\n")
+        except (OSError, ValueError):
+            with open(self.config_info.local_config_loc + "calfile_config.txt", "w+") as calfile_config:
+                calfile_config.write('3" Puck')
+                self.target_calfile = '3" Puck'
+
+        print(self.config_info.local_config_loc)
+
+        self.target_calfile_str_var = StringVar()
+        self.target_calfile_str_var.set(self.target_calfile)
+
         self.menubar = Menu(self.master)
         # create a pulldown menu, and add it to the menu bar
         self.filemenu = Menu(self.menubar, tearoff=0)
@@ -259,10 +278,13 @@ class Controller(utils.ControllerType):
         # create more pulldown menus
         editmenu = Menu(self.menubar, tearoff=0)
         editmenu.add_command(label="Failsafes...", command=self.show_settings_frame)
-        #         editmenu.add_command(label="Plot settings...", command=self.show_plot_settings_frame)
         self.audiomenu = Menu(editmenu, tearoff=0)
-        self.audiomenu.add_command(label="  Enabled", command=self.enable_audio)
-        self.audiomenu.add_command(label="X Disabled", command=self.disable_audio)
+        if self.audio_signals:
+            self.audiomenu.add_command(label="X  Enabled", command=self.enable_audio)
+            self.audiomenu.add_command(label=" Disabled", command=self.disable_audio)
+        else:
+            self.audiomenu.add_command(label="  Enabled", command=self.enable_audio)
+            self.audiomenu.add_command(label="X Disabled", command=self.disable_audio)
         editmenu.add_cascade(label="Audio signals", menu=self.audiomenu)
 
         self.goniometermenu = Menu(editmenu, tearoff=0)
@@ -278,7 +300,29 @@ class Controller(utils.ControllerType):
         editmenu.add_cascade(label="Geometry specification", menu=self.geommenu)
         editmenu.add_command(label="Goniometer config...", command=self.show_config_dialog)
 
+        self.calfilemenu = Menu(editmenu, tearoff=0)
+        # calfilemenu.add_command(label="Calibration file", command=self.show_settings_frame)
+        if self.target_calfile == '3" Puck':
+            self.calfilemenu.add_command(label='X 3" Puck', command=self.set_calfile_3)
+            self.calfilemenu.add_command(label='  5" Square', command=self.set_calfile_5)
+            self.calfilemenu.add_command(label='  None', command=self.set_calfile_none)
+
+        elif self.target_calfile == '5" Puck':
+            self.calfilemenu.add_command(label='  3" Puck', command=self.set_calfile_3)
+            self.calfilemenu.add_command(label='X 5" Square', command=self.set_calfile_5)
+            self.calfilemenu.add_command(label='  None', command=self.set_calfile_none)
+
+        elif self.target_calfile == 'None':
+            self.calfilemenu.add_command(label='  3" Puck', command=self.set_calfile_3)
+            self.calfilemenu.add_command(label='  5" Square', command=self.set_calfile_5)
+            self.calfilemenu.add_command(label='X None', command=self.set_calfile_none)
+
+        editmenu.add_cascade(label="Calibration file", menu=self.calfilemenu)
+
         self.menubar.add_cascade(label="Settings", menu=editmenu)
+
+
+
 
         helpmenu = Menu(self.menubar, tearoff=0)
         # helpmenu.add_command(label="About", command=hello)
@@ -321,6 +365,8 @@ class Controller(utils.ControllerType):
         self.analysis_tools_manager = AnalysisToolsManager(self)
         self.cli_manager = CliManager(self)
 
+
+
         try:
             with open(self.config_info.local_config_loc + "spec_save.txt", "r") as spec_save_config:
                 self.spec_save_path = spec_save_config.readline().strip("\n")
@@ -333,13 +379,13 @@ class Controller(utils.ControllerType):
                 f.write("C:\\Users\n")
                 f.write("basename\n")
                 f.write("-1\n")
+                f.write("0")
 
                 self.spec_save_path = "C:\\Users"
                 self.spec_basename = "basename"
                 self.spec_startnum = "0"
                 while len(self.spec_startnum) < self.config_info.num_len:
                     self.spec_startnum = "0" + self.spec_startnum
-
         try:
             with open(self.config_info.local_config_loc + "script_config.txt", "r") as script_config:
                 self.script_loc = script_config.readline().strip("\n")
@@ -485,6 +531,30 @@ class Controller(utils.ControllerType):
         self.entries.append(self.instrument_config_entry)
         self.instrument_config_entry.insert(0, 200)
         self.instrument_config_entry.pack(side=LEFT)
+
+
+        self.calfile_frame = Frame(self.instrument_config_frame, bg=self.tk_format.bg)
+        self.calfile_frame.pack(pady=(10,0))
+        self.calfile_label = Label(
+            self.calfile_frame,
+            fg=self.tk_format.textcolor,
+            text="Spectralon calibration file:",
+            bg=self.tk_format.bg,
+        )
+        self.calfile_label.pack(side=LEFT, padx=(20, 0))
+        print(self.target_calfile)
+        print(self.target_calfile_str_var.get())
+
+        self.calfile_menu = OptionMenu(
+            self.calfile_frame,
+            self.target_calfile_str_var,
+            *['3" Puck','5" Square','None'],
+            command=self.set_target_calfile
+        )
+        self.calfile_menu.configure(width=10, height=1, highlightbackground=self.tk_format.highlightbackgroundcolor)
+        self.option_menus.append(self.calfile_menu)
+        # self.instrument_config_entry.insert(0, 200)
+        self.calfile_menu.pack(side=LEFT)
 
         self.viewing_geom_options_frame = Frame(self.control_frame.interior, bg=self.tk_format.bg)
 
@@ -1011,6 +1081,19 @@ class Controller(utils.ControllerType):
             except ValueError:
                 raise Exception("Invalid science az value") from ValueError
 
+    @property
+    def target_calfile(self):
+        return self.__target_calfile
+
+    @target_calfile.setter
+    def target_calfile(self, value):
+        if value in ['None', '3" Puck', '5" Square']:
+            self.__target_calfile = value
+        else:
+            err_string = "Invalid calfile value: " + str(value)
+            print(err_string)
+            raise ValueError
+
     def scrollbar_check(self) -> None:
         time.sleep(0.5)
         self.control_frame.update()
@@ -1023,15 +1106,62 @@ class Controller(utils.ControllerType):
         self.audio_signals = True
         self.audiomenu.entryconfigure(0, label="X Enabled")
         self.audiomenu.entryconfigure(1, label="  Disabled")
+        with open(self.config_info.local_config_loc + "audio_config.txt", "w+") as audio_config:
+            audio_config.write("1")
 
     def disable_audio(self) -> None:
         self.audio_signals = False
         self.audiomenu.entryconfigure(0, label="  Enabled")
         self.audiomenu.entryconfigure(1, label="X Disabled")
+        with open(self.config_info.local_config_loc + "audio_config.txt", "w+") as audio_config:
+            audio_config.write("0")
 
     # Show failsafes settings frame
     def show_settings_frame(self) -> None:
         self.failsafes_manager.show()
+
+    def set_target_calfile(self, val):
+        self.target_calfile = self.target_calfile_str_var.get()
+
+        with open(self.config_info.local_config_loc + "calfile_config.txt", "w+") as calfile_config:
+            calfile_config.write(self.target_calfile)
+
+
+    def set_calfile_3(self):
+        self.target_calfile = '3" Puck'
+
+        self.calfilemenu.entryconfigure(0, label='X 3" Puck')
+        self.calfilemenu.entryconfigure(1, label='  5" Square')
+        self.calfilemenu.entryconfigure(2, label='  None')
+
+        self.log('Spectralon calibration file set to 3" Square.')
+
+        with open(self.config_info.local_config_loc + "calfile_config.txt", "w+") as calfile_config:
+            calfile_config.write('3" Puck')
+
+    def set_calfile_5(self):
+        self.target_calfile = '5" Square'
+
+        self.calfilemenu.entryconfigure(0, label='  3" Puck')
+        self.calfilemenu.entryconfigure(1, label='X 5" Square')
+        self.calfilemenu.entryconfigure(2, label='  None')
+
+        self.log('Spectralon calibration file set to 5" Square.')
+
+        with open(self.config_info.local_config_loc + "calfile_config.txt", "w+") as calfile_config:
+            calfile_config.write('5" Square')
+
+    def set_calfile_none(self):
+        self.target_calfile = 'None'
+
+        self.calfilemenu.entryconfigure(0, label='  3" Puck')
+        self.calfilemenu.entryconfigure(1, label='  5" Square')
+        self.calfilemenu.entryconfigure(2, label='X None')
+
+        self.log('Spectralon calibration file set to None.')
+
+        with open(self.config_info.local_config_loc + "calfile_config.txt", "w+") as calfile_config:
+            calfile_config.write("None")
 
     def show_plot_frame(self) -> None:
         self.plot_manager.show()
@@ -1122,7 +1252,6 @@ class Controller(utils.ControllerType):
         warnings = ""
 
         valid_i = utils.validate_int_input(self.incidence_entries[0].get(), -90, 90)
-        print(valid_i)
         if valid_i:
             if str(self.science_i) != self.incidence_entries[0].get():
                 self.angles_change_time = time.time()
@@ -1253,7 +1382,7 @@ class Controller(utils.ControllerType):
 
         # Requested instrument config is guaranteed to be valid because of input checks above.
         new_spec_config_count = int(self.instrument_config_entry.get())
-        if self.spec_config_count is None or str(new_spec_config_count) != str(self.spec_config_count):
+        if self.spec_config_count is None or str(new_spec_config_count) != str(self.spec_config_count) or self.target_calfile != self.calfile:
             self.complete_queue_item()
             self.queue.insert(0, nextaction)
             self.queue.insert(0, {self.configure_instrument: []})
@@ -1545,9 +1674,7 @@ class Controller(utils.ControllerType):
                 current_az >= 115 and next_science_az < 115
             ):  # passing through/into danger zone
                 movement_order = [{"i": -60}, {"e": next_science_e}, {"az": next_science_az}, {"i": next_science_i}]
-                print("Moving through or into danger!")
             elif 65 < current_az < 115 and current_i < -65:  # Already in danger zone
-                print("Starting in danger!")
                 if next_science_az != current_az:
                     movement_order = [{"i": -60}, {"e": next_science_e}, {"az": next_science_az}, {"i": next_science_i}]
         return movement_order
@@ -1960,7 +2087,7 @@ class Controller(utils.ControllerType):
         RestartRS3Handler(self)
 
     def configure_instrument(self) -> None:
-        self.spec_commander.configure_instrument(self.instrument_config_entry.get())
+        self.spec_commander.configure_instrument(self.instrument_config_entry.get(), self.target_calfile)
         InstrumentConfigHandler(self)
 
     def check_writeable(self):
@@ -2064,7 +2191,6 @@ class Controller(utils.ControllerType):
 
     def finish_process(self, source_file, output_file) -> None:
         print("Finishing process")
-        print(self.queue)
         self.spec_commander.transfer_data(source_file)
         DataHandler(
             self,

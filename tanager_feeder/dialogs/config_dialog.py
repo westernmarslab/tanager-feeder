@@ -40,7 +40,6 @@ class ConfigDialog(Dialog):
             else:
                 self.entries[val] = StringVar()
                 self.entries[val].set("White reference")
-                print(self.entries["Tray position"].get())
                 menu = OptionMenu(
                     frame,
                     self.entries[val],

@@ -1,3 +1,4 @@
+import logging
 from threading import Thread
 import time
 from typing import Tuple, Union
@@ -7,7 +8,7 @@ from pi_feeder import motor, encoder, limit_switch
 
 AZIMUTH_GEAR_RATIO = 10
 AZIMUTH_HOME_OFFSET = 24.7
-DISTANCE_TOLERANCE = 0.5
+DISTANCE_TOLERANCE = 5  # Both how close we can be to the target angle to ignore a little backwards progress, and how much backwards progress we'll tolerate.
 
 
 class Goniometer:
@@ -33,7 +34,7 @@ class Goniometer:
                     [23, 22],
                     [],
                     4.4,  # 1600 steps/rev
-                    0.003,
+                    0.005,
                     encoder.AMT212ARotaryEncoder(port="/dev/ttyUSB0", encoder_base=0x4C, zero_position=e_zero),
                     1,
                 ),
@@ -62,7 +63,7 @@ class Goniometer:
                     0.006,
                     encoder.AMT212ARotaryEncoder(port="/dev/ttyUSB0", encoder_base=0x54, zero_position=tray_zero),
                     1,
-                    True, # ok to wrap around to reach positioin
+                    True,  # ok to wrap around to reach positioin
                 ),
                 "gear ratio": 1,
                 "positions": {
@@ -137,21 +138,21 @@ class Goniometer:
             360: "-1",
         }
         position_degrees = int(self.motors["sample tray"]["motor"].position_degrees)
-        #Ok to be off by +/- 1 degree
+        # Ok to be off by +/- 1 degree
 
         if str(position_degrees)[-1] == 9:
             position_degrees += 1
 
-        elif str(position_degrees)[-1] ==1:
+        elif str(position_degrees)[-1] == 1:
             position_degrees -= 1
-        if (position_degrees + 1)%10 == 0:
+        if (position_degrees + 1) % 10 == 0:
             position_degrees = position_degrees + 1
-        elif (position_degrees -1)%10 == 0:
-            position_degrees = position_degrees -1
+        elif (position_degrees - 1) % 10 == 0:
+            position_degrees = position_degrees - 1
         try:
             return pos_options[position_degrees]
         except KeyError:
-            print("UNKNOWN")
+            logging.info("UNKNOWN")
             return "unknown"
 
     @tray_pos.setter
@@ -171,24 +172,31 @@ class Goniometer:
         last_distance, _ = self.motors[motor_name]["motor"].get_distance_and_direction(motor_angle)
         thread = Thread(target=self.motors[motor_name]["motor"].move_to_angle, args=(motor_angle,))
         thread.start()
-        t = 0
-        kill_when_done = False
+
         while thread.is_alive():
-            time.sleep(0.5)
-            t += 0.5
+            time.sleep(1)
 
             updated_distance, _ = self.motors[motor_name]["motor"].get_distance_and_direction(motor_angle)
-            limit = 4
+
+            # Incidence arm has potential for large rebound at high incidence angles if a minor obstruction is hit.
+            # Allow for this rebound without stopping.
             if (
-                updated_distance > limit and updated_distance - last_distance > DISTANCE_TOLERANCE
+                    updated_distance > DISTANCE_TOLERANCE and updated_distance - last_distance > DISTANCE_TOLERANCE
             ):  # If we're moving away from the target. It's possible to overshoot the intended position by a few degrees, so don't do this check if the current position is close to the target.
-                print("ERROR: NOT MAKING PROGRESS")
+
+                logging.info("ERROR: NOT MAKING PROGRESS")
                 if motor_name != "sample tray":
                     self.motors[motor_name]["motor"].kill_now = True
                     return {"complete": False, "position": self.motors[motor_name]["motor"].position_degrees}
 
             last_distance = updated_distance
         thread.join()
+        # If the azimuth motor hits a homing switch midway through the switch will be tripped.
+        # This is caught and reported up in listen()
+        if self.motors[motor_name]["motor"].switch_tripped:
+            self.motors[motor_name]["motor"].switch_tripped = False
+            logging.info("Catching switch in move_to_angle")
+            raise motor.SwitchTrippedException
         return {"complete": True, "position": self.motors[motor_name]["motor"].position_degrees}
 
     def configure(self, i: float, e: float, tray_pos: int):
@@ -211,14 +219,19 @@ class Goniometer:
         self.motors["sample tray"]["motor"].configure(tray_angle)
 
     def home_azimuth(self, direction=motor.Motor.BACKWARD):
+        current_i = self.incidence
+        reset_i = False
         if self.incidence <= -60:
             self.set_position("incidence", -60)
+            reset_i = True
         self.motors["azimuth"]["motor"].home(direction)
         self.set_position("azimuth", AZIMUTH_HOME_OFFSET)
         self.motors["azimuth"]["motor"].encoder.configure(0)
         self.motors["azimuth"]["motor"].target_theta = 0
         self.motors["azimuth"]["motor"].position_full_turns = 0
         self.motors["azimuth"]["motor"].update_position(2)
+        if reset_i and current_i >= -71: #Could be up to 1 degree off and still reset it.
+            self.set_position("incidence", current_i)
 
     # move i, e from 20 (-70) to 160 (+70)
     # move az from 0 (0) to 170 (170)
@@ -277,19 +290,19 @@ class Goniometer:
             time.sleep(3)
 
     def emission_sweep(self):
-        print("Moving to 70")
+        logging.info("Moving to 70")
         self.set_position("emission", 70)
         time.sleep(2)
-        print("Moving to -70")
+        logging.info("Moving to -70")
         self.set_position("emission", -70)
         time.sleep(2)
         for i in range(-60, 80, 10):
-            print("Moving to " + str(i))
+            logging.info("Moving to " + str(i))
             self.set_position("emission", i)
             time.sleep(2)
-        print("Moving to -70")
+        logging.info("Moving to -70")
         self.set_position("emission", -70)
-        
+
     def move_tray_to_nearest(self):
         smallest_diff = 360
         next_pos = 0
@@ -300,7 +313,7 @@ class Goniometer:
                 smallest_diff = diff
                 next_pos = val
         self.set_position("sample tray", self.tray_angle_to_tray_pos(next_pos))
-        
+
     def update_position(self):
         for name in self.motors:
             self.motors[name]["motor"].update_position(3)

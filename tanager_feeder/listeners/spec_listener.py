@@ -132,8 +132,9 @@ class SpecListener(Listener):
                     self.locked = True
                     self.queue.append(cmd + "&".join(params))
                     self.locked = False
-                    # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@adding to queue")
-                    # print(cmd + "&".join(params)[0:100])
+            elif "failedtosavefile" in cmd:
+                print("Failed to save file in spec listener")
+                self.queue.append("failedtosavefile") #Not getting heard in spectrum_handler
 
             else:
                 self.queue.append(cmd + "&".join(params))

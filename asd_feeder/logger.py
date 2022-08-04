@@ -4,7 +4,7 @@ class Logger:
     def __init__(self):
         self.logfile = ""
 
-    def log_spectrum(self, numspectra, i, e, az, filename, label):
+    def log_spectrum(self, numspectra, i, e, az, filename, calfile, label):
         if label == "GARBAGE":  # These are about to be deleted. No need to log them.
             return
 
@@ -22,7 +22,9 @@ class Logger:
             + e
             + "\n\taz: "
             + az
-            + "\n\tfilename: "
+            + "\n\tSpectralon calibration: "
+            + calfile
+            + "\n\tData file: "
             + filename
             + "\n\tLabel: "
             + label

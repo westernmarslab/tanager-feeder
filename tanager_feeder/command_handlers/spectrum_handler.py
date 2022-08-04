@@ -18,6 +18,7 @@ class SpectrumHandler(TriggerRestartHandler):
                 self.timeout("take spectrum")
 
             if "failedtosavefile" in self.listener.queue:
+                print("failed to save file found!")
                 self.timeout("take spectrum")
                 return
 
@@ -71,10 +72,11 @@ class SpectrumHandler(TriggerRestartHandler):
 
             time.sleep(utils.INTERVAL)
             self.timeout_s -= utils.INTERVAL
-
+        print("spectrum_handler timeout")
         self.timeout("take spectrum")
 
     def timeout(self, operation_string):
+        print("Timeout")
         self.controller.overwrite_next = True
         super().timeout(operation_string)
 
@@ -120,7 +122,9 @@ class SpectrumHandler(TriggerRestartHandler):
             + str(self.controller.science_e)
             + "\n\taz: "
             + str(self.controller.science_az)
-            + "\n\tfilename: "
+            + "\n\tCalibration file: "
+            + self.controller.calfile
+            + "\n\tData file: "
             + self.controller.spec_save_path
             + "\\"
             + self.controller.spec_basename

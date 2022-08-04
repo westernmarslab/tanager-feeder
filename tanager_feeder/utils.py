@@ -90,6 +90,7 @@ class ConnectionManager:
     def send_to_spec(self, message: str, connect_timeout=5) -> bool:
         if self.spec_offline:
             self.connect_spec(connect_timeout)
+
         if not self.spec_offline:
             sent = self.spec_client.send(message)
             if not sent:

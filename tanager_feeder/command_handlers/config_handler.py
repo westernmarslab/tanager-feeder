@@ -8,7 +8,7 @@ class ConfigHandler(GetPositionHandler):
         controller,
         title: str = "Configuring pi...",
         label: str = "Configuring pi based on input\ngoniometer position...",
-        timeout: int = utils.PI_BUFFER + 60,
+        timeout: int = utils.PI_BUFFER + 80,
     ):
         super().__init__(controller, title, label, timeout)
         self.success_message = "piconfigsuccess"

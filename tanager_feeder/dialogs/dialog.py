@@ -74,7 +74,7 @@ class Dialog:
         try:
             self.__label.config(fg=self.tk_format.textcolor, text=newlabel)
         except TclError:
-            print("Could not set label.")
+            pass
         if log_string is not None and self.controller is not None:
             self.controller.log(log_string)
 
