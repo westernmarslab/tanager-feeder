@@ -67,18 +67,24 @@ class MotionHandler(CommandHandler):
 
     def success(self):
         if "emission" in self.label:
-            self.controller.angles_change_time = time.time()
-            self.controller.science_e = self.destination
-            self.controller.log(
-                "Goniometer moved to an emission angle of " + str(self.controller.science_e) + " degrees."
-            )
+            if self.steps:
+                self.controller.log(f"Emission arm moved {self.destination} steps.")
+            else:
+                self.controller.angles_change_time = time.time()
+                self.controller.science_e = self.destination
+                self.controller.log(
+                    "Goniometer moved to an emission angle of " + str(self.controller.science_e) + " degrees."
+                )
 
         elif "incidence" in self.label:
-            self.controller.angles_change_time = time.time()
-            self.controller.science_i = self.destination
-            self.controller.log(
-                "Goniometer moved to an incidence angle of " + str(self.controller.science_i) + " degrees."
-            )
+            if self.steps:
+                self.controller.log(f"Incidence arm moved {self.destination} steps.")
+            else:
+                self.controller.angles_change_time = time.time()
+                self.controller.science_i = self.destination
+                self.controller.log(
+                    "Goniometer moved to an incidence angle of " + str(self.controller.science_i) + " degrees."
+                )
 
         elif "azimuth" in self.label:
             self.controller.angles_change_time = time.time()
