@@ -1,3 +1,4 @@
+import logging
 from threading import Thread
 import time
 from typing import List
@@ -180,6 +181,7 @@ class Motor:
                     if switch.get_tripped():
                         self.backward(10, False)
                         self.switch_tripped = True
+                        logging.info(f"{switch.name} tripped while moving forward.")
                         raise SwitchTrippedException()
                         return
 
@@ -204,6 +206,7 @@ class Motor:
                     if switch.get_tripped():
                         self.forward(10, False)
                         self.switch_tripped = True
+                        logging.info(f"{switch.name} tripped while moving backward.")
                         raise SwitchTrippedException()
                         return
             if i < steps - 30:
