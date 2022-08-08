@@ -107,8 +107,10 @@ class PiController:
 
                 if cmd == "movetray":
                     if "steps" in params:
+                        current_position = self.goniometer.motors["sample tray"]["motor"].position_degrees
                         steps = int(params[0])
                         self.goniometer.motors["sample tray"]["motor"].move_steps(steps)
+                        self.goniometer.motors["sample tray"]["motor"].configure(current_position)
                         filename = self.encrypt("donemovingtray")
                     else:
                         status = self.goniometer.set_position("sample tray", params[0])
@@ -120,8 +122,10 @@ class PiController:
 
                 elif cmd == "moveemission":
                     if "steps" in params:
+                        current_position = self.goniometer.motors["emission"]["motor"].position_degrees
                         steps = int(params[0])
                         self.goniometer.motors["emission"]["motor"].move_steps(steps)
+                        self.goniometer.motors["emission"]["motor"].configure(current_position)
                         filename = self.encrypt("donemovingemission")
                     else:
                         if self.goniometer.emission == None:
@@ -136,8 +140,10 @@ class PiController:
 
                 elif cmd == "moveincidence":
                     if "steps" in params:
+                        current_position = self.goniometer.motors["incidence"]["motor"].position_degrees
                         steps = int(params[0])
                         self.goniometer.motors["incidence"]["motor"].move_steps(steps)
+                        self.goniometer.motors["incidence"]["motor"].configure(current_position)
                         filename = self.encrypt("donemovingincidence")
                     else:
                         if self.goniometer.incidence == None:
