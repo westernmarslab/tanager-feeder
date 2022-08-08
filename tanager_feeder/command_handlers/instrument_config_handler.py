@@ -10,7 +10,7 @@ class InstrumentConfigHandler(CommandHandler):
         controller,
         title: str = "Configuring instrument...",
         label: str = "Configuring instrument...",
-        timeout: int = 30,
+        timeout: int = 100,
     ):
         self.listener = controller.spec_listener
         super().__init__(controller, title, label, timeout=timeout)
@@ -34,7 +34,8 @@ class InstrumentConfigHandler(CommandHandler):
 
     def success(self):
         self.controller.spec_config_count = int(self.controller.instrument_config_entry.get())
-
-        self.controller.log("Instrument configured to average " + str(self.controller.spec_config_count) + " spectra.")
-
+        self.controller.calfile = self.controller.target_calfile
+        self.controller.log("Instrument configured.\n"
+                            f"\tAveraging {self.controller.spec_config_count} spectra."
+                            f"\tSpectralon calibration file: {self.controller.calfile}.")
         super().success()

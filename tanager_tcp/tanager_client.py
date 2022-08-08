@@ -51,6 +51,7 @@ class TanagerClient:
         if not self.connected:
             self.locked = False
             return False
+
         # base message may be passed as string or bytes-like object
         if isinstance(base_message, (bytes, bytearray)):
             print("Message passed as bytes")
@@ -94,6 +95,7 @@ class TanagerClient:
 
             # Send a confirmation that everything went through correctly.
             self.sock.sendall("Correct".encode("utf-8"))
+
 
         except OSError:
             import traceback
