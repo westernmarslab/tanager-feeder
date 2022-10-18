@@ -721,6 +721,7 @@ class CommandInterpreter:
                         nextfile = None
                         nextnote = None
                     line = log.readline()
+
                 if len(labels) != 0:
                     data_lines = []
                     with open(datafile, "r") as data:
@@ -771,39 +772,39 @@ class CommandInterpreter:
                         for line in data_lines:
                             data.write(line + "\n")
 
-                # Now reformat data to fit WWU spectral library format.
-                data = []
-                metadata = [
-                    "Database of origin:,Western Washington University Planetary Spectroscopy Lab",
-                    "Sample Name",
-                    "Viewing Geometry",
-                ]
+                    # Now reformat data to fit WWU spectral library format.
+                    data = []
+                    metadata = [
+                        "Database of origin:,Western Washington University Planetary Spectroscopy Lab",
+                        "Sample Name",
+                        "Viewing Geometry",
+                    ]
 
-                for i, line in enumerate(data_lines):
-                    if i == 0:
-                        headers = line.split("\t")
-                        headers[-1] = headers[-1].strip("\n")
-                        for i, header in enumerate(headers):
-                            if i == 0:
-                                continue
-                            # If sample names and geoms were read successfully from logfile, this should always
-                            # work fine. But in case logfile is missing or badly formatted, don't break, just don't
-                            # have geom info either.
-                            try:
-                                sample_name = header.split("(")[0]
-                            except:
-                                sample_name = header
-                            try:
-                                geom = header.split("(")[1].strip(")")
-                            except:
-                                geom = ""
-                            metadata[1] += "," + sample_name
-                            metadata[2] += "," + geom
-                        metadata.append("")
-                        metadata.append("Wavelength")
+                    for i, line in enumerate(data_lines):
+                        if i == 0:
+                            headers = line.split("\t")
+                            headers[-1] = headers[-1].strip("\n")
+                            for i, header in enumerate(headers):
+                                if i == 0:
+                                    continue
+                                # If sample names and geoms were read successfully from logfile, this should always
+                                # work fine. But in case logfile is missing or badly formatted, don't break, just don't
+                                # have geom info either.
+                                try:
+                                    sample_name = header.split("(")[0]
+                                except:
+                                    sample_name = header
+                                try:
+                                    geom = header.split("(")[1].strip(")")
+                                except:
+                                    geom = ""
+                                metadata[1] += "," + sample_name
+                                metadata[2] += "," + geom
+                            metadata.append("")
+                            metadata.append("Wavelength")
 
-                    else:
-                        data.append(line.replace("\t", ","))
+                        else:
+                            data.append(line.replace("\t", ","))
 
                 with open(datafile, "w+") as file:
                     for line in metadata:
