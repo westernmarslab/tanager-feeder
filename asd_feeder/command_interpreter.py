@@ -484,6 +484,7 @@ class CommandInterpreter:
                 self.process_controller.reset()
                 utils.send(self.client, "processerror", [])
                 traceback.print_exc()
+                print("Sent processerror back to control compy")
                 return
 
 
@@ -568,11 +569,14 @@ class CommandInterpreter:
                         expected = final_datafile.split(self.spec_controller.save_dir)[1].split("\\")[1]
                         self.spec_controller.hopefully_saved_files.append(expected)
 
-                if corrected == True and logfile_for_reading is not None:
+                if corrected == True and logfile_for_reading is not None and warnings == "":
                     utils.send(self.client, "processsuccess", [])
 
-                elif logfile_for_reading is not None:
+                elif not corrected:
                     utils.send(self.client, "processsuccessnocorrection", [])
+
+                elif warnings != "":
+                    utils.send(self.client, "processsuccessnolabels", [])
 
                 else:
                     utils.send(self.client, "processsuccessnolog", [])
@@ -698,9 +702,9 @@ class CommandInterpreter:
                             nextnote = nextnote + " az=" + line.split("az: ")[-1].strip("\n") + ")"
                         except:
                             nextnote = nextnote + " az=?)"
-                    while "filename" not in line and line != "":
+                    while "filename" not in line and "Data file" not in line and line != "":
                         line = log.readline()
-                    if "filename" in line:
+                    if "filename" in line or "Data file" in line:
                         if "\\" in line:
                             line = line.split("\\")
                         else:
@@ -806,13 +810,13 @@ class CommandInterpreter:
                         else:
                             data.append(line.replace("\t", ","))
 
-                with open(datafile, "w+") as file:
-                    for line in metadata:
-                        file.write(line)
-                        file.write("\n")
-                    for line in data:
-                        file.write(line)
-                        file.write("\n")
+                    with open(datafile, "w+") as file:
+                        for line in metadata:
+                            file.write(line)
+                            file.write("\n")
+                        for line in data:
+                            file.write(line)
+                            file.write("\n")
 
                 if len(labels) == 0:
                     return "nolabels"

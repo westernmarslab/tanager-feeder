@@ -638,6 +638,7 @@ class ViewSpecProController:
         dict = self.spec.menu().get_properties()
         output_text = dict["menu_items"][3]["menu_items"]["menu_items"][1]["text"]
         self.spec.menu_select("Setup -> " + output_text)
+
         timeout = 30
         save = None
         while timeout > 0 and save == None:
