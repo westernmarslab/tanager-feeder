@@ -2,11 +2,9 @@ import RPi.GPIO as GPIO
 
 
 class LimitSwitch:
-    def __init__(self, pin: int):
+    def __init__(self, name, pin: int):
         self.pin = pin
-        self.name = "Switch 2"
-        if pin == 2:
-            self.name = "Switch 1"
+        self.name = name
             
 
         # Set pins as read only
