@@ -306,19 +306,6 @@ class Goniometer:
             self.set_position("sample tray", pos)
             time.sleep(3)
 
-    def emission_sweep(self):
-        logging.info("Moving to 70")
-        self.set_position("emission", 70)
-        time.sleep(2)
-        logging.info("Moving to -70")
-        self.set_position("emission", -70)
-        time.sleep(2)
-        for i in range(-60, 80, 10):
-            logging.info("Moving to " + str(i))
-            self.set_position("emission", i)
-            time.sleep(2)
-        logging.info("Moving to -70")
-        self.set_position("emission", -70)
 
     def move_tray_to_nearest(self):
         smallest_diff = 360
