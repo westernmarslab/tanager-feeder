@@ -47,7 +47,6 @@ class Plot:
         # If y limits for plot not specified, make the plot wide enough to display min and max values for all samples.
 
         self.axis_label_size = 17
-        self.leg_ax.patches = []
 
         if ylim is None and xlim is None:
             for i, sample in enumerate(self.samples):
@@ -186,8 +185,10 @@ class Plot:
             else:
                 self.white_ax = self.white_fig.add_subplot(self.gs[0], projection="polar")
             self.white_leg_ax = self.white_fig.add_subplot(self.gs[1])
+            self.white_leg_ax.patches = []
 
         self.leg_ax = self.fig.add_subplot(self.gs[1])
+        self.leg_ax.patches = []
         self.leg_ax.set_yticklabels([])
         self.leg_ax.set_xticklabels([])
         self.leg_ax.spines["bottom"].set_color(None)
@@ -914,9 +915,14 @@ class Plot:
         if self.white_ax.get_legend() is not None:
             self.white_ax.get_legend().remove()
 
-        self.leg_ax.patches = []
+        # Remove rectangles associated with gradient legends.
+        # leg_ax.patches = [] breaks matplotlib >= 3.5.0
+        while len(self.leg_ax.patches) > 0:
+            self.leg_ax.patches.pop()
         self.leg_ax.cla()
-        self.white_leg_ax.patches = []
+
+        while len(self.white_leg_ax.patches) > 0:
+            self.white_leg_ax.patches.pop()
         self.white_leg_ax.cla()
 
         if legend_style == "Full list":
@@ -932,13 +938,14 @@ class Plot:
                 with plt.style.context(("default")):
                     self.white_ax.legend(bbox_to_anchor=(self.legend_anchor * 1.2, 0.85), loc=1, borderaxespad=0.0)
         else:
+            print("Gradient")
             self.leg_ax.set_visible(True)
             self.white_leg_ax.set_visible(True)
 
             left = 0.08
             bottom = 0.01
             width = 0.25
-            buffer_per_sample = 0.05
+            buffer_per_sample = 0.07
             num_samples_plotted = len(self.legend_labels.keys())
             total_buffer = buffer_per_sample * (num_samples_plotted - 1)
             sample_height = (
@@ -950,7 +957,7 @@ class Plot:
                 if num_samples_plotted == 1:
                     fontsize = 14
                 elif num_samples_plotted == 2:
-                    fontsize = 14
+                    fontsize = 11
                     left = 0.05
                 else:
                     fontsize = 8
@@ -1099,3 +1106,6 @@ class Plot:
                 )
                 self.white_leg_ax.add_patch(p)
                 bottom += buffer_per_sample
+
+        self.fig.canvas.draw()
+        self.white_fig.canvas.draw()
