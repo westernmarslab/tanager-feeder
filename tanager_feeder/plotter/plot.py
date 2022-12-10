@@ -47,6 +47,7 @@ class Plot:
         # If y limits for plot not specified, make the plot wide enough to display min and max values for all samples.
 
         self.axis_label_size = 17
+        self.leg_ax.patches = []
 
         if ylim is None and xlim is None:
             for i, sample in enumerate(self.samples):
