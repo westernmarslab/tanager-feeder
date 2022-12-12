@@ -185,10 +185,8 @@ class Plot:
             else:
                 self.white_ax = self.white_fig.add_subplot(self.gs[0], projection="polar")
             self.white_leg_ax = self.white_fig.add_subplot(self.gs[1])
-            self.white_leg_ax.patches = []
 
         self.leg_ax = self.fig.add_subplot(self.gs[1])
-        self.leg_ax.patches = []
         self.leg_ax.set_yticklabels([])
         self.leg_ax.set_xticklabels([])
         self.leg_ax.spines["bottom"].set_color(None)
