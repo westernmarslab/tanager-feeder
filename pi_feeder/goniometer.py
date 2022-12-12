@@ -45,7 +45,7 @@ class Goniometer:
                 "motor": motor.Motor(
                     "Azimuth",
                     [27, 17],
-                    [limit_switch.LimitSwitch(2), limit_switch.LimitSwitch(3)],
+                    [limit_switch.LimitSwitch("Switch 1", 2), limit_switch.LimitSwitch("Switch 2", 3)],
                     1.11,  # 800 steps/rev
                     0.007,
                     encoder.AMT212ARotaryEncoder(port="/dev/ttyUSB0", encoder_base=0x50, zero_position=az_zero),
@@ -162,15 +162,23 @@ class Goniometer:
         )
 
     def set_position(self, motor_name, target):
+        if motor_name == "azimuth":
+            logging.info(f"start position: {self.motors[motor_name]['motor'].position_degrees}")
+        logging.info(f"goniometer.set_position({motor_name}, {target})")
+
         self.motors[motor_name]["motor"].kill_now = False
         self.motors[motor_name]["motor"].update_position(3)
         motor_angle, motor_turns = self.motors[motor_name]["position conversion"](target)
 
         if motor_name == "azimuth":
+            logging.info("Setting full turns")
             self.motors[motor_name]["motor"].set_full_turns(motor_turns)  # limit switches prevent catastrophe
+            logging.info("Done")
 
         last_distance, _ = self.motors[motor_name]["motor"].get_distance_and_direction(motor_angle)
         thread = Thread(target=self.motors[motor_name]["motor"].move_to_angle, args=(motor_angle,))
+        if motor_name == "azimuth":
+            logging.info("Setting angle")
         thread.start()
 
         while thread.is_alive():
@@ -189,8 +197,16 @@ class Goniometer:
                     self.motors[motor_name]["motor"].kill_now = True
                     return {"complete": False, "position": self.motors[motor_name]["motor"].position_degrees}
 
+                #Debugging code - possibly should be deleted
+                if self.motors[motor_name]["motor"].switch_tripped:
+                    self.motors[motor_name]["motor"].switch_tripped = False
+                    logging.info("Catching switch in move_to_angle")
+                    raise motor.SwitchTrippedException
+
             last_distance = updated_distance
         thread.join()
+        if motor_name == "azimuth":
+            logging.info("Done setting angle")
         # If the azimuth motor hits a homing switch midway through the switch will be tripped.
         # This is caught and reported up in listen()
         if self.motors[motor_name]["motor"].switch_tripped:
@@ -219,6 +235,7 @@ class Goniometer:
         self.motors["sample tray"]["motor"].configure(tray_angle)
 
     def home_azimuth(self, direction=motor.Motor.BACKWARD):
+        logging.info("Homing azimuth.")
         current_i = self.incidence
         reset_i = False
         if self.incidence <= -60:

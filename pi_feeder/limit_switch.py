@@ -2,8 +2,10 @@ import RPi.GPIO as GPIO
 
 
 class LimitSwitch:
-    def __init__(self, pin: int):
+    def __init__(self, name, pin: int):
         self.pin = pin
+        self.name = name
+            
 
         # Set pins as read only
         GPIO.setmode(GPIO.BCM)
