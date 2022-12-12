@@ -510,7 +510,7 @@ class PlotSettingsManager:
             legend_menu.configure(width=max_len, highlightbackground=self.tk_format.highlightbackgroundcolor)
             legend_menu.pack(side=LEFT)
             legend_button = Button(
-                legend_legend_frame,
+                legend_frame,
                 text="Apply",
                 command=self.set_legend,
                 width=6,
@@ -523,7 +523,7 @@ class PlotSettingsManager:
                 highlightbackground=self.tk_format.highlightbackgroundcolor,
                 bg=self.tk_format.buttonbackgroundcolor,
             )
-            legend_button.pack(side=LEFT, padx=(5, 5), pady=(5, 3))
+            legend_button.pack()
 
     def select_tab(self) -> None:
         self.controller.view_notebook.select(self.tab.top)
