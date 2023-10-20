@@ -8,6 +8,7 @@ import numpy as np
 from tanager_feeder.plotter.sample import Sample
 from tanager_feeder.plotter.plot import Plot
 from tanager_feeder.plotter.hemisphere_plotter import HemispherePlotter
+from tanager_feeder.dialogs.error_dialog import ErrorDialog
 
 from tanager_feeder import utils
 
@@ -182,7 +183,39 @@ class Tab:
 
         headers = self.plot.visible_data_headers
         data = self.plot.visible_data
-        headers = (",").join(headers)
+
+        for i, header in enumerate(headers):
+            if headers[i] == "wavelength":
+                headers[i] = "Wavelength"
+        data, headers = self.remove_duplicate_x_axis_columns(data, headers)
+
+        expanded_headers = {
+            "Database of origin:": ["Western Washington University Planetary Spectroscopy Lab"],
+            "Sample Name": [],
+            "Viewing Geometry": [],
+            "": [],
+            headers[0]: [],
+        }
+        for i, header in enumerate(headers):
+            if i == 0:
+                continue
+            else:
+                if header == headers[0] or header in ["incidence", "slope"]: # headers for colormaps
+                    expanded_headers[headers[0]].append(header)
+                    expanded_headers["Sample Name"].append("")
+                    expanded_headers["Viewing Geometry"].append("")
+                    expanded_headers[""].append("")
+                else:
+                    expanded_headers[headers[0]].append("")
+                    expanded_headers["Sample Name"].append(header.split(" (i=")[0])
+                    try:
+                        expanded_headers["Viewing Geometry"].append(f"i={header.split(' (i=')[1][0:-1]}")
+                    except:
+                        print(f"Error procesing header: {header}")
+                        expanded_headers["Viewing Geometry"].append("")
+                    expanded_headers[""].append("")
+            if i > 1:
+                expanded_headers["Database of origin:"].append("")
 
         # data=np.transpose(data) doesn't work if not all columns are same length
         data_lines = []
@@ -198,15 +231,49 @@ class Tab:
                     data_lines[j] += "," + str(val)
                 else:
                     data_lines.append(str(val))
-                j = j + 1
+                j += 1
             while j < max_len:
-                data_lines[j] += ","
+                if j < len(data_lines):
+                    data_lines[j] += ","
+                else:
+                    data_lines.append(",")
                 j += 1
 
-        with open(path, "w+") as f:
-            f.write(headers + "\n")
-            for line in data_lines:
-                f.write(line + "\n")
+        try:
+            with open(path, "w+") as f:
+                for key in expanded_headers:
+                    f.write(f"{key},{(',').join(expanded_headers[key])}\n")
+                for line in data_lines:
+                    f.write(line + "\n")
+        except PermissionError:
+            print(f"Permission error for path {path}")
+            ErrorDialog(self.plotter.controller, "Permission Error", f"Permission error for path\n\n{path}")
+
+    def remove_duplicate_x_axis_columns(self, data, headers):
+        x_axis_values = data[0]
+        i = 1 # Always keep the first x_axis values in column 0
+        while i < len(data):
+            col = data[i]
+            if headers[i] == headers[0]:
+                duplicate = True
+                for j, val in enumerate(col):
+                    if j >= len(x_axis_values) or x_axis_values[j] != val:
+                        # All columns to the right of the last saved x_axis column should have data that
+                        # corresponds to those x_axis values.
+
+                        duplicate = False
+                # If the x_axis column is exactly the same as the most recently printed wavelengths column,
+                # remove it.
+                if duplicate:
+                    data.pop(i)
+                    headers.pop(i)
+                    i = i - 1
+                else:
+                    x_axis_values = col
+
+            i = i + 1
+
+        return data, headers
 
     def save_dark(self):
         self.white_canvas.get_tk_widget().pack_forget()
@@ -1257,7 +1324,7 @@ class Tab:
                             geom, sample.data[geom]["reflectance"], sample.data[geom]["wavelength"]
                         )
                 except (IndexError, KeyError):  # If there's no geometry information, plot the sample.
-                    print("plotting spectrum with invalid geometry information")
+                    print("Warning: Plotting spectrum with invalid geometry information")
                     winnowed_sample.add_spectrum(
                         geom, sample.data[geom]["reflectance"], sample.data[geom]["wavelength"]
                     )

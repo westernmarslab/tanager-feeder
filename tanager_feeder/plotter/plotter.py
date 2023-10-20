@@ -36,7 +36,7 @@ class Plotter(DataIO):
     def get_path(self):
         initialdir = self.save_dir
         if initialdir is not None:
-            print("initial dir set to " + self.save_dir)
+            print("Default save directory set to " + self.save_dir)
             path = filedialog.asksaveasfilename(initialdir=initialdir)
         else:
             path = filedialog.asksaveasfilename()
@@ -46,7 +46,6 @@ class Plotter(DataIO):
             self.save_dir = "\\".join(path.split("\\")[0:-1])
         elif "/" in path:
             self.save_dir = "/".join(path.split("/")[0:-1])
-        print("return")
         return path
 
     def notebook_click(self, event):
@@ -76,8 +75,7 @@ class Plotter(DataIO):
                 try:
                     self.titles.remove(name)
                 except IndexError:
-                    print(name)
-                    print("NOT IN TITLES!")
+                    print(f"Warning: {name} not in titles.")
                 self.notebook.event_generate("<<NotebookTabClosed>>")
 
     # This capitalizes Xs for closing tabs when you hover over them.

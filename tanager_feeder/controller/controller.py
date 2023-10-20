@@ -249,13 +249,14 @@ class Controller(utils.ControllerType):
                 audio_config.write("0")
                 self.audio_signals = 0
 
-        try:
-            with open(self.config_info.local_config_loc + "calfile_config.txt", "r") as calfile_config:
-                self.target_calfile = calfile_config.readline().strip("\n")
-        except (OSError, ValueError):
-            with open(self.config_info.local_config_loc + "calfile_config.txt", "w+") as calfile_config:
-                calfile_config.write('3" Puck')
-                self.target_calfile = '3" Puck'
+        self.target_calfile = '3" Puck' # default to 3" Puck every time - don't check what was last used.
+        # try:
+        #     with open(self.config_info.local_config_loc + "calfile_config.txt", "r") as calfile_config:
+        #         self.target_calfile = calfile_config.readline().strip("\n")
+        # except (OSError, ValueError):
+        #     with open(self.config_info.local_config_loc + "calfile_config.txt", "w+") as calfile_config:
+        #         calfile_config.write('3" Puck')
+        #         self.target_calfile = '3" Puck'
 
         print(self.config_info.local_config_loc)
 
@@ -542,8 +543,6 @@ class Controller(utils.ControllerType):
             bg=self.tk_format.bg,
         )
         self.calfile_label.pack(side=LEFT, padx=(20, 0))
-        print(self.target_calfile)
-        print(self.target_calfile_str_var.get())
 
         self.calfile_menu = OptionMenu(
             self.calfile_frame,

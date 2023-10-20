@@ -544,8 +544,13 @@ class Plot:
                     color = sample.next_color()
                     white_color = sample.next_white_color()
 
-                    if self.x_axis != "theta":
+                    if self.x_axis != "theta" or True:
                         self.visible_data_headers.append(self.x_axis)
+                        if sample.name in legend_label:
+                            self.visible_data_headers.append(legend_label)
+                        else:
+                            # For export formatting, add sample name back in and remove leading whitespace before i=
+                            self.visible_data_headers.append(f"{sample.name} ({legend_label[1:]})")
                         self.visible_data.append(sample.data[label][self.x_axis])
 
                     if (
@@ -584,8 +589,6 @@ class Plot:
                                 else:
                                     self.lines.append(self.ax.plot(w_2, r_2, ".", color=color, linewidth=2))
                                 self.lines.append(self.ax.plot(w_3, r_3, sample.linestyle, color=color, linewidth=2))
-
-                                self.visible_data_headers.append(legend_label)
                                 self.visible_data.append(list(r_1) + list(r_2) + list(r_3))
 
                                 with plt.style.context("default"):
@@ -623,7 +626,6 @@ class Plot:
                                         linewidth=2,
                                     )
                                 )
-                                self.visible_data_headers.append(legend_label)
                                 self.visible_data.append(reflectance)
 
                                 with plt.style.context("default"):
@@ -664,8 +666,6 @@ class Plot:
                                         markersize=5,
                                     )
                                 )
-
-                            self.visible_data_headers.append(legend_label)
                             self.visible_data.append(reflectance)
 
                             with plt.style.context("default"):
@@ -695,7 +695,6 @@ class Plot:
                     elif self.x_axis == "g":
                         self.markers_drawn = True
                         self.lines_drawn = False
-                        self.visible_data_headers.append(legend_label)
                         self.visible_data.append(sample.data[label][self.y_axis])
 
                         self.lines.append(
@@ -708,8 +707,7 @@ class Plot:
                                 markersize=6,
                             )
                         )
-                        # self.lines.append(self.ax.plot(sample.data[label][self.x_axis],
-                        # sample.data[label][self.y_axis],label=legend_label,color=color, markersize=6))
+
                         with plt.style.context("default"):
                             self.lines.append(
                                 self.white_ax.plot(
@@ -721,14 +719,14 @@ class Plot:
                                     markersize=6,
                                 )
                             )
-                            # self.lines.append(self.white_ax.plot(sample.data[label][self.x_axis],
-                            # sample.data[label][self.y_axis], label=legend_label,color=white_color, markersize=6))
+
                     elif self.x_axis == "theta":
                         self.markers_drawn = True
                         self.lines_drawn = False
                         theta = sample.data[label]["e"]
                         theta = np.array(theta) * -1 * 3.14159 / 180 + 3.14159 / 2
                         r = sample.data[label][self.y_axis]
+                        self.visible_data.append(r)
                         if (
                             j == 0 and k == 0
                         ):  # If this is the first line we are plotting, we'll need to create the polar axis.
@@ -797,6 +795,7 @@ class Plot:
                             self.ax.set_thetagrids(
                                 np.arange(0, 180.1, 30), labels=["90", "60", "30", "0", "-30", "-60", "-90"]
                             )
+                            # self.ax.set_ylabel("")
 
                             with plt.style.context("default"):
                                 self.white_ax.set_ylim(min_r - delta / 10, max_r + delta / 10)
@@ -806,8 +805,8 @@ class Plot:
                                     np.arange(0, 180.1, 30), labels=["90", "60", "30", "0", "-30", "-60", "-90"]
                                 )
                                 self.white_ax.tick_params(axis="both", colors="black")
+                                # self.white_ax.set_ylabel("")
                     else:
-                        self.visible_data_headers.append(legend_label)
                         self.visible_data.append(sample.data[label][self.y_axis])
                         self.markers_drawn = True
                         self.lines.append(
@@ -863,6 +862,10 @@ class Plot:
             self.ax.set_ylabel("Band Depth", fontsize=self.axis_label_size)
             with plt.style.context("default"):
                 self.white_ax.set_ylabel("Band Depth", fontsize=self.axis_label_size)
+        if self.x_axis == "theta":  # override / delete y label, which will be in the title
+            self.ax.set_ylabel("")
+            with plt.style.context("default"):
+                self.white_ax.set_ylabel("")
 
         if self.x_axis == "wavelength":
             self.ax.set_xlabel("Wavelength (nm)", fontsize=self.axis_label_size)
@@ -936,7 +939,6 @@ class Plot:
                 with plt.style.context(("default")):
                     self.white_ax.legend(bbox_to_anchor=(self.legend_anchor * 1.2, 0.85), loc=1, borderaxespad=0.0)
         else:
-            print("Gradient")
             self.leg_ax.set_visible(True)
             self.white_leg_ax.set_visible(True)
 
