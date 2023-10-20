@@ -48,8 +48,11 @@ class SpecCompyController:
         while True:
             run_time += 0.25
 
-            with open(os.path.join(self.temp_data_loc, "watchdog"), "w+") as f:
-                pass # This file is looked for by the watchdog.
+            try:
+                with open(os.path.join(self.temp_data_loc, "watchdog"), "w+") as f:
+                    pass # This file is looked for by the watchdog.
+            except PermissionError:
+                print("Warning: Permission error replacing watchdog file.")
 
             # check connectivity with spectrometer
             connected = self.spec_controller.check_connectivity()
