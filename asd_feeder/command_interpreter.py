@@ -187,7 +187,15 @@ class CommandInterpreter:
         try:
             with open(source, "r") as file:
                 data = file.readlines()
-                batch_size = 100
+                if len(data[10]) < 5000:
+                    print("Smallish!")
+                    batch_size = 100
+                elif len(data[10]) < 10000:
+                    print("Biggish!")
+                    batch_size = 50
+                else:
+                    print("Big!")
+                    batch_size = 10
                 utils.send(self.client, f"datatransferstarted{len(data)/batch_size}", [])
 
                 batch = 0
@@ -508,7 +516,6 @@ class CommandInterpreter:
                         )  # applies a correction based on measured BRDF for spectralon
                         corrected = True
                     except Exception as e:
-                        raise e
                         traceback.print_exc()
                         print("Warning! correction not applied")
                 else:
