@@ -77,9 +77,6 @@ class CommandInterpreter:
             utils.send(self.client, "savespecfailedfileexists", [])
             return
 
-        # After saving a spectrum, the spec_controller updates its list of expected files to include
-        # one more. Wait for this number to change before moving on.
-        # old=len(spec_controller.hopefully_saved_files)
         try:
             self.spec_controller.take_spectrum(filename)
         except:
@@ -89,7 +86,7 @@ class CommandInterpreter:
 
         # Now wait for the data file to turn up where it belongs.
         saved = False
-        timeout = int(self.spec_controller.numspectra)
+        timeout = int(self.spec_controller.numspectra) * 2
         while (
             timeout > 0 and saved is False
         ):  # Depending on the number of spectra we are averaging, this might take a while.
@@ -98,12 +95,9 @@ class CommandInterpreter:
             timeout -= 0.2
 
         if saved:
-            print("Going to log!")
-            print(self.spec_controller.numspectra)
-            print(self.spec_controller.calfile)
             self.logger.log_spectrum(self.spec_controller.numspectra, i, e, az, filename, self.spec_controller.calfile, label)
             utils.send(self.client, "savedfile", [filename])
-            print("Done")
+            print("Spectrum saved")
         else:
             self.spec_controller.hopefully_saved_files.pop(-1)
             self.spec_controller.nextnum = str(int(self.spec_controller.nextnum) - 1)
@@ -193,7 +187,15 @@ class CommandInterpreter:
         try:
             with open(source, "r") as file:
                 data = file.readlines()
-                batch_size = 100
+                if len(data[10]) < 5000:
+                    print("Smallish!")
+                    batch_size = 100
+                elif len(data[10]) < 10000:
+                    print("Biggish!")
+                    batch_size = 50
+                else:
+                    print("Big!")
+                    batch_size = 10
                 utils.send(self.client, f"datatransferstarted{len(data)/batch_size}", [])
 
                 batch = 0
@@ -514,7 +516,6 @@ class CommandInterpreter:
                         )  # applies a correction based on measured BRDF for spectralon
                         corrected = True
                     except Exception as e:
-                        raise e
                         traceback.print_exc()
                         print("Warning! correction not applied")
                 else:

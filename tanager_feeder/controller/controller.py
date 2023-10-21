@@ -2432,6 +2432,9 @@ class Controller(utils.ControllerType):
         if len(self.incidence_entries) == 1:
             self.geometry_removal_buttons[0].pack_forget()
 
+        self.control_frame.min_height -= 30
+        self.control_frame.update()
+
     def add_geometry(self):
         try:
             self.add_geometry_button.pack_forget()
@@ -2551,6 +2554,9 @@ class Controller(utils.ControllerType):
         if len(self.incidence_entries) > 10:
             self.add_geometry_button.configure(state=DISABLED)
         self.add_geometry_button.pack(pady=(15, 10))
+
+        self.control_frame.min_height += 30
+        self.control_frame.update()
 
     def configure_pi(self, i: Optional[float] = None, e: Optional[float] = None, pos: Optional[int] = None):
         if i is None:
