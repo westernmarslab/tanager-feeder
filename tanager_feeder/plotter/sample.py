@@ -14,14 +14,13 @@ class Sample:
         self.linestyle = "-"
         self.markerstyle = "o"
         self.colors = None
+        self.hue = None
         self.white_colors = None
         self.index = None
         self.white_index = None
 
     def add_spectrum(self, geom, reflectance, wavelengths):
         self.geoms.append(geom)
-        i, e, az = utils.get_i_e_az(geom)
-        self.phase_angles.append(utils.get_phase_angle(i, e, az))
         self.data[geom] = {"reflectance": reflectance, "wavelength": wavelengths}
 
     def set_linestyle(self, linestyle):
@@ -44,8 +43,20 @@ class Sample:
 
     # generate a list of hex colors that are evenly distributed from dark to light across a single hue.
     def set_colors(self, hue):
-
+        self.hue = hue
         if len(self.geoms) > 3:
+            self.phase_angles = []
+            dummy_phase = 0
+            for geom in self.geoms:
+                print("next")
+                print(self.phase_angles)
+                i, e, az = utils.get_i_e_az(geom)
+                if i and e:
+                    g = utils.get_phase_angle(i, e, az)
+                    self.phase_angles.append(g)
+                else:
+                    self.phase_angles.append(dummy_phase)  # dummy value
+
             N = len(self.geoms) / 2
             if len(self.geoms) % 2 != 0:
                 N += 1
@@ -115,7 +126,13 @@ class Sample:
 
     def next_color(self):
         self.index += 1
-        self.index = self.index % len(self.colors)
+        try:
+            self.index = self.index % len(self.colors)
+        except ZeroDivisionError:
+            print(self.index)
+            print(self.hue)
+            print(self.colors)
+            print(self.geoms)
         return self.colors[self.index]
 
     def next_white_color(self):

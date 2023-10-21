@@ -415,6 +415,7 @@ class Tab:
                 if i_geom not in incidence_sample.data:
                     incidence_sample.data[i_geom] = {"e": [], "az": [], "theta": [], "g": [], "average reflectance": []}
                     incidence_sample.geoms.append(i_geom)
+
                 if e_geom not in emission_sample.data:
                     emission_sample.data[e_geom] = {"i": [], "average reflectance": []}
                     emission_sample.geoms.append(e_geom)
@@ -432,6 +433,8 @@ class Tab:
                 self.contour_sample.data["all samples"]["average reflectance"].append(avg)
 
                 avgs.append(str(geom) + ": " + str(avg))
+            emission_sample.set_colors(sample.hue)
+            incidence_sample.set_colors(sample.hue)
             self.emission_samples.append(emission_sample)
             self.incidence_samples.append(incidence_sample)
         self.plot.draw_vertical_lines([left, right])
