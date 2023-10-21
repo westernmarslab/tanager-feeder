@@ -1,5 +1,6 @@
 import colorutils
 import numpy as np
+from tanager_feeder import utils
 
 
 class Sample:
@@ -9,6 +10,7 @@ class Sample:
         self.file = file
         self.data = {}
         self.geoms = []
+        self.phase_angles = []
         self.linestyle = "-"
         self.markerstyle = "o"
         self.colors = None
@@ -18,9 +20,9 @@ class Sample:
 
     def add_spectrum(self, geom, reflectance, wavelengths):
         self.geoms.append(geom)
-        self.data[geom] = {"reflectance": [], "wavelength": []}
-        self.data[geom]["reflectance"] = reflectance
-        self.data[geom]["wavelength"] = wavelengths
+        i, e, az = utils.get_i_e_az(geom)
+        self.phase_angles.append(utils.get_phase_angle(i, e, az))
+        self.data[geom] = {"reflectance": reflectance, "wavelength": wavelengths}
 
     def set_linestyle(self, linestyle):
         self.linestyle = linestyle
@@ -51,9 +53,21 @@ class Sample:
 
             hsv_tuples = [(hue, 1, x * 1.0 / N) for x in range(4, N)]
             hsv_tuples = hsv_tuples + [(hue, (N - x) * 1.0 / N, 1) for x in range(N)]
-            self.colors = []
-            for h_tuple in hsv_tuples:
-                self.colors.append(colorutils.hsv_to_hex(h_tuple))
+
+            sorted_phase_angles = sorted(self.phase_angles)
+            final_colors = list(np.zeros(len(self.phase_angles)))
+            phase_angles_copy = self.phase_angles.copy()
+            # get colors to correspond to phase angle, light colors = high phase angles.
+            for original_color_list_index, val in enumerate(sorted_phase_angles):
+                final_color_list_index = phase_angles_copy.index(val)
+                phase_angles_copy[final_color_list_index] = -10000000  # Never choose this index again.
+                final_colors[final_color_list_index] = colorutils.hsv_to_hex(hsv_tuples[original_color_list_index])
+
+            self.colors = final_colors
+
+            # self.colors = []
+            # for h_tuple in hsv_tuples:
+            #     self.colors.append(colorutils.hsv_to_hex(h_tuple))
 
             N = N + 2
             white_hsv_tuples = [(hue, 1, x * 1.0 / N) for x in range(1, N)]
