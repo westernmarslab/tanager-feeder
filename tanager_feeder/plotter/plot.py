@@ -838,30 +838,30 @@ class Plot:
             self.ax.set_xlabel("Emission (degrees)", fontsize=self.axis_label_size)
             self.ax.set_ylabel("Incidence (degrees)", fontsize=self.axis_label_size)
             with plt.style.context(("default")):
-                self.white_ax.set_xlabel("Emission (degrees)", fontsize=self.axis_label_size)
-                self.white_ax.set_ylabel("Incidence (degrees)", fontsize=self.axis_label_size)
+                self.white_ax.set_xlabel("Emission (degrees)", fontsize=self.axis_label_size, color="black")
+                self.white_ax.set_ylabel("Incidence (degrees)", fontsize=self.axis_label_size, color="black")
         elif self.y_axis == "reflectance":
             self.ax.set_ylabel("Reflectance", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.white_ax.set_ylabel("Reflectance", fontsize=self.axis_label_size)
+                self.white_ax.set_ylabel("Reflectance", fontsize=self.axis_label_size, color="black")
         elif self.y_axis == "normalized reflectance":
             self.ax.set_ylabel("Normalized Reflectance", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.white_ax.set_ylabel("Normalized Reflectance", fontsize=self.axis_label_size)
+                self.white_ax.set_ylabel("Normalized Reflectance", fontsize=self.axis_label_size, color="black")
         elif self.y_axis == "difference":
             # pylint: disable = anomalous-backslash-in-string
             self.ax.set_ylabel("$\Delta$R", fontsize=self.axis_label_size)
             with plt.style.context("default"):
                 # pylint: disable = anomalous-backslash-in-string
-                self.white_ax.set_ylabel("$\Delta$R", fontsize=self.axis_label_size)
+                self.white_ax.set_ylabel("$\Delta$R", fontsize=self.axis_label_size, color="black")
         elif self.y_axis == "slope":
             self.ax.set_ylabel("Slope", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.white_ax.set_ylabel("Slope", fontsize=self.axis_label_size)
+                self.white_ax.set_ylabel("Slope", fontsize=self.axis_label_size, color="black")
         elif self.y_axis == "band depth":
             self.ax.set_ylabel("Band Depth", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.white_ax.set_ylabel("Band Depth", fontsize=self.axis_label_size)
+                self.white_ax.set_ylabel("Band Depth", fontsize=self.axis_label_size, color="black")
         if self.x_axis == "theta":  # override / delete y label, which will be in the title
             self.ax.set_ylabel("")
             with plt.style.context("default"):
@@ -870,19 +870,19 @@ class Plot:
         if self.x_axis == "wavelength":
             self.ax.set_xlabel("Wavelength (nm)", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.white_ax.set_xlabel("Wavelength (nm)", fontsize=self.axis_label_size)
+                self.white_ax.set_xlabel("Wavelength (nm)", fontsize=self.axis_label_size, color="black")
         elif self.x_axis == "i":
             self.ax.set_xlabel("Incidence (degrees)", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.white_ax.set_xlabel("Incidence (degrees)", fontsize=self.axis_label_size)
+                self.white_ax.set_xlabel("Incidence (degrees)", fontsize=self.axis_label_size, color="black")
         elif self.x_axis == "e":
             self.ax.set_xlabel("Emission (degrees)", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.ax.set_xlabel("Emission (degrees)", fontsize=self.axis_label_size)
+                self.white_ax.set_xlabel("Emission (degrees)", fontsize=self.axis_label_size, color="black")
         elif self.x_axis == "g":
             self.ax.set_xlabel("Phase angle (degrees)", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.white_ax.set_xlabel("Phase angle (degrees)", fontsize=self.axis_label_size)
+                self.white_ax.set_xlabel("Phase angle (degrees)", fontsize=self.axis_label_size, color="black")
 
         self.ax.tick_params(labelsize=14)
         with plt.style.context(("default")):

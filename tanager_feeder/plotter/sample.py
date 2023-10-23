@@ -10,7 +10,6 @@ class Sample:
         self.file = file
         self.data = {}
         self.geoms = []
-        self.phase_angles = []
         self.linestyle = "-"
         self.markerstyle = "o"
         self.colors = None
@@ -42,78 +41,67 @@ class Sample:
                 self.data[spec_label][y_axis] = old + offset
 
     # generate a list of hex colors that are evenly distributed from dark to light across a single hue.
+    # reorder the list such that high phase angles are light colored and small phase angles are dark.
     def set_colors(self, hue):
         self.hue = hue
-        if len(self.geoms) > 3:
-            self.phase_angles = []
-            dummy_phase = 0
-            for geom in self.geoms:
-                print("next")
-                print(self.phase_angles)
-                i, e, az = utils.get_i_e_az(geom)
-                if i and e:
-                    g = utils.get_phase_angle(i, e, az)
-                    self.phase_angles.append(g)
-                else:
-                    self.phase_angles.append(dummy_phase)  # dummy value
+        phase_angles = []
+        dummy_phase = 0
+        for geom in self.geoms:
+            i, e, az = utils.get_i_e_az(geom)
+            if i is not None and e is not None:
+                g = utils.get_phase_angle(i, e, az)
+                phase_angles.append(g)
+            else:
+                phase_angles.append(dummy_phase)  # dummy value
 
+        if len(self.geoms) > 3:
+            # Generate a list of colors to use for plots on a dark background
             N = len(self.geoms) / 2
             if len(self.geoms) % 2 != 0:
                 N += 1
             N = int(N) + 2
-
             hsv_tuples = [(hue, 1, x * 1.0 / N) for x in range(4, N)]
             hsv_tuples = hsv_tuples + [(hue, (N - x) * 1.0 / N, 1) for x in range(N)]
 
-            sorted_phase_angles = sorted(self.phase_angles)
-            final_colors = list(np.zeros(len(self.phase_angles)))
-            phase_angles_copy = self.phase_angles.copy()
-            # get colors to correspond to phase angle, light colors = high phase angles.
-            for original_color_list_index, val in enumerate(sorted_phase_angles):
-                final_color_list_index = phase_angles_copy.index(val)
-                phase_angles_copy[final_color_list_index] = -10000000  # Never choose this index again.
-                final_colors[final_color_list_index] = colorutils.hsv_to_hex(hsv_tuples[original_color_list_index])
-
-            self.colors = final_colors
-
-            # self.colors = []
-            # for h_tuple in hsv_tuples:
-            #     self.colors.append(colorutils.hsv_to_hex(h_tuple))
-
+            # Generate a list of colors to use for plots on a white background
             N = N + 2
             white_hsv_tuples = [(hue, 1, x * 1.0 / N) for x in range(1, N)]
             white_hsv_tuples = white_hsv_tuples + [(hue, (N - x) * 1.0 / N, 1) for x in range(N - 4)]
-            self.white_colors = []
-            for wh_tuple in white_hsv_tuples:
-                self.white_colors.append(colorutils.hsv_to_hex(wh_tuple))
 
-        # For small numbers of spectra, you end up with a couple extra and the first plotted are darker than you want.
+            # For small numbers of spectra, you end up with a couple extra and the first plotted are darker than you want.
         elif len(self.geoms) == 3:
-            self.colors = []
-            self.colors.append(colorutils.hsv_to_hex((hue, 1, 0.8)))  # dark spectrum
-            self.colors.append(colorutils.hsv_to_hex((hue, 0.8, 1)))
-            self.colors.append(colorutils.hsv_to_hex((hue, 0.3, 1)))  # light spectrum
+            hsv_tuples = []
+            hsv_tuples.append((hue, 1, 0.8))  # dark spectrum
+            hsv_tuples.append((hue, 0.8, 1))
+            hsv_tuples.append((hue, 0.3, 1))  # light spectrum
 
-            self.white_colors = []
-
-            self.white_colors.append(colorutils.hsv_to_hex((hue, 1, 0.6)))  # dark spectrum
-            self.white_colors.append(colorutils.hsv_to_hex((hue, 1, 0.9)))
-            self.white_colors.append(colorutils.hsv_to_hex((hue, 0.5, 1)))  # light spectrum
+            white_hsv_tuples = []
+            white_hsv_tuples.append((hue, 1, 0.6))  # dark spectrum
+            white_hsv_tuples.append((hue, 1, 0.9))
+            white_hsv_tuples.append((hue, 0.5, 1))  # light spectrum
 
         elif len(self.geoms) == 2:
-            self.colors = []
-            self.colors.append(colorutils.hsv_to_hex((hue, 1, 0.9)))  # dark spectrum
-            self.colors.append(colorutils.hsv_to_hex((hue, 0.5, 1)))
+            hsv_tuples = []
+            hsv_tuples.append((hue, 1, 0.9))  # dark spectrum
+            hsv_tuples.append((hue, 0.5, 1))
 
-            self.white_colors = []
-            self.white_colors.append(colorutils.hsv_to_hex((hue, 0.7, 1)))  # light spectrum
-            self.white_colors.append(colorutils.hsv_to_hex((hue, 1, 0.8)))  # dark spectrum
+            white_hsv_tuples = []
+            white_hsv_tuples.append((hue, 0.7, 1))  # light spectrum
+            white_hsv_tuples.append((hue, 1, 0.8))  # dark spectrum
+
         elif len(self.geoms) == 1:
-            self.colors = []
-            self.colors.append(colorutils.hsv_to_hex((hue, 1, 1)))
+            hsv_tuples = [(hue, 1, 1)]
+            white_hsv_tuples = [(hue, 1, 0.7)]
 
-            self.white_colors = []
-            self.white_colors.append(colorutils.hsv_to_hex((hue, 1, 0.7)))
+        # Order colors to correspond to phase angles. light colors = high phase angles.
+        sorted_phase_angles = sorted(phase_angles)
+        self.colors = list(np.zeros(len(phase_angles)))
+        self.white_colors = list(np.zeros(len(phase_angles)))
+        for original_color_list_index, val in enumerate(sorted_phase_angles):
+            final_color_list_index = phase_angles.index(val)
+            phase_angles[final_color_list_index] = -10000000  # Never choose this index again.
+            self.colors[final_color_list_index] = colorutils.hsv_to_hex(hsv_tuples[original_color_list_index])
+            self.white_colors[final_color_list_index] = colorutils.hsv_to_hex(white_hsv_tuples[original_color_list_index])
 
         self.index = -1
         self.white_index = -1
