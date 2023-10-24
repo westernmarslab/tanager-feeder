@@ -3,6 +3,7 @@ import time
 from tkinter import TclError
 from typing import Dict, Optional
 import os
+import time
 
 import playsound
 
@@ -33,6 +34,7 @@ class CommandHandler:
             self.controller.wait_dialog = WaitDialog(controller, title, label)
         self.wait_dialog = self.controller.wait_dialog
         self.controller.freeze()
+        self.operation_start_time_s = time.time()
 
         if len(self.controller.queue) > 1:
             buttons = {"pause": {self.pause_function: []}, "cancel_queue": {self.cancel_function: []}}
@@ -80,6 +82,11 @@ class CommandHandler:
         dialog: bool = True,
         dialog_string: str = "Error: Operation timed out.",
     ):
+        try:
+            self.controller.log_operating_hours(time.time() - self.operation_start_time_s)
+        except:
+            print("WARNING! Not logging operating hours.")
+
         if self.text_only:
             self.controller.script_failed = True
         if log_string is None:
@@ -130,7 +137,7 @@ class CommandHandler:
 
         if self.controller.audio_signals:
             sound_loc = os.path.split(os.path.split(__file__)[0])[0]
-            if "Success" in label:
+            if "Success" in label or "Ready to use automatic mode" in label:
                 playsound.playsound(os.path.join(sound_loc, "sounds\\beep.wav"))
             else:
                 playsound.playsound(os.path.join(sound_loc, "sounds\\broken.wav"))
@@ -170,6 +177,11 @@ class CommandHandler:
             )
 
     def success(self, message: str = "Success!"):
+        try:
+            self.controller.log_operating_hours(time.time() - self.operation_start_time_s)
+        except Exception as e:
+            print("WARNING! Not logging operating hours.")
+
         if len(self.controller.queue) > 0:
             self.controller.complete_queue_item()
         else:

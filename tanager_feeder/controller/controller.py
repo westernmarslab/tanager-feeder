@@ -1,3 +1,4 @@
+import datetime
 import os
 import time
 from threading import Thread
@@ -394,8 +395,10 @@ class Controller(utils.ControllerType):
             with open(self.config_info.local_config_loc + "script_config.txt", "w+") as script_config:
                 script_config.write(os.getcwd())
                 self.script_loc = os.getcwd()
-        self.notebook_frames = []
 
+        self.initialize_operating_hours_entry()
+
+        self.notebook_frames = []
         self.control_frame = VerticalScrolledFrame(self, self.notebook_frame, bg=self.tk_format.bg)
         self.control_frame.pack(fill=BOTH, expand=True)
 
@@ -2900,3 +2903,47 @@ class Controller(utils.ControllerType):
 
     def log(self, text: str, newline: Optional[bool] = True):
         self.console.log(text, newline)
+
+    def initialize_operating_hours_entry(self):
+        datestring = datetime.datetime.now()
+        operating_hours = []
+        try:
+            with open(self.config_info.local_config_loc +"operating_hours_log.txt", "r") as f:
+                for line in f.readlines():
+                    operating_hours.append(line)
+            with open(self.config_info.local_config_loc + "operating_hours_log.txt", "w") as f:
+                for line in operating_hours:
+                    f.write(line)
+                f.write(f"\nDate: {datestring}\n")
+        except OSError:
+            with open(self.config_info.local_config_loc + "operating_hours_log.txt", "w+") as f:
+                f.write(f"Date: {datestring}\n")
+
+    def log_operating_hours(self, operating_s):
+        operating_hours = []
+        try:
+            with open(self.config_info.local_config_loc +"operating_hours_log.txt", "r") as f:
+                for line in f.readlines():
+                    operating_hours.append(line)
+            with open(self.config_info.local_config_loc + "operating_hours_log.txt", "w") as f:
+                last_val = None
+                for line in operating_hours:
+                    if line == "" or line == "\n":
+                        continue
+                    elif "Date:" in line:
+                        if last_val is not None:
+                            f.write(str(last_val))
+                        f.write(f"\n{line}")
+                        last_val = None
+                    elif last_val is None:
+                        last_val = float(line)
+                    else:
+                        last_val += float(line)
+                if last_val:
+                    f.write(f"{operating_s+last_val}\n")
+                else:
+                    f.write(f"{operating_s}\n")
+        except OSError:
+            with open(self.config_info.local_config_loc + "operating_hours_log.txt", "w+") as f:
+                f.write(f"{operating_s}\n")
+
