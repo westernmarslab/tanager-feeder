@@ -500,9 +500,7 @@ class PlotSettingsManager:
                 legend_legend_frame, text="Legend style: ", bg=self.tk_format.bg, fg=self.tk_format.textcolor
             )
             legend_sample_label.pack(side=LEFT)
-
             legend_names = ["Full list", "Gradient"]
-
             self.legend_legend_var.set(legend_names[0])
 
             # pylint: disable = no-value-for-parameter

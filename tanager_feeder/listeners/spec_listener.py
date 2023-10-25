@@ -123,6 +123,9 @@ class SpecListener(Listener):
                         label="There is an untracked file in the data directory.\nDoes this belong here?\n\n"
                         + params[0],
                     )
+                    for param in params:
+                        print(param)
+                        self.controller.log(f"Warning: Unexpected file(s) in the data directory:\n{params}")
                 else:
                     for param in params:
                         print(param)
@@ -133,9 +136,7 @@ class SpecListener(Listener):
                     self.queue.append(cmd + "&".join(params))
                     self.locked = False
             elif "failedtosavefile" in cmd:
-                print("Failed to save file in spec listener")
-                self.queue.append("failedtosavefile") #Not getting heard in spectrum_handler
-
+                self.queue.append("failedtosavefile")
             else:
                 self.queue.append(cmd + "&".join(params))
 

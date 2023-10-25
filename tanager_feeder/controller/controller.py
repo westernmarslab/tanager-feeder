@@ -1,3 +1,4 @@
+import datetime
 import os
 import time
 from threading import Thread
@@ -249,13 +250,14 @@ class Controller(utils.ControllerType):
                 audio_config.write("0")
                 self.audio_signals = 0
 
-        try:
-            with open(self.config_info.local_config_loc + "calfile_config.txt", "r") as calfile_config:
-                self.target_calfile = calfile_config.readline().strip("\n")
-        except (OSError, ValueError):
-            with open(self.config_info.local_config_loc + "calfile_config.txt", "w+") as calfile_config:
-                calfile_config.write('3" Puck')
-                self.target_calfile = '3" Puck'
+        self.target_calfile = '3" Puck' # default to 3" Puck every time - don't check what was last used.
+        # try:
+        #     with open(self.config_info.local_config_loc + "calfile_config.txt", "r") as calfile_config:
+        #         self.target_calfile = calfile_config.readline().strip("\n")
+        # except (OSError, ValueError):
+        #     with open(self.config_info.local_config_loc + "calfile_config.txt", "w+") as calfile_config:
+        #         calfile_config.write('3" Puck')
+        #         self.target_calfile = '3" Puck'
 
         print(self.config_info.local_config_loc)
 
@@ -393,8 +395,10 @@ class Controller(utils.ControllerType):
             with open(self.config_info.local_config_loc + "script_config.txt", "w+") as script_config:
                 script_config.write(os.getcwd())
                 self.script_loc = os.getcwd()
-        self.notebook_frames = []
 
+        self.initialize_operating_hours_entry()
+
+        self.notebook_frames = []
         self.control_frame = VerticalScrolledFrame(self, self.notebook_frame, bg=self.tk_format.bg)
         self.control_frame.pack(fill=BOTH, expand=True)
 
@@ -542,8 +546,6 @@ class Controller(utils.ControllerType):
             bg=self.tk_format.bg,
         )
         self.calfile_label.pack(side=LEFT, padx=(20, 0))
-        print(self.target_calfile)
-        print(self.target_calfile_str_var.get())
 
         self.calfile_menu = OptionMenu(
             self.calfile_frame,
@@ -2433,6 +2435,9 @@ class Controller(utils.ControllerType):
         if len(self.incidence_entries) == 1:
             self.geometry_removal_buttons[0].pack_forget()
 
+        self.control_frame.min_height -= 30
+        self.control_frame.update()
+
     def add_geometry(self):
         try:
             self.add_geometry_button.pack_forget()
@@ -2552,6 +2557,9 @@ class Controller(utils.ControllerType):
         if len(self.incidence_entries) > 10:
             self.add_geometry_button.configure(state=DISABLED)
         self.add_geometry_button.pack(pady=(15, 10))
+
+        self.control_frame.min_height += 30
+        self.control_frame.update()
 
     def configure_pi(self, i: Optional[float] = None, e: Optional[float] = None, pos: Optional[int] = None):
         if i is None:
@@ -2895,3 +2903,47 @@ class Controller(utils.ControllerType):
 
     def log(self, text: str, newline: Optional[bool] = True):
         self.console.log(text, newline)
+
+    def initialize_operating_hours_entry(self):
+        datestring = datetime.datetime.now()
+        operating_hours = []
+        try:
+            with open(self.config_info.local_config_loc +"operating_hours_log.txt", "r") as f:
+                for line in f.readlines():
+                    operating_hours.append(line)
+            with open(self.config_info.local_config_loc + "operating_hours_log.txt", "w") as f:
+                for line in operating_hours:
+                    f.write(line)
+                f.write(f"\nDate: {datestring}\n")
+        except OSError:
+            with open(self.config_info.local_config_loc + "operating_hours_log.txt", "w+") as f:
+                f.write(f"Date: {datestring}\n")
+
+    def log_operating_hours(self, operating_s):
+        operating_hours = []
+        try:
+            with open(self.config_info.local_config_loc +"operating_hours_log.txt", "r") as f:
+                for line in f.readlines():
+                    operating_hours.append(line)
+            with open(self.config_info.local_config_loc + "operating_hours_log.txt", "w") as f:
+                last_val = None
+                for line in operating_hours:
+                    if line == "" or line == "\n":
+                        continue
+                    elif "Date:" in line:
+                        if last_val is not None:
+                            f.write(str(last_val))
+                        f.write(f"\n{line}")
+                        last_val = None
+                    elif last_val is None:
+                        last_val = float(line)
+                    else:
+                        last_val += float(line)
+                if last_val:
+                    f.write(f"{operating_s+last_val}\n")
+                else:
+                    f.write(f"{operating_s}\n")
+        except OSError:
+            with open(self.config_info.local_config_loc + "operating_hours_log.txt", "w+") as f:
+                f.write(f"{operating_s}\n")
+

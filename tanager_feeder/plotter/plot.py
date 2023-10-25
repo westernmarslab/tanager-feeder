@@ -544,8 +544,13 @@ class Plot:
                     color = sample.next_color()
                     white_color = sample.next_white_color()
 
-                    if self.x_axis != "theta":
+                    if self.x_axis != "theta" or True:
                         self.visible_data_headers.append(self.x_axis)
+                        if sample.name in legend_label:
+                            self.visible_data_headers.append(legend_label)
+                        else:
+                            # For export formatting, add sample name back in and remove leading whitespace before i=
+                            self.visible_data_headers.append(f"{sample.name} ({legend_label[1:]})")
                         self.visible_data.append(sample.data[label][self.x_axis])
 
                     if (
@@ -584,8 +589,6 @@ class Plot:
                                 else:
                                     self.lines.append(self.ax.plot(w_2, r_2, ".", color=color, linewidth=2))
                                 self.lines.append(self.ax.plot(w_3, r_3, sample.linestyle, color=color, linewidth=2))
-
-                                self.visible_data_headers.append(legend_label)
                                 self.visible_data.append(list(r_1) + list(r_2) + list(r_3))
 
                                 with plt.style.context("default"):
@@ -623,7 +626,6 @@ class Plot:
                                         linewidth=2,
                                     )
                                 )
-                                self.visible_data_headers.append(legend_label)
                                 self.visible_data.append(reflectance)
 
                                 with plt.style.context("default"):
@@ -664,8 +666,6 @@ class Plot:
                                         markersize=5,
                                     )
                                 )
-
-                            self.visible_data_headers.append(legend_label)
                             self.visible_data.append(reflectance)
 
                             with plt.style.context("default"):
@@ -695,7 +695,6 @@ class Plot:
                     elif self.x_axis == "g":
                         self.markers_drawn = True
                         self.lines_drawn = False
-                        self.visible_data_headers.append(legend_label)
                         self.visible_data.append(sample.data[label][self.y_axis])
 
                         self.lines.append(
@@ -708,8 +707,7 @@ class Plot:
                                 markersize=6,
                             )
                         )
-                        # self.lines.append(self.ax.plot(sample.data[label][self.x_axis],
-                        # sample.data[label][self.y_axis],label=legend_label,color=color, markersize=6))
+
                         with plt.style.context("default"):
                             self.lines.append(
                                 self.white_ax.plot(
@@ -721,14 +719,14 @@ class Plot:
                                     markersize=6,
                                 )
                             )
-                            # self.lines.append(self.white_ax.plot(sample.data[label][self.x_axis],
-                            # sample.data[label][self.y_axis], label=legend_label,color=white_color, markersize=6))
+
                     elif self.x_axis == "theta":
                         self.markers_drawn = True
                         self.lines_drawn = False
                         theta = sample.data[label]["e"]
                         theta = np.array(theta) * -1 * 3.14159 / 180 + 3.14159 / 2
                         r = sample.data[label][self.y_axis]
+                        self.visible_data.append(r)
                         if (
                             j == 0 and k == 0
                         ):  # If this is the first line we are plotting, we'll need to create the polar axis.
@@ -797,6 +795,7 @@ class Plot:
                             self.ax.set_thetagrids(
                                 np.arange(0, 180.1, 30), labels=["90", "60", "30", "0", "-30", "-60", "-90"]
                             )
+                            # self.ax.set_ylabel("")
 
                             with plt.style.context("default"):
                                 self.white_ax.set_ylim(min_r - delta / 10, max_r + delta / 10)
@@ -806,8 +805,8 @@ class Plot:
                                     np.arange(0, 180.1, 30), labels=["90", "60", "30", "0", "-30", "-60", "-90"]
                                 )
                                 self.white_ax.tick_params(axis="both", colors="black")
+                                # self.white_ax.set_ylabel("")
                     else:
-                        self.visible_data_headers.append(legend_label)
                         self.visible_data.append(sample.data[label][self.y_axis])
                         self.markers_drawn = True
                         self.lines.append(
@@ -839,47 +838,51 @@ class Plot:
             self.ax.set_xlabel("Emission (degrees)", fontsize=self.axis_label_size)
             self.ax.set_ylabel("Incidence (degrees)", fontsize=self.axis_label_size)
             with plt.style.context(("default")):
-                self.white_ax.set_xlabel("Emission (degrees)", fontsize=self.axis_label_size)
-                self.white_ax.set_ylabel("Incidence (degrees)", fontsize=self.axis_label_size)
+                self.white_ax.set_xlabel("Emission (degrees)", fontsize=self.axis_label_size, color="black")
+                self.white_ax.set_ylabel("Incidence (degrees)", fontsize=self.axis_label_size, color="black")
         elif self.y_axis == "reflectance":
             self.ax.set_ylabel("Reflectance", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.white_ax.set_ylabel("Reflectance", fontsize=self.axis_label_size)
+                self.white_ax.set_ylabel("Reflectance", fontsize=self.axis_label_size, color="black")
         elif self.y_axis == "normalized reflectance":
             self.ax.set_ylabel("Normalized Reflectance", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.white_ax.set_ylabel("Normalized Reflectance", fontsize=self.axis_label_size)
+                self.white_ax.set_ylabel("Normalized Reflectance", fontsize=self.axis_label_size, color="black")
         elif self.y_axis == "difference":
             # pylint: disable = anomalous-backslash-in-string
             self.ax.set_ylabel("$\Delta$R", fontsize=self.axis_label_size)
             with plt.style.context("default"):
                 # pylint: disable = anomalous-backslash-in-string
-                self.white_ax.set_ylabel("$\Delta$R", fontsize=self.axis_label_size)
+                self.white_ax.set_ylabel("$\Delta$R", fontsize=self.axis_label_size, color="black")
         elif self.y_axis == "slope":
             self.ax.set_ylabel("Slope", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.white_ax.set_ylabel("Slope", fontsize=self.axis_label_size)
+                self.white_ax.set_ylabel("Slope", fontsize=self.axis_label_size, color="black")
         elif self.y_axis == "band depth":
             self.ax.set_ylabel("Band Depth", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.white_ax.set_ylabel("Band Depth", fontsize=self.axis_label_size)
+                self.white_ax.set_ylabel("Band Depth", fontsize=self.axis_label_size, color="black")
+        if self.x_axis == "theta":  # override / delete y label, which will be in the title
+            self.ax.set_ylabel("")
+            with plt.style.context("default"):
+                self.white_ax.set_ylabel("")
 
         if self.x_axis == "wavelength":
             self.ax.set_xlabel("Wavelength (nm)", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.white_ax.set_xlabel("Wavelength (nm)", fontsize=self.axis_label_size)
+                self.white_ax.set_xlabel("Wavelength (nm)", fontsize=self.axis_label_size, color="black")
         elif self.x_axis == "i":
             self.ax.set_xlabel("Incidence (degrees)", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.white_ax.set_xlabel("Incidence (degrees)", fontsize=self.axis_label_size)
+                self.white_ax.set_xlabel("Incidence (degrees)", fontsize=self.axis_label_size, color="black")
         elif self.x_axis == "e":
             self.ax.set_xlabel("Emission (degrees)", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.ax.set_xlabel("Emission (degrees)", fontsize=self.axis_label_size)
+                self.white_ax.set_xlabel("Emission (degrees)", fontsize=self.axis_label_size, color="black")
         elif self.x_axis == "g":
             self.ax.set_xlabel("Phase angle (degrees)", fontsize=self.axis_label_size)
             with plt.style.context("default"):
-                self.white_ax.set_xlabel("Phase angle (degrees)", fontsize=self.axis_label_size)
+                self.white_ax.set_xlabel("Phase angle (degrees)", fontsize=self.axis_label_size, color="black")
 
         self.ax.tick_params(labelsize=14)
         with plt.style.context(("default")):
@@ -916,11 +919,17 @@ class Plot:
         # Remove rectangles associated with gradient legends.
         # leg_ax.patches = [] breaks matplotlib >= 3.5.0
         while len(self.leg_ax.patches) > 0:
-            self.leg_ax.patches.pop()
+            try:
+                self.leg_ax.patches.pop()
+            except AttributeError:  # the above breaks newer versions of matplotlib too
+                self.leg_ax[0].remove()
         self.leg_ax.cla()
 
         while len(self.white_leg_ax.patches) > 0:
-            self.white_leg_ax.patches.pop()
+            try:
+                self.white_leg_ax.patches.pop()
+            except AttributeError:  # the above breaks newer versions of matplotlib too
+                self.white_leg_ax[0].remove()
         self.white_leg_ax.cla()
 
         if legend_style == "Full list":
@@ -936,7 +945,6 @@ class Plot:
                 with plt.style.context(("default")):
                     self.white_ax.legend(bbox_to_anchor=(self.legend_anchor * 1.2, 0.85), loc=1, borderaxespad=0.0)
         else:
-            print("Gradient")
             self.leg_ax.set_visible(True)
             self.white_leg_ax.set_visible(True)
 
@@ -1009,14 +1017,19 @@ class Plot:
                 if sample not in self.legend_labels:
                     continue
                 num_colors = len(self.legend_labels[sample])
+                phase_angles = sample.get_phase_angles()
+                sorted_phase_angles = sorted(phase_angles)
 
                 height = sample_height / num_colors
                 for k in range(num_colors):
+                    next_phase_angle = sorted_phase_angles[k]
+                    index = phase_angles.index(next_phase_angle)
+                    phase_angles[index] = -100000  # never use this index again
                     if k == 0:
                         self.leg_ax.text(
                             left + width,
                             bottom,
-                            self.legend_labels[sample][0]
+                            self.legend_labels[sample][index]
                             .replace(sample.name, "")
                             .replace("(i", "i")
                             .strip(")")
@@ -1031,7 +1044,7 @@ class Plot:
                         self.white_leg_ax.text(
                             left + width,
                             bottom,
-                            self.legend_labels[sample][0]
+                            self.legend_labels[sample][index]
                             .replace(sample.name, "")
                             .replace("(i", "i")
                             .strip(")")
@@ -1047,7 +1060,7 @@ class Plot:
                         self.leg_ax.text(
                             left + width,
                             bottom + height,
-                            self.legend_labels[sample][-1]
+                            self.legend_labels[sample][index]
                             .replace(sample.name, "")
                             .replace("(i", "i")
                             .strip(")")
@@ -1062,7 +1075,7 @@ class Plot:
                         self.white_leg_ax.text(
                             left + width,
                             bottom + height,
-                            self.legend_labels[sample][-1]
+                            self.legend_labels[sample][index]
                             .replace(sample.name, "")
                             .replace("(i", "i")
                             .strip(")")
@@ -1076,11 +1089,11 @@ class Plot:
                         )
 
                     p = patches.Rectangle(
-                        (left, bottom), width, height, facecolor=sample.colors[k], transform=self.leg_ax.transAxes
+                        (left, bottom), width, height, facecolor=sample.colors[index], transform=self.leg_ax.transAxes
                     )
                     self.leg_ax.add_patch(p)
                     p = patches.Rectangle(
-                        (left, bottom), width, height, facecolor=sample.white_colors[k], transform=self.leg_ax.transAxes
+                        (left, bottom), width, height, facecolor=sample.white_colors[index], transform=self.leg_ax.transAxes
                     )
                     self.white_leg_ax.add_patch(p)
                     bottom += height

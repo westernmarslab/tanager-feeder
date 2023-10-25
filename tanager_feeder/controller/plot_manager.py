@@ -1,4 +1,6 @@
 import os
+import traceback
+
 from tkinter import Entry, Button, Label, Checkbutton, Toplevel, Frame, LEFT, RIGHT, IntVar, END
 from tkinter.filedialog import askopenfilename
 
@@ -269,6 +271,7 @@ class PlotManager:
                 print("Error: Could not load data.")
         # pylint: disable = broad-except
         except (IndexError, KeyError, Exception):
+            traceback.print_exc()
             Dialog(
                 self.controller,
                 "Plotting Error",
