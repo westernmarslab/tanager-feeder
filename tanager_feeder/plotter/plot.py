@@ -919,11 +919,17 @@ class Plot:
         # Remove rectangles associated with gradient legends.
         # leg_ax.patches = [] breaks matplotlib >= 3.5.0
         while len(self.leg_ax.patches) > 0:
-            self.leg_ax.patches.pop()
+            try:
+                self.leg_ax.patches.pop()
+            except AttributeError:  # the above breaks newer versions of matplotlib too
+                self.leg_ax[0].remove()
         self.leg_ax.cla()
 
         while len(self.white_leg_ax.patches) > 0:
-            self.white_leg_ax.patches.pop()
+            try:
+                self.white_leg_ax.patches.pop()
+            except AttributeError:  # the above breaks newer versions of matplotlib too
+                self.white_leg_ax[0].remove()
         self.white_leg_ax.cla()
 
         if legend_style == "Full list":
@@ -1011,14 +1017,19 @@ class Plot:
                 if sample not in self.legend_labels:
                     continue
                 num_colors = len(self.legend_labels[sample])
+                phase_angles = sample.get_phase_angles()
+                sorted_phase_angles = sorted(phase_angles)
 
                 height = sample_height / num_colors
                 for k in range(num_colors):
+                    next_phase_angle = sorted_phase_angles[k]
+                    index = phase_angles.index(next_phase_angle)
+                    phase_angles[index] = -100000  # never use this index again
                     if k == 0:
                         self.leg_ax.text(
                             left + width,
                             bottom,
-                            self.legend_labels[sample][0]
+                            self.legend_labels[sample][index]
                             .replace(sample.name, "")
                             .replace("(i", "i")
                             .strip(")")
@@ -1033,7 +1044,7 @@ class Plot:
                         self.white_leg_ax.text(
                             left + width,
                             bottom,
-                            self.legend_labels[sample][0]
+                            self.legend_labels[sample][index]
                             .replace(sample.name, "")
                             .replace("(i", "i")
                             .strip(")")
@@ -1049,7 +1060,7 @@ class Plot:
                         self.leg_ax.text(
                             left + width,
                             bottom + height,
-                            self.legend_labels[sample][-1]
+                            self.legend_labels[sample][index]
                             .replace(sample.name, "")
                             .replace("(i", "i")
                             .strip(")")
@@ -1064,7 +1075,7 @@ class Plot:
                         self.white_leg_ax.text(
                             left + width,
                             bottom + height,
-                            self.legend_labels[sample][-1]
+                            self.legend_labels[sample][index]
                             .replace(sample.name, "")
                             .replace("(i", "i")
                             .strip(")")
@@ -1078,11 +1089,11 @@ class Plot:
                         )
 
                     p = patches.Rectangle(
-                        (left, bottom), width, height, facecolor=sample.colors[k], transform=self.leg_ax.transAxes
+                        (left, bottom), width, height, facecolor=sample.colors[index], transform=self.leg_ax.transAxes
                     )
                     self.leg_ax.add_patch(p)
                     p = patches.Rectangle(
-                        (left, bottom), width, height, facecolor=sample.white_colors[k], transform=self.leg_ax.transAxes
+                        (left, bottom), width, height, facecolor=sample.white_colors[index], transform=self.leg_ax.transAxes
                     )
                     self.white_leg_ax.add_patch(p)
                     bottom += height

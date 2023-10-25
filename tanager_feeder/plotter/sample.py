@@ -40,10 +40,7 @@ class Sample:
                 old = np.array(self.data[spec_label][y_axis])
                 self.data[spec_label][y_axis] = old + offset
 
-    # generate a list of hex colors that are evenly distributed from dark to light across a single hue.
-    # reorder the list such that high phase angles are light colored and small phase angles are dark.
-    def set_colors(self, hue):
-        self.hue = hue
+    def get_phase_angles(self):
         phase_angles = []
         dummy_phase = 0
         for geom in self.geoms:
@@ -53,6 +50,14 @@ class Sample:
                 phase_angles.append(g)
             else:
                 phase_angles.append(dummy_phase)  # dummy value
+                dummy_phase += 1
+        return phase_angles
+
+    # generate a list of hex colors that are evenly distributed from dark to light across a single hue.
+    # reorder the list such that high phase angles are light colored and small phase angles are dark.
+    def set_colors(self, hue):
+        self.hue = hue
+        phase_angles = self.get_phase_angles()
 
         if len(self.geoms) > 3:
             # Generate a list of colors to use for plots on a dark background
