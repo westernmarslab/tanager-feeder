@@ -525,7 +525,6 @@ class PlotSettingsManager:
 
     def select_tab(self) -> None:
         self.controller.view_notebook.select(self.tab.top)
-        # utils.lift_widget(self.plot_settings_dialog.top)
 
     def apply_x(self) -> None:
         self.controller.view_notebook.select(self.tab.top)
@@ -534,9 +533,7 @@ class PlotSettingsManager:
             x1 = float(self.left_zoom_entry_x.get())
             x2 = float(self.right_zoom_entry_x.get())
             self.tab.adjust_x(x1, x2)
-            # utils.lift_widget(self.plot_settings_dialog.top)
         except ValueError:
-            # utils.lift_widget(self.plot_settings_dialog.top)
             ErrorDialog(
                 self.controller,
                 title="Invalid Zoom Range",
@@ -564,9 +561,7 @@ class PlotSettingsManager:
             z1 = float(self.left_zoom_entry_z.get())
             z2 = float(self.right_zoom_entry_z.get())
             self.tab.adjust_z(z1, z2)
-            # utils.lift_widget(self.plot_settings_dialog.top)
         except ValueError:
-            # utils.lift_widget(self.plot_settings_dialog.top)
             ErrorDialog(
                 self.controller,
                 title="Invalid Zoom Range",
@@ -575,11 +570,9 @@ class PlotSettingsManager:
 
     def set_title(self) -> None:
         self.tab.set_title(self.title_entry.get())
-        # utils.lift_widget(self.plot_settings_dialog.top)
 
     def set_custom_color(self, custom_color: int) -> None:
         self.tab.set_color(self.color_sample_var.get(), custom_color)
-        # utils.lift_widget(self.plot_settings_dialog.top)
 
     def set_color(self) -> None:
         if self.color_color_var.get() == "Custom":
@@ -589,20 +582,14 @@ class PlotSettingsManager:
             except AttributeError:
                 pass
             self.custom_color_dialog = CustomColorDialog(self.controller, self.set_custom_color, custom_color)
-            # utils.lift_widget(self.custom_color_dialog.top)
         else:
             self.tab.set_color(self.color_sample_var.get(), self.color_color_var.get())
 
-        # utils.lift_widget(self.plot_settings_dialog.top)
-
     def set_linestyle(self) -> None:
         self.tab.set_linestyle(self.linestyle_sample_var.get(), self.linestyle_linestyle_var.get())
-        # utils.lift_widget(self.plot_settings_dialog.top)
 
     def set_markerstyle(self) -> None:
         self.tab.set_markerstyle(self.markerstyle_sample_var.get(), self.markerstyle_markerstyle_var.get())
-        # utils.lift_widget(self.plot_settings_dialog.top)
 
     def set_legend(self) -> None:
         self.tab.set_legend_style(self.legend_legend_var.get())
-        # utils.lift_widget(self.plot_settings_dialog.top)
