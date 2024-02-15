@@ -122,10 +122,7 @@ class Sample:
         try:
             self.index = self.index % len(self.colors)
         except ZeroDivisionError:
-            print(self.index)
-            print(self.hue)
-            print(self.colors)
-            print(self.geoms)
+            print("ZeroDivisionError in sample.py")
         return self.colors[self.index]
 
     def next_white_color(self):

@@ -44,10 +44,6 @@ class HemispherePlotter:
 
             R[az][e] = data[i]
 
-        for az in R:
-            print(az)
-            print(R[az])
-
         data = np.array(data)
         avg = np.mean(data)
         norm = mpl.colors.Normalize(vmin=np.min(data), vmax=np.max(data))
