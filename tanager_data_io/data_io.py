@@ -7,7 +7,7 @@ class DataIO:
         self.samples = {}
         self.sample_objects = []
 
-    def load_samples(self, dataset_name, file, skip_vals=60):
+    def load_samples(self, dataset_name, file, skip_vals=0):
         try:
             wavelengths, reflectance, labels = self.read_csv(file, skip_vals)
         except OSError:
@@ -54,7 +54,7 @@ class DataIO:
         return True
 
     @staticmethod
-    def read_csv(file, skip_vals=60):
+    def read_csv(file, skip_vals=0):
         labels = []
         
         # Format is compatible with the WWU spectral library format.

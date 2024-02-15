@@ -40,11 +40,13 @@ class Plot:
         self.x_axis = x_axis
         self.y_axis = y_axis
         self.ylim = None  # About to set based on either data limits or zoom if specified
-        self.xlim = None  # same as ylim
+        self.xlim = None  # same as ylim, but with buffers as defined below
+        self.min_xbuffer = 60
+        self.max_xbuffer = 0
         self.exclude_artifacts = exclude_artifacts
         self.markers_drawn = False  # Referenced to decide whether to display markerstyle options in open_options
         self.lines_drawn = False  # Referenced to decide whether to display linestyle options in open_options
-        # If y limits for plot not specified, make the plot wide enough to display min and max values for all samples.
+
 
         self.axis_label_size = 17
 
@@ -115,15 +117,14 @@ class Plot:
                         continue
 
                     if i == 0 and j == 0:
-                        sample_min = np.min(sample.data[geom][self.x_axis][0:10])
                         sample_min = np.min(sample.data[geom][self.x_axis])
                         sample_max = np.max(sample.data[geom][self.x_axis])
-                        self.xlim = [sample_min, sample_max]
+                        self.xlim = [sample_min + self.min_xbuffer, sample_max - self.max_xbuffer]
                     else:
                         sample_min = np.min(sample.data[geom][self.x_axis])
                         sample_max = np.max(sample.data[geom][self.x_axis])
-                        self.xlim[0] = np.min([self.xlim[0], sample_min])
-                        self.xlim[1] = np.max([self.xlim[1], sample_max])
+                        self.xlim[0] = np.min([self.xlim[0], sample_min + self.min_xbuffer])
+                        self.xlim[1] = np.max([self.xlim[1], sample_max - self.max_xbuffer])
 
             if self.xlim is None:
                 self.xlim = [400, 2400]  # Happens if you are making a new tab with no data
