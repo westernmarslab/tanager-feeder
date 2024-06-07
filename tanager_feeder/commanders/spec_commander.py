@@ -74,7 +74,7 @@ class SpecCommander(Commander):
         return filename
 
     def list_contents(self, parent: str):
-        self.remove_from_listener_queue(["listdirfailedpermission", "listfilesfailed", "listdirfailed"])
+        self.remove_from_listener_queue(["listdirfailedpermission", "listfilesfailed", "listdirfailed", "listdirfailedcase"])
         filename = self.encrypt("listcontents", parameters=[parent])
         self.send(filename)
         return filename

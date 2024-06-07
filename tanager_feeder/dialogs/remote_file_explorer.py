@@ -18,7 +18,6 @@ class RemoteFileExplorer(Dialog):
         buttons=None,
         directories_only=True,
     ):
-        print("trying to init!")
         if buttons is None:
             buttons = {"ok": {}, "cancel": {}}
 
@@ -89,7 +88,6 @@ class RemoteFileExplorer(Dialog):
                     self.expand(newparent=path)
 
     def validate_path_entry_input(self, *args):
-        print(args)
         # TODO: figure out where extra args came from
         text = self.path_entry.get()
         text = utils.rm_reserved_chars(text)
@@ -142,7 +140,6 @@ class RemoteFileExplorer(Dialog):
         select: Optional[str] = None,
         destroy: bool = False,
     ):
-        print("expanding!")
         if newparent is None:
             index = self.listbox.curselection()[0]
             if self.listbox.itemcget(index, "foreground") == "darkblue":
@@ -197,9 +194,28 @@ class RemoteFileExplorer(Dialog):
                 buttons=buttons,
             )
             return
+
+        elif "listdirfailedcase" in status:
+            if self.current_parent is None:
+                self.current_parent = "C:\\Users"
+            if buttons is None:
+                buttons = {
+                    "yes": {self.expand: [None, status.replace('listdirfailedcase', '')]},
+                    "no": {self.expand: [None, self.current_parent]}
+                }
+            ErrorDialog(
+                self.controller,
+                title="Error",
+                label=f"{newparent} does not exist."
+                      f"\nDid you mean {status.replace('listdirfailedcase', '')}'?",
+                buttons=buttons,
+            )
+            return
+
         elif status == "listdirfailedpermission":
             ErrorDialog(self.controller, label="Error: Permission denied for\n" + newparent)
             return
+
         elif status == "timeout":
             ErrorDialog(
                 self.controller,

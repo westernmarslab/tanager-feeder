@@ -17,7 +17,6 @@ class RemoteDirectoryWorker:
         self.reset_timeout()
         t = 0
         while t < self.timeout_s:
-            # print('looking for '+cmdfilename)
             # If we get a file back with a list of the contents, replace the old listbox contents with new ones.
             # The cmdfilename should be e.g. listdir&R=+RiceData+Kathleen+spectral_data
             for item in self.listener.queue:
@@ -32,6 +31,11 @@ class RemoteDirectoryWorker:
                     )  # 0 is the command listcontents, 1 is the top level folder
                     self.listener.queue.remove(item)
                     return contents
+
+                if "listdirfailedcase" in item:
+                    case_correct = item.replace("listdirfailedcase", "")
+                    self.listener.queue.remove(item)
+                    return f"listdirfailedcase{case_correct}"
 
                 if "listdirfailed" in self.listener.queue:
                     self.listener.queue.remove("listdirfailed")
