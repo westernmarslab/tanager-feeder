@@ -162,6 +162,14 @@ class CommandInterpreter:
             if dir[-1] != "\\":
                 dir += "\\"
             cmdfilename = utils.cmd_to_filename("listcontents", [params[0]])
+            # even though things aren't case sensitive here, they will be later when processing files.
+            # because of this, it's best to idenfity it now if the user has input a path where the case
+            # does not match the real path case.
+            case_correct = os.path.realpath(dir) + "\\"
+            if dir != case_correct:
+                utils.send(self.client, "listdirfailedcase", [case_correct[:-1]])
+                return
+
             files = os.listdir(dir)
             sorted_files = []
             for i, file in enumerate(files):
