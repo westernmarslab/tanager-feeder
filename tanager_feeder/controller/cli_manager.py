@@ -33,75 +33,8 @@ class CliManager:
             self.controller.set_manual_automatic(force=0)
             return True
 
-        if "goniometer.configure(" in cmd:
-            if "AUTOMATIC" in cmd:
-                # e.g. goniometer.configure(AUTOMATIC,-30,50,wr)
-                try:
-                    params = cmd[0:-1].split("goniometer.configure(AUTOMATIC")[1].split(",")[1:]
-                except IndexError:
-                    self.controller.fail_script_command("Error: could not parse command " + cmd)
-                    return False
-                for i, param in enumerate(params):
-                    params[i] = param.strip(" ")
-            elif "MANUAL" in cmd:
-                try:
-                    params = cmd[0:-1].split("goniometer.configure(MANUAL")[1].split(",")[1:]
-                except IndexError:
-                    self.controller.fail_script_command("Error: could not parse command " + cmd)
-                    return False
-                params.append(1)
-            else:
-                self.controller.fail_script_command(
-                    "Error: invalid arguments for mode, i, e, az, sample_num: "
-                    + str(cmd.replace("goniometer.configure(", "")[:-1])
-                    + "\nExample input: goniometer.configure(AUTOMATIC, 0, 20, wr)"
-                )
-                return False
-            if len(params) != 4:
-                self.controller.fail_script_command(
-                    "Error: invalid arguments for mode, i, e, az, sample_num: "
-                    + str(params)
-                    + "\nExample input: goniometer.configure(AUTOMATIC, 0, 20, 90, wr)"
-                )
-                return False
-
-            valid_i = utils.validate_int_input(params[0], self.controller.min_motor_i, self.controller.max_motor_i)
-            valid_e = utils.validate_int_input(params[1], self.controller.min_motor_e, self.controller.max_motor_e)
-            valid_az = utils.validate_int_input(params[2], self.controller.min_motor_az, self.controller.max_motor_az)
-            valid_sample = utils.validate_int_input(params[2], 1, len(self.controller.available_sample_positions))
-
-            if params[2] == "wr":
-                valid_sample = True
-            if valid_i and valid_e and valid_az and valid_sample:
-                self.controller.science_i = int(params[0])
-                self.controller.science_e = int(params[1])
-                self.controller.science_az = int(params[2])
-
-                if params[3] == "wr":
-                    self.controller.sample_tray_index = -1
-                else:
-                    self.controller.sample_tray_index = (
-                        int(params[3]) - 1
-                    )  # this is used as an index where available_sample_positions[4]=='Sample 5' so it should be
-                    # one less than input.
-
-                if "AUTOMATIC" in cmd:
-                    self.controller.set_manual_automatic(force=1, known_goniometer_state=True)
-                else:
-                    self.controller.set_manual_automatic(force=0)
-                self.controller.incidence_entries[0].delete(0, "end")
-                self.controller.incidence_entries[0].insert(0, params[0])
-                self.controller.emission_entries[0].delete(0, "end")
-                self.controller.emission_entries[0].insert(0, params[1])
-                self.controller.azimuth_entries[0].insert(0, params[2])
-                self.controller.configure_pi(params[0], params[1], params[2], params[3], params[4])
-
-            else:
-                self.controller.fail_script_command(
-                    "Error: invalid arguments for mode, i, e, az, sample_num: "
-                    + str(params)
-                    + "\nExample input: goniometer.configure(AUTOMATIC, 0, 20, 90, wr)"
-                )
+        elif cmd == "goniometer.configure(AUTOMATIC)":
+            self.controller.set_manual_automatic(force=1)
             return True
 
         if cmd == "collect_garbage()":
@@ -190,8 +123,10 @@ class CliManager:
             return True
 
         if "add_geom(" in cmd:  # params are i, e. Will not overwrite existing geom.
+            print(cmd)
             params = cmd[0:-1].split("add_geom(")[1].split(",")
-            if len(params) != 2:
+            print(params)
+            if len(params) != 3:
                 self.controller.fail_script_command("Error: could not parse command " + cmd)
             elif self.controller.manual_automatic.get() == 0:  # manual mode
                 valid_i = utils.validate_int_input(
