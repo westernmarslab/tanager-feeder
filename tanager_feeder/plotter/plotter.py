@@ -36,7 +36,6 @@ class Plotter(DataIO):
     def get_path(self):
         initialdir = self.save_dir
         if initialdir is not None:
-            print("Default save directory set to " + self.save_dir)
             path = filedialog.asksaveasfilename(initialdir=initialdir)
         else:
             path = filedialog.asksaveasfilename()

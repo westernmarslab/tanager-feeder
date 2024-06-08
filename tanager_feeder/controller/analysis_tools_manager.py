@@ -14,6 +14,9 @@ from tkinter import (
     OptionMenu,
     IntVar,
     TclError,
+    Menu,
+    filedialog,
+    END,
 )
 import tkinter
 
@@ -44,7 +47,7 @@ class AnalysisToolsManager:
         self.left_zoom_entry2 = None
         self.left_slope_entry = None
         self.right_slope_entry = None
-        self.slopes_listbox = None
+        self.listbox = None
         self.abs_val_check = None
         self.use_max_for_centers_check = None
         self.use_delta_check = None
@@ -61,6 +64,10 @@ class AnalysisToolsManager:
 
         self.outer_slope_frame = None
         self.slope_results_frame = None
+
+        self.save_dir = None
+        self.popup_menu = Menu(self.slope_results_frame, tearoff=0)
+        self.popup_menu.add_command(label="Export to .csv", command=self.export_results)
 
     def show(self, tab):
         self.tab = tab
@@ -304,8 +311,6 @@ class AnalysisToolsManager:
             "band depth",
             "band center",
             "reflectance",
-            # "reciprocity",
-            "difference",
             command=self.disable_plot,
         )
         analyze_menu.configure(width=10, highlightbackground=self.tk_format.highlightbackgroundcolor)
@@ -512,14 +517,6 @@ class AnalysisToolsManager:
             self.populate_listbox(reflectance)
             self.update_plot_menu(["e", "i", "g", "e,i", "theta", "az, e"])
 
-        elif self.analyze_var.get() == "reciprocity":
-            left, right, reciprocity, artifact_warning = self.tab.calculate_reciprocity(
-                self.left_slope_entry.get(), self.right_slope_entry.get()
-            )
-            self.update_entries(left, right)
-            self.populate_listbox(reciprocity)
-            self.update_plot_menu(["e", "i", "g", "e,i"])
-
         elif self.analyze_var.get() == "difference":
             left, right, error, artifact_warning = self.tab.calculate_error(
                 self.left_slope_entry.get(), self.right_slope_entry.get(), self.abs_val.get()
@@ -559,20 +556,56 @@ class AnalysisToolsManager:
         if len(results) > 0:
             self.slope_results_frame.pack(fill=BOTH, expand=True, pady=(10, 10))
             try:
-                self.slopes_listbox.delete(0, "end")
+                self.listbox.delete(0, "end")
             except (AttributeError, TclError):
-                self.slopes_listbox = utils.ScrollableListbox(
+                self.listbox = utils.ScrollableListbox(
                     self.slope_results_frame,
                     self.tk_format.bg,
                     self.tk_format.entry_background,
                     self.tk_format.listboxhighlightcolor,
                     selectmode=EXTENDED,
                 )
-                self.slopes_listbox.configure(height=8)
+                self.listbox.configure(height=8)
             for result in results:
-                self.slopes_listbox.insert("end", result)
-            self.slopes_listbox.pack(fill=BOTH, expand=True)
+                self.listbox.insert("end", result)
+            self.listbox.bind("<Button-3>", self.listbox_export_menu)
+            self.listbox.pack(fill=BOTH, expand=True)
             self.plot_slope_button.configure(state=NORMAL)
+
+    def listbox_export_menu(self, event):
+        self.popup_menu.post(event.x_root + 10, event.y_root + 1)
+        self.popup_menu.grab_release()
+
+    def export_results(self):
+        path = self.get_path()
+        if path[-4:] != ".csv":
+            path = path + ".csv"
+        items = self.listbox.get(0, END)
+        with open(path, "w+") as f:
+            f.write(f"sample,i,e,az,{self.analyze_var.get()}\n")
+            for item in items:
+                if len(item.split(":")) == 3:
+                    [name, geom, value] = item.split(":")
+                else:
+                    [name, geom, value] = [self.tab.samples[0].name, *item.split(":")]
+                i = geom.split(",")[0].replace("(", "").replace(" ", "")
+                e = geom.split(",")[1].replace(" ", "")
+                az = geom.split(",")[2].replace(")", "").replace(" ", "")
+                f.write(",".join([name, i, e, az, value])+"\n")
+
+    def get_path(self):
+        initialdir = self.save_dir
+        if initialdir is not None:
+            path = filedialog.asksaveasfilename(initialdir=initialdir)
+        else:
+            path = filedialog.asksaveasfilename()
+
+        self.save_dir = path
+        if "\\" in path:
+            self.save_dir = "\\".join(path.split("\\")[0:-1])
+        elif "/" in path:
+            self.save_dir = "/".join(path.split("/")[0:-1])
+        return path
 
     def plot(self):
         if self.analyze_var.get() == "slope":
@@ -583,14 +616,6 @@ class AnalysisToolsManager:
             self.tab.plot_band_centers(self.plot_slope_var.get())
         elif self.analyze_var.get() == "reflectance":
             self.tab.plot_avg_reflectance(self.plot_slope_var.get())
-        elif self.analyze_var.get() == "reciprocity":
-            self.tab.plot_reciprocity(self.plot_slope_var.get())
-        elif self.analyze_var.get() == "difference":
-            new = self.tab.plot_error(self.plot_slope_var.get())
-            if self.plot_slope_var.get() == "\u03bb":
-                x1 = float(self.left_slope_entry.get())
-                x2 = float(self.right_slope_entry.get())
-                new.adjust_x(x1, x2)
         # TODO: plots not always fully updating
         #  (e.g. contour plot labels not showing up until you do a screen wiggle.
 
@@ -599,7 +624,7 @@ class AnalysisToolsManager:
     def normalize(self):
         self.select_tab()
         try:
-            self.slopes_listbox.delete(0, "end")
+            self.listbox.delete(0, "end")
             self.plot_slope_button.configure(state="disabled")
         except (AttributeError, TclError):
             pass
@@ -658,20 +683,12 @@ class AnalysisToolsManager:
 
     def disable_plot(self, analyze_var="None"):
         try:
-            self.slopes_listbox.delete(0, "end")
+            self.listbox.delete(0, "end")
         except (AttributeError, TclError):
             pass
         self.plot_slope_button.configure(state="disabled")
 
-        if analyze_var == "difference":
-            self.analysis_dialog.frame.min_height = 850
-            self.neg_depth_check.pack_forget()
-            self.use_max_for_centers_check.pack_forget()
-            self.use_delta_check.pack_forget()
-            self.abs_val_check.pack()
-            self.extra_analysis_check_frame.pack()
-
-        elif analyze_var == "band center":
+        if analyze_var == "band center":
             self.analysis_dialog.frame.min_height = 1000
             self.neg_depth_check.pack_forget()
             self.abs_val_check.pack_forget()

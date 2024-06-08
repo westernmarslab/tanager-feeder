@@ -150,9 +150,7 @@ class Tab:
         self.contour_sample = None
         self.incidence_samples = None
         self.emission_samples = None
-        self.error_samples = None
         self.base_sample = None
-        self.recip_samples = None
         self.sample_options_dict = None
         self.sample_options_list = None
         self.base_spectrum_label = None
@@ -432,7 +430,11 @@ class Tab:
                 self.contour_sample.data["all samples"]["i"].append(i)
                 self.contour_sample.data["all samples"]["average reflectance"].append(avg)
 
-                avgs.append(str(geom) + ": " + str(avg))
+                if len(self.samples) > 1:
+                    avgs.append(sample.name + ":" + str(geom) + ": " + str(avg))
+                else:
+                    avgs.append(str(geom) + ": " + str(avg))
+
             emission_sample.set_colors(sample.hue)
             incidence_sample.set_colors(sample.hue)
             self.emission_samples.append(emission_sample)
@@ -524,7 +526,10 @@ class Tab:
                 self.contour_sample.data["all samples"]["i"].append(i)
                 self.contour_sample.data["all samples"]["band center"].append(center)
 
-                centers.append(str(geom) + ": " + str(center))
+                if len(self.samples) > 1:
+                    centers.append(sample.name + ":" + str(geom) + ": " + str(center))
+                else:
+                    centers.append(str(geom) + ": " + str(center))
             self.emission_samples.append(emission_sample)
             self.incidence_samples.append(incidence_sample)
         self.plot.draw_vertical_lines([left, right])
@@ -613,7 +618,10 @@ class Tab:
                 self.contour_sample.data["all samples"]["i"].append(i)
                 self.contour_sample.data["all samples"]["band depth"].append(depth)
 
-                depths.append(str(geom) + ": " + str(depth))
+                if len(self.samples) > 1:
+                    depths.append(sample.name + ":" + str(geom) + ": " + str(depth))
+                else:
+                    depths.append(str(geom) + ": " + str(depth))
             self.emission_samples.append(emission_sample)
             self.incidence_samples.append(incidence_sample)
         self.plot.draw_vertical_lines([left, right])
@@ -641,6 +649,7 @@ class Tab:
         artifact_warning = False
 
         for i, sample in enumerate(self.samples):
+            print(sample.name)
             incidence_sample = Sample(sample.name, sample.file, sample.title)
             emission_sample = Sample(sample.name, sample.file, sample.title)
             for geom in sample.geoms:
@@ -690,7 +699,11 @@ class Tab:
                 self.contour_sample.data["all samples"]["i"].append(i)
                 self.contour_sample.data["all samples"]["slope"].append(slope)
 
-                slopes.append(str(geom) + ": " + str(slope))
+                if len(self.samples) > 1:
+                    slopes.append(sample.name + ":" + str(geom) + ": " + str(slope))
+                else:
+                    slopes.append(str(geom) + ": " + str(slope))
+
             self.emission_samples.append(emission_sample)
             self.incidence_samples.append(incidence_sample)
         self.plot.draw_vertical_lines([left, right])
@@ -722,274 +735,6 @@ class Tab:
 
         return left, right
 
-    def calculate_error(self, left, right, abs_val):
-        left, right = self.validate_left_right(left, right)
-        self.error_samples = []
-        artifact_warning = False
-        error = False
-
-        self.contour_sample = Sample("all samples", "file", "title")
-        self.contour_sample.data = {"all samples": {"i": [], "e": [], "difference": []}}
-        self.contour_sample.geoms = ["all samples"]
-
-        for i, sample in enumerate(self.samples):
-            if i == 0 and len(self.samples) > 1:
-                self.base_sample = sample  # Sample(sample.name,sample.file,sample.title)
-                continue
-
-            if len(self.samples) == 1:
-                # if there is only one sample, we'll use the base to build an error sample with spectra showing
-                # difference from middle spectrum in list.
-                i = int(len(sample.geoms) / 2)
-                self.base_spectrum_label = sample.geoms[i]
-                self.base_sample = Sample(
-                    str(self.base_spectrum_label), "file", "title"
-                )  # This is used for putting the title onto the new plot (delta R compared to sample (i=x, e=y))
-
-            error_sample = Sample(sample.name, sample.file, sample.title)
-            self.error_samples.append(error_sample)
-
-            for geom in sample.geoms:
-                wavelengths = np.array(sample.data[geom]["wavelength"])
-                reflectance = np.array(sample.data[geom][self.y_axis])
-                i, e, az = utils.get_i_e_az(geom)
-                g = utils.get_phase_angle(i, e, az)
-                if (
-                    self.exclude_artifacts
-                ):  # If we are excluding artifacts, don't calculate slopes for anything in the range that is
-                    # considered to be suspect
-                    if self.plotter.artifact_danger(g, left, right):
-                        artifact_warning = True  # We'll return this to the controller, which will throw up a
-                        # dialog warning the user that we are skipping some spectra.
-                        continue
-
-                index_left = self.get_index(wavelengths, left)
-                index_right = self.get_index(wavelengths, right)
-
-                if len(self.samples) == 1:
-                    error_sample.data[geom] = {}
-                    error_sample.data[geom]["difference"] = (
-                        reflectance - sample.data[self.base_spectrum_label]["reflectance"]
-                    )
-                    error_sample.data[geom]["wavelength"] = wavelengths
-                    error_sample.geoms.append(geom)
-
-                    self.contour_sample.data["all samples"]["e"].append(e)
-                    self.contour_sample.data["all samples"]["i"].append(i)
-                    if index_left != index_right:
-                        difference = (
-                            reflectance[index_left:index_right]
-                            - sample.data[self.base_spectrum_label]["reflectance"][index_left:index_right]
-                        )
-                        if abs_val:
-                            difference = np.abs(difference)
-                        self.contour_sample.data["all samples"]["difference"].append(np.mean(difference))
-                    else:
-                        difference = (
-                            reflectance[index_left] - sample.data[self.base_spectrum_label]["reflectance"][index_left]
-                        )
-                        if abs_val:
-                            difference = np.abs(difference)
-                        self.contour_sample.data["all samples"]["difference"].append(difference)
-
-                else:
-                    found = False
-                    for existing_label in self.base_sample.geoms:
-                        e_old, i_old, _ = self.plotter.get_e_i_g(existing_label)
-                        if e == e_old and i == i_old:
-                            error_sample.data[geom] = {}
-                            error_sample.data[geom]["difference"] = (
-                                reflectance - self.base_sample.data[existing_label]["reflectance"]
-                            )
-                            error_sample.data[geom]["wavelength"] = wavelengths
-                            error_sample.geoms.append(geom)
-
-                            self.contour_sample.data["all samples"]["e"].append(e)
-                            self.contour_sample.data["all samples"]["i"].append(i)
-                            if index_left != index_right:
-                                difference = (
-                                    reflectance[index_left:index_right]
-                                    - self.base_sample.data[existing_label]["reflectance"][index_left:index_right]
-                                )
-                                if abs_val:
-                                    difference = np.abs(difference)
-                                self.contour_sample.data["all samples"]["difference"].append(np.mean(difference))
-                            else:
-                                difference = (
-                                    reflectance[index_left]
-                                    - self.base_sample.data[existing_label]["reflectance"][index_left]
-                                )
-                                if abs_val:
-                                    difference = np.abs(difference)
-                                self.contour_sample.data["all samples"]["difference"].append(difference)
-
-                            found = True
-                            break
-                    if not found:
-                        if error == "":
-                            error = "Error: No corresponding spectrum found.\n"
-                        error += "\n" + str(geom)
-                        error_sample.data[geom] = {}
-                        error_sample.data[geom]["difference"] = reflectance
-                        error_sample.data[geom]["wavelength"] = wavelengths
-                        error_sample.geoms.append(geom)
-
-                        self.contour_sample.data["all samples"]["e"].append(e)
-                        self.contour_sample.data["all samples"]["i"].append(i)
-                        self.contour_sample.data["all samples"]["difference"].append(np.mean(reflectance))
-
-        print(error)
-
-        avg_errs = []
-        for sample in self.error_samples:
-            for geom in sample.geoms:
-                wavelengths = np.array(sample.data[geom]["wavelength"])
-                reflectance = np.array(sample.data[geom]["difference"])
-                index_left = self.get_index(wavelengths, left)
-                index_right = self.get_index(wavelengths, right)
-                if index_right != index_left:
-                    if abs_val:
-                        avg = np.mean(np.abs(sample.data[geom]["difference"][index_left:index_right]))
-                    else:
-                        avg = np.mean(sample.data[geom]["difference"][index_left:index_right])
-                else:
-                    avg = sample.data[geom]["difference"][index_right]
-                avg_errs.append(str(geom) + ": " + str(avg))
-
-        self.plot.draw_vertical_lines([left, right])
-
-        return left, right, avg_errs, artifact_warning
-
-    def calculate_reciprocity(self, left, right):
-        left, right = self.validate_left_right(left, right)
-        avgs = []
-        self.recip_samples = (
-            []
-        )  # for each recip_sample.data[label], there will be up to two points, which should be reciprocal
-        # measurements of each other. E.g. recip_sample.name=White Reference,
-        # recip_sample.data['White reference (i=-20,e=20)'] will contain data for both i=-30,e=-10, and also i=10, e=30.
-        artifact_warning = False
-
-        self.contour_sample = Sample("all samples", "file", "title")
-        self.contour_sample.data = {"all samples": {"i": [], "e": [], "delta R": []}}
-        self.contour_sample.geoms = ["all samples"]
-
-        for sample in self.samples:
-            recip_sample = Sample(sample.name, sample.file, sample.title)
-            for geom in sample.geoms:
-                i, e, az = utils.get_i_e_az(geom)
-                g = utils.get_phase_angle(i, e, az)
-
-                if (
-                    self.exclude_artifacts
-                ):  # If we are excluding artifacts, don't calculate for anything in the range that is
-                    # considered to be suspect
-                    if self.plotter.artifact_danger(g, left, right):
-                        artifact_warning = True  # We'll return this to the controller, which will throw up a
-                        # dialog warning the user that we are skipping some spectra.
-                        continue
-
-                wavelengths = np.array(sample.data[geom]["wavelength"])
-                reflectance = np.array(sample.data[geom][self.y_axis])
-
-                index_left = self.get_index(wavelengths, left)
-                index_right = self.get_index(wavelengths, right)
-                if index_right != index_left:
-                    avg = np.mean(reflectance[index_left:index_right])
-                else:
-                    avg = reflectance[index_left]
-
-                recip_label = sample.name + " (i=" + str(-1 * e) + " e=" + str(-1 * i) + ")"
-
-                diff = None
-                if geom not in recip_sample.data and recip_label not in recip_sample.data:
-                    recip_sample.data[geom] = {"e": [], "g": [], "i": [], "average reflectance": []}
-                    recip_sample.geoms.append(geom)
-
-                if geom in recip_sample.data:
-                    recip_sample.data[geom]["e"].append(e)
-                    recip_sample.data[geom]["i"].append(i)
-                    recip_sample.data[geom]["g"].append(g)
-                    recip_sample.data[geom]["average reflectance"].append(avg)
-
-                    if len(recip_sample.data[geom]["average reflectance"]) > 1:
-                        diff = np.abs(
-                            np.max(recip_sample.data[geom]["average reflectance"])
-                            - np.min(recip_sample.data[geom]["average reflectance"])
-                        )
-
-                elif recip_label in recip_sample.data:
-                    recip_sample.data[recip_label]["e"].append(e)
-                    recip_sample.data[recip_label]["i"].append(i)
-                    recip_sample.data[recip_label]["g"].append(g)
-                    recip_sample.data[recip_label]["average reflectance"].append(avg)
-                    if len(recip_sample.data[recip_label]["average reflectance"]) > 1:
-                        diff = np.abs(
-                            np.max(recip_sample.data[recip_label]["average reflectance"])
-                            - np.min(recip_sample.data[recip_label]["average reflectance"])
-                        )  # This works fine if for some reason there are multiple measurements for the same sample
-                        # at the same geometry. It just takes the min and max.
-                        recip = diff / np.mean(recip_sample.data[recip_label]["average reflectance"])
-
-                if diff is not None:
-                    avgs.append(str(geom) + ": " + str(recip))  # I don't think this is the average of anything
-            self.recip_samples.append(recip_sample)
-
-        for sample in self.recip_samples:
-            for geom in sample.data:
-                if len(sample.data[geom]["average reflectance"]) > 1:
-                    i, e, az = utils.get_i_e_az(geom)
-                    g = utils.get_phase_angle(i, e, az)
-
-                    diff = np.abs(
-                        np.max(sample.data[geom]["average reflectance"])
-                        - np.min(sample.data[geom]["average reflectance"])
-                    )  # This works fine if for some reason there are multiple measurements for the same sample
-                    # at the same geometry. It just takes the min and max.
-                    recip = diff / np.mean(sample.data[geom]["average reflectance"])
-
-                    self.contour_sample.data["all samples"]["e"].append(e)
-                    self.contour_sample.data["all samples"]["i"].append(i)
-                    self.contour_sample.data["all samples"]["delta R"].append(recip)
-                    self.contour_sample.data["all samples"]["e"].append(-1 * i)
-                    self.contour_sample.data["all samples"]["i"].append(-1 * e)
-                    self.contour_sample.data["all samples"]["delta R"].append(recip)
-
-        self.plot.draw_vertical_lines([left, right])
-
-        return left, right, avgs, artifact_warning
-
-    def plot_error(self, x_axis):
-        if x_axis == "e,i":
-            x_axis = "contour"
-            tab = Tab(
-                self.plotter,
-                "\u0394" + "R compared to " + self.base_sample.name,
-                [self.contour_sample],
-                x_axis="contour",
-                y_axis="difference",
-            )
-
-        elif x_axis == "az, e":
-            self.plot_hemisphere_plots("difference", "Difference")
-
-        else:
-            tab = Tab(
-                self.plotter,
-                "\u0394" + "R compared to " + self.base_sample.name,
-                self.error_samples,
-                x_axis="wavelength",
-                y_axis="difference",
-            )
-        return tab
-
-    def plot_reciprocity(self, x_axis):
-        if x_axis == "e,i":
-            x_axis = "contour"
-            tab = Tab(self.plotter, "Reciprocity", [self.contour_sample], x_axis=x_axis, y_axis="delta R")
-        else:
-            tab = Tab(self.plotter, "Reciprocity", self.recip_samples, x_axis=x_axis, y_axis="average reflectance")
-        return tab
 
     def plot_avg_reflectance(self, x_axis):
         if x_axis in ("e", "theta"):
