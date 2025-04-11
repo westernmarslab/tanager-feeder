@@ -199,8 +199,12 @@ class HemispherePlotter:
         cbar_ax = fig.add_axes([0.75, 0.3, 0.035, 0.45])
         delta = (max_r - min_r) / 5
         ticks = np.arange(min_r, max_r, delta)
+
         ticks = list(ticks)
         ticks.append(max_r)
+        for i, tick in enumerate(ticks):
+            ticks[i] = np.around(tick, 2)
+        print(f"here are the ticks: {ticks}")
 
         colorbar = fig.colorbar(m, cax=cbar_ax, ticks=ticks)
 
@@ -213,7 +217,7 @@ class HemispherePlotter:
             ypos = 0.25
         elif len(data_label) > 8:
             ypos = 0.4
-        ax.text2D(1, ypos, data_label, fontsize=16, transform=ax.transAxes, rotation=90)
+        ax.text2D(1, ypos, data_label, fontsize=14, transform=ax.transAxes, rotation=90)
 
         labels = []
         for tick in ticks:

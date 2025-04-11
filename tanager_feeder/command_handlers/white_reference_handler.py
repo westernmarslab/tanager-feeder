@@ -69,7 +69,7 @@ class WhiteReferenceHandler(TriggerRestartHandler):
                     self.wait_dialog.top.geometry("376x175")
                     self.controller.white_reference_attempt = 0
                     # Does nothing in automatic mode
-                    self.controller.clear()
+                    # self.controller.clear()
                 return
 
             if "wrfailedfileexists" in self.listener.queue:
@@ -107,6 +107,7 @@ class WhiteReferenceHandler(TriggerRestartHandler):
     def success(self):
         self.controller.wr_time = int(time.time())
         self.controller.white_reference_attempt = 0
+
         super().success()
 
     def timeout(self):

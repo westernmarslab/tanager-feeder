@@ -320,6 +320,7 @@ class ProcessManager:
                 raise ProcessFileError  # Same deal for the folder (except existing is good).
             self.controller.plot_manager.plot_local_remote = "local"
             return input_directory, output_directory, output_file
+
         if self.proc_local.get() == 0:
             check = self.check_remote_folder(output_directory, self.controller.process_cmd)
             if not check:
@@ -446,8 +447,6 @@ class ProcessManager:
 
         def inner_mkdir(dir_to_make: str, action: Any):
             mkdir_status = self.remote_directory_worker.mkdir(dir_to_make)
-            print("MKDIR STATUS!!")
-            print(mkdir_status)
             if mkdir_status == "mkdirsuccess":
                 action()
             elif mkdir_status == "mkdirfailedfileexists":
