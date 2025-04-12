@@ -33,14 +33,17 @@ class StandardPlotGenerator:
         oversize_legend = False
         plot_scale = 1
         plot_width = 150  # in characters
-        xlim = [400, 2500]
-        ylim = [0, 1]
+        ylim = None
+        xlim = None
 
         root = os.path.split(self.file)[0]
         save_dir = os.path.join(root, "standard_plots")
         if not os.path.isdir(save_dir):
             os.mkdir(save_dir)
-        print(f"Saving figures to {save_dir}")
+        if white_reference:
+            print(f"Saving standard figures to {save_dir}. White reference included.")
+        else:
+            print(f"Saving standard figures to {save_dir}. White reference excluded.")
         for az in self.geoms["az"]:
             for i in self.geoms["i"]:
                 next_geom_list = {
@@ -61,7 +64,7 @@ class StandardPlotGenerator:
                 final_winnowed_samples = []
                 if not white_reference:
                     for sample in winnowed_samples:
-                        if sample.name != "White Reference":
+                        if "White Reference" not in sample.name:
                             final_winnowed_samples.append(sample)
                 else:
                     final_winnowed_samples = winnowed_samples

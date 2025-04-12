@@ -271,7 +271,6 @@ class PlotManager:
         else:
             self.load_data(plot_input_file, new_tab=False)
 
-        print("generating standards")
         std_plot_gen = StandardPlotGenerator(self.plot_workbook, self.dataset_name, plot_input_file)
         std_plot_gen.generate_plots()
         std_plot_gen.generate_plots(white_reference=False)
