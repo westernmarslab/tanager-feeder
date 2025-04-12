@@ -113,8 +113,13 @@ class PlotSettingsManager:
 
         zoom_title_frame = Frame(outer_outer_zoom_frame, bg=self.tk_format.bg)
         zoom_title_frame.pack(pady=(5, 10))
+        if tab.x_axis != "theta":
+            zoom_title_text = "Adjust plot x and y limits:"
+        else:
+            zoom_title_text = "Adjust plot radius limits:"
+
         zoom_title_label = Label(
-            zoom_title_frame, text="Adjust plot x and y limits:", bg=self.tk_format.bg, fg=self.tk_format.textcolor
+            zoom_title_frame, text=zoom_title_text, bg=self.tk_format.bg, fg=self.tk_format.textcolor
         )
         zoom_title_label.pack(side=LEFT, pady=(0, 4))
 
@@ -123,49 +128,58 @@ class PlotSettingsManager:
         zoom_frame = Frame(outer_zoom_frame, bg=self.tk_format.bg, padx=self.tk_format.padx)
         zoom_frame.pack()
 
-        zoom_label = Label(zoom_frame, text="x1:", bg=self.tk_format.bg, fg=self.tk_format.textcolor)
-        self.left_zoom_entry_x = Entry(
-            zoom_frame,
-            width=7,
-            bd=self.tk_format.bd,
-            bg=self.tk_format.entry_background,
-            selectbackground=self.tk_format.selectbackground,
-            selectforeground=self.tk_format.selectforeground,
-        )
-        zoom_label2 = Label(zoom_frame, text="x2:", bg=self.tk_format.bg, fg=self.tk_format.textcolor)
-        self.right_zoom_entry_x = Entry(
-            zoom_frame,
-            width=7,
-            bd=self.tk_format.bd,
-            bg=self.tk_format.entry_background,
-            selectbackground=self.tk_format.selectbackground,
-            selectforeground=self.tk_format.selectforeground,
-        )
-        zoom_button = Button(
-            zoom_frame,
-            text="Apply",
-            command=self.apply_x,
-            width=7,
-            fg=self.tk_format.buttontextcolor,
-            bg=self.tk_format.buttonbackgroundcolor,
-            bd=self.tk_format.bd,
-        )
-        zoom_button.config(
-            fg=self.tk_format.buttontextcolor,
-            highlightbackground=self.tk_format.highlightbackgroundcolor,
-            bg=self.tk_format.buttonbackgroundcolor,
-        )
-        zoom_button.pack(side=RIGHT, padx=(10, 10))
-        self.right_zoom_entry_x.pack(side=RIGHT, padx=self.tk_format.padx)
-        zoom_label2.pack(side=RIGHT, padx=self.tk_format.padx)
-        self.left_zoom_entry_x.pack(side=RIGHT, padx=self.tk_format.padx)
-        zoom_label.pack(side=RIGHT, padx=self.tk_format.padx)
+        if tab.x_axis != "theta":
+            # for x-y plots, you can adjust x and y limits. For theta plots, you can only adjust r, which
+            # corresponds to ylim.
+            zoom_label = Label(zoom_frame, text="x1:", bg=self.tk_format.bg, fg=self.tk_format.textcolor)
+            self.left_zoom_entry_x = Entry(
+                zoom_frame,
+                width=7,
+                bd=self.tk_format.bd,
+                bg=self.tk_format.entry_background,
+                selectbackground=self.tk_format.selectbackground,
+                selectforeground=self.tk_format.selectforeground,
+            )
+            zoom_label2 = Label(zoom_frame, text="x2:", bg=self.tk_format.bg, fg=self.tk_format.textcolor)
+            self.right_zoom_entry_x = Entry(
+                zoom_frame,
+                width=7,
+                bd=self.tk_format.bd,
+                bg=self.tk_format.entry_background,
+                selectbackground=self.tk_format.selectbackground,
+                selectforeground=self.tk_format.selectforeground,
+            )
+            zoom_button = Button(
+                zoom_frame,
+                text="Apply",
+                command=self.apply_x,
+                width=7,
+                fg=self.tk_format.buttontextcolor,
+                bg=self.tk_format.buttonbackgroundcolor,
+                bd=self.tk_format.bd,
+            )
+            zoom_button.config(
+                fg=self.tk_format.buttontextcolor,
+                highlightbackground=self.tk_format.highlightbackgroundcolor,
+                bg=self.tk_format.buttonbackgroundcolor,
+            )
+            zoom_button.pack(side=RIGHT, padx=(10, 10))
+            self.right_zoom_entry_x.pack(side=RIGHT, padx=self.tk_format.padx)
+            zoom_label2.pack(side=RIGHT, padx=self.tk_format.padx)
+            self.left_zoom_entry_x.pack(side=RIGHT, padx=self.tk_format.padx)
+            zoom_label.pack(side=RIGHT, padx=self.tk_format.padx)
 
         outer_zoom_frame2 = Frame(outer_outer_zoom_frame, bg=self.tk_format.bg, padx=self.tk_format.padx)
         outer_zoom_frame2.pack(expand=True, fill=BOTH, pady=(0, 10))
         zoom_frame2 = Frame(outer_zoom_frame2, bg=self.tk_format.bg, padx=self.tk_format.padx)
         zoom_frame2.pack()
-        zoom_label3 = Label(zoom_frame2, text="y1:", bg=self.tk_format.bg, fg=self.tk_format.textcolor)
+
+        if tab.x_axis != "theta":
+            zoom_label_text = ["y1:", "y2:"]
+        else:
+            # For protractor plots, changing radius corresponds to changing y.
+            zoom_label_text = ["r1:", "r2:"]
+        zoom_label3 = Label(zoom_frame2, text=zoom_label_text[0], bg=self.tk_format.bg, fg=self.tk_format.textcolor)
         self.left_zoom_entry_y = Entry(
             zoom_frame2,
             width=7,
@@ -174,7 +188,7 @@ class PlotSettingsManager:
             selectbackground=self.tk_format.selectbackground,
             selectforeground=self.tk_format.selectforeground,
         )
-        zoom_label4 = Label(zoom_frame2, text="y2:", bg=self.tk_format.bg, fg=self.tk_format.textcolor)
+        zoom_label4 = Label(zoom_frame2, text=zoom_label_text[1], bg=self.tk_format.bg, fg=self.tk_format.textcolor)
         self.right_zoom_entry_y = Entry(
             zoom_frame2,
             width=7,

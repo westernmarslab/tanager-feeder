@@ -73,7 +73,7 @@ from tanager_feeder.goniometer_view.goniometer_view import GoniometerView
 from tanager_feeder.listeners.pi_listener import PiListener
 from tanager_feeder.listeners.spec_listener import SpecListener
 
-from tanager_feeder.plotter.plotter import Plotter
+from tanager_feeder.plotter.plot_workbook import PlotWorkbook
 from tanager_feeder.remote_directory_worker import RemoteDirectoryWorker
 from tanager_feeder.utils import VerticalScrolledFrame, MovementUnits, sin, cos, arctan
 from tanager_feeder import utils
@@ -348,8 +348,8 @@ class Controller(utils.ControllerType):
         self.goniometer_view = GoniometerView(self, self.view_notebook)
         self.view_notebook.bind("<<NotebookTabChanged>>", lambda event: self.goniometer_view.tab_switch(event))
 
-        # The plotter manages all the plots.
-        self.plotter = Plotter(
+        # The plot_workbook manages all the plots.
+        self.plot_workbook = PlotWorkbook(
             self,
             self.get_dpi(),
             [
@@ -1168,10 +1168,10 @@ class Controller(utils.ControllerType):
     def show_plot_frame(self) -> None:
         self.plot_manager.show()
 
-    def plot_remote(self, filename: str) -> None:
+    def load_remote_plot_data(self, filename: str, new_tab: bool) -> None:
         self.queue.insert(0, {self.plot_remote: [filename]})
         plot_loc = os.path.join(self.config_info.local_config_loc, "plot_temp.csv")
-        self.queue.insert(1, {self.plot_manager.plot: [plot_loc]})
+        self.queue.insert(1, {self.plot_manager.load_data: [plot_loc, new_tab]})
         self.spec_commander.transfer_data(filename)
         DataHandler(
             self,
@@ -1278,19 +1278,22 @@ class Controller(utils.ControllerType):
         else:
             warnings += "The azimuth angle is invalid (Min:" + str(0) + ", Max:" + str(179) + ").\n\n"
 
-        if valid_i and valid_e and valid_az:
-            i = int(self.incidence_entries[0].get())
-            e = int(self.emission_entries[0].get())
-            az = int(self.azimuth_entries[0].get())
-            valid_separation = self.validate_distance(i, e, az)
-
-            if valid_e and valid_i and valid_az and not valid_separation:
-                warnings += (
-                    "Light source and detector should be at least "
-                    + str(self.required_angular_separation)
-                    + " degrees apart.\n\n"
-                )
-        #             self.set_and_animate_geom()
+        # if valid_i and valid_e and valid_az:
+        #     i = int(self.incidence_entries[0].get())
+        #     e = int(self.emission_entries[0].get())
+        #     az = int(self.azimuth_entries[0].get())
+        #     # if self.manual_automatic.get() == 1:
+        #     #     valid_separation = self.validate_distance(i, e, az)
+        #     # else:
+        #     #     # In manual mode, allow any phase angle. Note contact probe has g nearly equal to 0.
+        #     #     valid_separation = True
+        #
+        #     if valid_e and valid_i and valid_az and not valid_separation:
+        #         warnings += (
+        #             "Light source and detector should be at least "
+        #             + str(self.required_angular_separation)
+        #             + " degrees apart.\n\n"
+        #         )
 
         return warnings
 
@@ -1317,6 +1320,7 @@ class Controller(utils.ControllerType):
         return "set"
 
     def check_mandatory_input(self) -> bool:
+        print("CHECKING MANDATORY INPUT")
         save_config_status = self.check_save_config()
         if save_config_status == "invalid":
             ErrorDialog(self, label="Error: Please enter a valid save configuration.")
@@ -1355,9 +1359,9 @@ class Controller(utils.ControllerType):
                 if not self.validate_distance(i, e, az):
                     ErrorDialog(
                         self,
-                        label="Error: Due to geometric constraints on the goniometer,\nincidence must be at least "
+                        label="Error: Due to geometric constraints on the goniometer,\nthe phase angle must be at least "
                         + str(self.required_angular_separation)
-                        + " degrees different than emission.",
+                        + " degrees.",
                         width=300,
                         height=130,
                     )
@@ -1425,7 +1429,7 @@ class Controller(utils.ControllerType):
         range_warnings = ""
         if (
             action is None
-        ):  # If this was called by the user clicking acquire. otherwise, it will be take_spectrum or wr?
+        ):  # If this was called by the user clicking acquire. otherwise, it will be take_spectrum or wr or opt
             action = self.acquire
             self.queue.insert(0, {self.acquire: []})
             if self.individual_range.get() == 1:
@@ -1438,16 +1442,15 @@ class Controller(utils.ControllerType):
                     range_warnings = valid_range
 
         if not override:
-            # If input isn't valid and the user asks to continue, take_spectrum will be called again with override set
-            # to True
-            ok = (
-                self.check_mandatory_input()
-            )  # check things that have to be right in order to continue e.g. valid number of spectra to average
-            if not ok:
+            # First check things that have to be right in order to continue e.g. valid number of spectra to average
+            if not self.check_mandatory_input():
+                self.complete_queue_item()
                 return
 
             # now check things that are optional e.g. having reasonable sample labels, taking a white reference at
             # every geom.
+            # If input isn't valid and the user asks to continue, take_spectrum will be called again with override set
+            # to True
             valid_input = False
             if action == self.take_spectrum:
                 valid_input = self.failsafes_manager.check_optional_input(
@@ -1489,6 +1492,11 @@ class Controller(utils.ControllerType):
                     label = "White Reference"
                 else:
                     label = self.sample_label_entries[self.current_sample_gui_index].get()
+                    print("controller queue:")
+                    print(self.queue)
+                    # if self.manual_automatic.get() == 0:
+                    #     # if in manual mode, clear out the sample label after taking a spectrum.
+                    #     self.queue.append({self.clear_sample: []})
                 self.spec_commander.take_spectrum(
                     self.spec_save_path,
                     self.spec_basename,
@@ -2243,7 +2251,7 @@ class Controller(utils.ControllerType):
             pass
 
     def reset_plot_data(self):
-        self.plotter = Plotter(
+        self.plot_workbook = PlotWorkbook(
             self,
             self.get_dpi(),
             [
@@ -2604,7 +2612,7 @@ class Controller(utils.ControllerType):
         elif force == 1:
             self.manual_automatic.set(1)
 
-        if self.manual_automatic.get() == 0:  # or force==0:
+        if self.manual_automatic.get() == 0:
             self.range_frame.pack_forget()
             self.individual_angles_frame.pack()
             self.range_radio.configure(state=DISABLED)
@@ -2743,15 +2751,15 @@ class Controller(utils.ControllerType):
     # az is the difference between the two, as shown in the visualization
 
     def validate_distance(self, i: int, e: int, az: int):
-        closest_dist = utils.get_phase_angle(i, e, az)
-        return closest_dist >= self.required_angular_separation
+        if self.manual_automatic.get() == 1:
+            closest_dist = utils.get_phase_angle(i, e, az)
+            return closest_dist >= self.required_angular_separation
+        else:
+            # No minimum distance in manual mode.
+            return True
 
-    def clear(self):
+    def clear_sample(self):
         if self.manual_automatic.get() == 0:
-            self.unfreeze()
-            self.active_incidence_entries[0].delete(0, "end")
-            self.active_emission_entries[0].delete(0, "end")
-            self.active_azimuth_entries[0].delete(0, "end")
             self.sample_label_entries[self.current_sample_gui_index].delete(0, "end")
 
     def next_in_queue(self):
@@ -2779,7 +2787,7 @@ class Controller(utils.ControllerType):
                 self.goniometer_view.double_embed.configure(height=goniometer_height)
                 self.console.console_frame.configure(height=console_height)
                 self.view_notebook.configure(height=goniometer_height)
-                self.plotter.set_height(goniometer_height)
+                self.plot_workbook.set_height(goniometer_height)
 
                 thread = Thread(
                     target=self.refresh

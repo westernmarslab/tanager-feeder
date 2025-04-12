@@ -77,8 +77,6 @@ class OptHandler(TriggerRestartHandler):
                     self.interrupt("Error: Failed to optimize instrument.\n\nData acquisition canceled.", retry=False)
                     self.wait_dialog.top.geometry("376x175")
                     self.controller.opt_attempt = 0
-                    # Does nothing in automatic mode
-                    self.controller.clear()
                 return
             time.sleep(utils.INTERVAL)
             self.timeout_s -= utils.INTERVAL

@@ -18,14 +18,14 @@ else:
 
 setup(
     name='tanager-feeder',
-    version='1.9',
+    version='1.10',
     packages=find_packages(),
     license='Creative Commons Attribution-Noncommercial-Share Alike license',
     description='Control software for spectroscopy using ASD RS3 and ViewSpec Pro',
     long_description=open('README.txt').read(),
     url='https://github.com/westernmarslab/tanager-feeder',
     author='Kathleen Hoza',
-    author_email='kathleen@firstmode.com',
+    author_email='kathleenhoza@gmail.com',
     entry_points={
         "console_scripts": [
             "tanager-feeder = tanager_feeder.__main__:main",

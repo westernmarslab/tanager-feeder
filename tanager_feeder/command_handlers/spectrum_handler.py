@@ -174,5 +174,5 @@ class SpectrumHandler(TriggerRestartHandler):
         else:
             self.controller.log(info_string)
 
-        self.controller.clear()
+        # self.controller.clear()
         super().success()

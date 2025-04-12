@@ -60,7 +60,6 @@ class ProcessHandler(CommandHandler):
                         )
                     else:
                         self.controller.log("Files processed.\n" + self.outputfile)
-                print("SUCCEEDING!")
                 self.success(warnings)
                 return
 

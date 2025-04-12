@@ -119,7 +119,7 @@ class CommandHandler:
         try:
             self.wait_dialog.interrupt(label)
         except TclError:
-            print("Error: failed to interrupt wait_dialog. Finishing.")
+            print("TclError: failed to interrupt wait_dialog. Finishing.")
             self.finish()
         if info_string is not None:
             self.controller.log(info_string)
@@ -137,7 +137,7 @@ class CommandHandler:
 
         if self.controller.audio_signals:
             sound_loc = os.path.split(os.path.split(__file__)[0])[0]
-            if "Success" in label or "Ready to use automatic mode" in label:
+            if "Success" in label or "Ready to use automatic mode" in label or "successfully" in label:
                 playsound.playsound(os.path.join(sound_loc, "sounds\\beep.wav"))
             else:
                 playsound.playsound(os.path.join(sound_loc, "sounds\\broken.wav"))
@@ -186,7 +186,6 @@ class CommandHandler:
             self.controller.complete_queue_item()
         else:
             print("No queue item to complete.")
-
         if self.cancel:
             self.interrupt("Canceled.")
             self.wait_dialog.top.geometry("%dx%d%+d%+d" % (376, 130, 107, 69))

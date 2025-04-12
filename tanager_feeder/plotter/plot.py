@@ -294,8 +294,9 @@ class Plot:
                 self.legend_labels[sample].append(legend_label)
                 self.legend_len += 1
 
-    def save(self, fig):
-        path = self.plotter.get_path()
+    def save(self, fig, path=None):
+        if not path:
+            path = self.plotter.get_path()
         if not path:
             return
         if "." in path:
@@ -354,8 +355,13 @@ class Plot:
         self.white_fig.canvas.draw()
 
     def adjust_y(self, bottom, top):
+
         if self.x_axis == "theta":
-            pass
+            # For theta plots, just changing ylim leads to the data being drawn incorrectly.
+            # Unclear why this happens, but a point that used to be at e.g. r = 0.17 might suddenly
+            # be drawn at r = 0.08. Redrawing the whole plot is a hacky workaround to fix this.
+            self.ylim=[bottom, top]
+            self.draw()
 
         else:
             self.ax.set_ylim(bottom, top)
@@ -457,26 +463,26 @@ class Plot:
             self.white_ax.set_xticks(minor_ticks, minor=True)
 
     def set_y_ticks(self):
-        order = -10.0
-        delta_y = self.ylim[1] - self.ylim[0]
-
-        # Decide where to place tick marks.
-        while np.power(10, order) - delta_y < 0:
-            order += 1
-
-        if delta_y / np.power(10, order) > 0.5:
-            order = order - 1
-        else:
-            order = order - 2
-
-        order = int(order * -1)
-        interval = np.round(delta_y / 5, order)
-        while interval == 0:  # I don't think this ever happens.
-            order += 1
-            interval = np.round(delta_y / 5, order)
-
-        if np.isnan(interval):  # Happens if all y values are equal
-            interval = 0.002
+        # order = -10.0
+        # delta_y = self.ylim[1] - self.ylim[0]
+        #
+        # # Decide where to place tick marks.
+        # while np.power(10, order) - delta_y < 0:
+        #     order += 1
+        #
+        # if delta_y / np.power(10, order) > 0.5:
+        #     order = order - 1
+        # else:
+        #     order = order - 2
+        #
+        # order = int(order * -1)
+        # interval = np.round(delta_y / 5, order)
+        # while interval == 0:  # I don't think this ever happens.
+        #     order += 1
+        #     interval = np.round(delta_y / 5, order)
+        #
+        # if np.isnan(interval):  # Happens if all y values are equal
+        #     interval = 0.002
 
         self.ax.grid(which="minor", alpha=0.1)
         self.ax.grid(which="major", alpha=0.1)
@@ -524,7 +530,7 @@ class Plot:
             self.colorbar = self.fig.colorbar(self.contour, ax=self.ax)
             self.ax.plot(x, y, "+", color="white", markersize=5, alpha=0.5)
 
-            with plt.style.context(("default")):
+            with plt.style.context("default"):
                 self.white_contour = self.white_ax.tricontourf(triang, z, levels=self.contour_levels)
                 self.white_colorbar = self.white_fig.colorbar(self.white_contour, ax=self.white_ax)
                 self.white_colorbar.ax.tick_params(labelsize=14)
@@ -728,9 +734,12 @@ class Plot:
                         theta = np.array(theta) * -1 * 3.14159 / 180 + 3.14159 / 2
                         r = sample.data[label][self.y_axis]
                         self.visible_data.append(r)
+
                         if (
                             j == 0 and k == 0
                         ):  # If this is the first line we are plotting, we'll need to create the polar axis.
+
+
                             self.ax.plot(
                                 theta,
                                 np.array(r),
@@ -750,18 +759,20 @@ class Plot:
                                     markersize=6,
                                 )
 
-                            min_r = np.min(r)
-                            max_r = np.max(r)
-                            delta = max_r - min_r
-                            self.ax.set_ylim(min_r - delta / 10, max_r + delta / 10)
+
                             self.ax.set_thetamin(0)
                             self.ax.set_thetamax(180)
 
-                            self.white_ax.set_ylim(min_r - delta / 10, max_r + delta / 10)
                             self.white_ax.set_thetamin(0)
                             self.white_ax.set_thetamax(180)
 
                             self.set_title(self.title, draw=False)
+
+                            # We'll also initialize the min_r and max_r values.
+                            # As we iterate through geometries and samples, we'll update max r
+                            # but we'll leave min_r at 0
+                            min_r = 0
+                            max_r = np.max(r)
 
                         else:  # if this is not the first line being plotted on this radial plot, we can just add on
 
@@ -782,31 +793,37 @@ class Plot:
                                     label=legend_label,
                                     markersize=6,
                                 )
-                            if np.min(r) < min_r or np.max(r) > max_r:
-                                min_r = np.min([min_r, np.min(r)])
-                                max_r = np.max([max_r, np.max(r)])
+                            max_r = np.max([max_r, np.max(r)])
 
                         if (
-                            j == len(sample.geoms) - 1 and k == len(self.samples) - 1
+                            j == len(self.samples) - 1 and k == len(sample.geoms) - 1
                         ):  # On the last sample, set the range of the value being plotted on the radial axis.
-
+                            if self.ylim:
+                                min_r = self.ylim[0]
+                                max_r = self.ylim[1]
                             delta = max_r - min_r
-                            self.ax.set_ylim(min_r - delta / 10, max_r + delta / 10)
-                            self.ax.set_yticks(np.round(np.arange(min_r, max_r + delta / 10, delta / 2), 4))
+                            # if you are only plotting one spectrum you'll get a dot on the graph.
+                            if delta == 0:
+                                max_r = min_r + 0.1
+                                delta = 0.1
+                            self.ax.set_ylim(min_r, max_r + delta / 10)
+                            ticks = np.arange(min_r, max_r + delta / 10, delta / 2)
+                            for i, tick in enumerate(ticks):
+                                ticks[i] = np.round(tick, 2)
+                            self.ax.set_yticks(ticks)
+                            theta_labels = ["90$^o$", "60$^o$", "30$^o$", "0$^o$", "-30$^o$", "-60$^o$", "-90$^o$"]
                             self.ax.set_thetagrids(
-                                np.arange(0, 180.1, 30), labels=["90", "60", "30", "0", "-30", "-60", "-90"]
+                                np.arange(0, 180.1, 30), labels=theta_labels,
                             )
-                            # self.ax.set_ylabel("")
 
                             with plt.style.context("default"):
-                                self.white_ax.set_ylim(min_r - delta / 10, max_r + delta / 10)
+                                self.white_ax.set_ylim(min_r, max_r + delta / 10)
                                 self.white_ax.set_rgrids(np.round(np.arange(min_r, max_r + delta / 10, delta / 2), 3))
-                                self.white_ax.set_yticks(np.round(np.arange(min_r, max_r + delta / 10, delta / 2), 3))
+                                self.white_ax.set_yticks(ticks)
                                 self.white_ax.set_thetagrids(
-                                    np.arange(0, 180.1, 30), labels=["90", "60", "30", "0", "-30", "-60", "-90"]
+                                    np.arange(0, 180.1, 30), labels=theta_labels
                                 )
                                 self.white_ax.tick_params(axis="both", colors="black")
-                                # self.white_ax.set_ylabel("")
                     else:
                         self.visible_data.append(sample.data[label][self.y_axis])
                         self.markers_drawn = True
@@ -968,7 +985,7 @@ class Plot:
                     left = 0.05
                 else:
                     fontsize = 8
-                    left = 0
+                    left = 0.01
 
                 if num_samples_plotted in [1, 2]:
                     self.leg_ax.text(
@@ -1004,16 +1021,17 @@ class Plot:
                         color="lightgray",
                         fontsize=fontsize,
                     )
-                    self.white_ax.text(
+                    self.white_leg_ax.text(
                         0,
                         bottom - 0.01,
                         sample.name,
                         verticalalignment="top",
                         horizontalalignment="left",
-                        transform=self.leg_ax.transAxes,
+                        transform=self.white_leg_ax.transAxes,
                         color="black",
                         fontsize=fontsize,
                     )
+
 
                 if sample not in self.legend_labels:
                     continue
@@ -1030,12 +1048,7 @@ class Plot:
                         self.leg_ax.text(
                             left + width,
                             bottom,
-                            self.legend_labels[sample][index]
-                            .replace(sample.name, "")
-                            .replace("(i", "i")
-                            .strip(")")
-                            .replace("(e", "e")
-                            .replace("(az", "az"),
+                            f" g = {int(np.around(next_phase_angle, 0))}",
                             verticalalignment="bottom",
                             horizontalalignment="left",
                             transform=self.leg_ax.transAxes,
@@ -1045,15 +1058,10 @@ class Plot:
                         self.white_leg_ax.text(
                             left + width,
                             bottom,
-                            self.legend_labels[sample][index]
-                            .replace(sample.name, "")
-                            .replace("(i", "i")
-                            .strip(")")
-                            .replace("(e", "e")
-                            .replace("(az", "az"),
+                            f" g = {int(np.around(next_phase_angle, 0))}",
                             verticalalignment="bottom",
                             horizontalalignment="left",
-                            transform=self.leg_ax.transAxes,
+                            transform=self.white_leg_ax.transAxes,
                             color="black",
                             fontsize=fontsize,
                         )
@@ -1061,12 +1069,7 @@ class Plot:
                         self.leg_ax.text(
                             left + width,
                             bottom + height,
-                            self.legend_labels[sample][index]
-                            .replace(sample.name, "")
-                            .replace("(i", "i")
-                            .strip(")")
-                            .replace("(e", "e")
-                            .replace("(az", "az"),
+                            f" g = {int(np.around(next_phase_angle, 0))}",
                             verticalalignment="top",
                             horizontalalignment="left",
                             transform=self.leg_ax.transAxes,
@@ -1076,15 +1079,10 @@ class Plot:
                         self.white_leg_ax.text(
                             left + width,
                             bottom + height,
-                            self.legend_labels[sample][index]
-                            .replace(sample.name, "")
-                            .replace("(i", "i")
-                            .strip(")")
-                            .replace("(e", "e")
-                            .replace("(az", "az"),
+                            f" g = {int(np.around(next_phase_angle, 0))}",
                             verticalalignment="top",
                             horizontalalignment="left",
-                            transform=self.leg_ax.transAxes,
+                            transform=self.white_leg_ax.transAxes,
                             color="black",
                             fontsize=fontsize,
                         )
@@ -1094,7 +1092,7 @@ class Plot:
                     )
                     self.leg_ax.add_patch(p)
                     p = patches.Rectangle(
-                        (left, bottom), width, height, facecolor=sample.white_colors[index], transform=self.leg_ax.transAxes
+                        (left, bottom), width, height, facecolor=sample.white_colors[index], transform=self.white_leg_ax.transAxes
                     )
                     self.white_leg_ax.add_patch(p)
                     bottom += height
@@ -1119,5 +1117,9 @@ class Plot:
                 self.white_leg_ax.add_patch(p)
                 bottom += buffer_per_sample
 
+        self.leg_ax.set_xticklabels([])
+        self.leg_ax.set_yticklabels([])
+        self.white_leg_ax.set_xticklabels([])
+        self.white_leg_ax.set_yticklabels([])
         self.fig.canvas.draw()
         self.white_fig.canvas.draw()
