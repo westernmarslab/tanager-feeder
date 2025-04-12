@@ -35,7 +35,7 @@ class Tab:
         self.hemisphere_plotter = HemispherePlotter()
         if geoms is None:
             geoms = {"i": [], "e": [], "az": []}
-        self.plotter = plotter
+        self.plot_workbook = plotter
         if original is None:  # This is true if we're not normalizing anything.
             # holding on to the original data lets us reset.
             self.original_samples = list(samples)
@@ -59,8 +59,8 @@ class Tab:
         self.exclude_specular = exclude_specular
         self.specularity_tolerance = specularity_tolerance
 
-        self.width = self.plotter.notebook.winfo_width()
-        self.height = self.plotter.notebook.winfo_height()
+        self.width = self.plot_workbook.notebook.winfo_width()
+        self.height = self.plot_workbook.notebook.winfo_height()
         # If we need a bigger frame to hold a giant long legend, expand.
         self.legend_len = 0
         for sample in self.samples:
@@ -69,10 +69,10 @@ class Tab:
         self.plot_scale = (self.height - 130) / 21
         self.plot_width = self.width / 9  # very vague character approximation of plot width
         if self.height > self.legend_height:
-            self.top = utils.NotScrolledFrame(self.plotter.notebook)
+            self.top = utils.NotScrolledFrame(self.plot_workbook.notebook)
             self.oversize_legend = False
         else:
-            self.top = utils.VerticalScrolledFrame(self.plotter.controller, self.plotter.notebook)
+            self.top = utils.VerticalScrolledFrame(self.plot_workbook.controller, self.plot_workbook.notebook)
             self.oversize_legend = True
 
         self.top.min_height = np.max([self.legend_height, self.height - 50])
@@ -81,23 +81,23 @@ class Tab:
         # If this is being created from the File -> Plot option, or from right click -> new tab, just put the
         # tab at the end.
         if tab_index is None:
-            self.plotter.notebook.add(self.top, text=self.notebook_title + " x")
-            self.plotter.notebook.select(self.plotter.notebook.tabs()[-1])
-            self.index = self.plotter.notebook.index(self.plotter.notebook.select())
+            self.plot_workbook.notebook.add(self.top, text=self.notebook_title + " x")
+            self.plot_workbook.notebook.select(self.plot_workbook.notebook.tabs()[-1])
+            self.index = self.plot_workbook.notebook.index(self.plot_workbook.notebook.select())
         # If this is being called after the user did Right click -> choose samples to plot, put it at the same
         # index as before.
         else:
-            self.plotter.notebook.add(self.top, text=self.notebook_title + " x")
-            self.plotter.notebook.insert(tab_index, self.plotter.notebook.tabs()[-1])
-            self.plotter.notebook.select(self.plotter.notebook.tabs()[tab_index])
+            self.plot_workbook.notebook.add(self.top, text=self.notebook_title + " x")
+            self.plot_workbook.notebook.insert(tab_index, self.plot_workbook.notebook.tabs()[-1])
+            self.plot_workbook.notebook.select(self.plot_workbook.notebook.tabs()[tab_index])
             self.index = tab_index
 
         self.fig = mpl.figure.Figure(
-            figsize=(self.width / self.plotter.dpi, self.height / self.plotter.dpi), dpi=self.plotter.dpi
+            figsize=(self.width / self.plot_workbook.dpi, self.height / self.plot_workbook.dpi), dpi=self.plot_workbook.dpi
         )
         with plt.style.context(("default")):
             self.white_fig = mpl.figure.Figure(
-                figsize=(self.width / self.plotter.dpi, self.height / self.plotter.dpi), dpi=self.plotter.dpi
+                figsize=(self.width / self.plot_workbook.dpi, self.height / self.plot_workbook.dpi), dpi=self.plot_workbook.dpi
             )
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.top.interior)
         self.white_canvas = FigureCanvasTkAgg(self.white_fig, master=self.top.interior)
@@ -106,7 +106,7 @@ class Tab:
 
         self.canvas.get_tk_widget().pack(expand=True, fill=BOTH)
         self.plot = Plot(
-            self.plotter,
+            self.plot_workbook,
             self.fig,
             self.white_fig,
             self.samples,
@@ -145,7 +145,7 @@ class Tab:
         self.popup_menu.add_command(label="New tab", command=self.new)
         self.popup_menu.add_command(label="Close tab", command=self.close)
 
-        self.plotter.menus.append(self.popup_menu)
+        self.plot_workbook.menus.append(self.popup_menu)
 
         self.contour_sample = None
         self.incidence_samples = None
@@ -172,7 +172,7 @@ class Tab:
         self.plot.save(self.white_fig)
 
     def export(self):
-        path = self.plotter.get_path()
+        path = self.plot_workbook.get_path()
         if not path:
             return
 
@@ -245,7 +245,7 @@ class Tab:
                     f.write(line + "\n")
         except PermissionError:
             print(f"Permission error for path {path}")
-            ErrorDialog(self.plotter.controller, "Permission Error", f"Permission error for path\n\n{path}")
+            ErrorDialog(self.plot_workbook.controller, "Permission Error", f"Permission error for path\n\n{path}")
 
     def remove_duplicate_x_axis_columns(self, data, headers):
         x_axis_values = data[0]
@@ -281,10 +281,10 @@ class Tab:
         self.plot.save(self.fig)
 
     def new(self):
-        self.plotter.new_tab()
+        self.plot_workbook.new_tab()
 
     def open_options(self):
-        self.plotter.controller.open_options(self, self.notebook_title)
+        self.plot_workbook.controller.open_options(self, self.notebook_title)
 
     # This is needed so that this can be one of the parts of a dict for buttons:
     # self.view_notebook.select:[lambda:tab.get_top()],.
@@ -395,7 +395,7 @@ class Tab:
                     self.exclude_artifacts
                 ):  # If we are excluding artifacts, don't calculate reflectance for anything in the range that
                     # is considered to be suspect
-                    if self.plotter.artifact_danger(g, left, right):
+                    if self.plot_workbook.artifact_danger(g, left, right):
                         artifact_warning = True
                         continue
 
@@ -465,7 +465,7 @@ class Tab:
                     self.exclude_artifacts
                 ):  # If we are excluding artifacts, don't calculate slopes for anything in the range that is
                     # considered to be suspect
-                    if self.plotter.artifact_danger(g, left, right):
+                    if self.plot_workbook.artifact_danger(g, left, right):
                         artifact_warning = True
                         continue
 
@@ -557,7 +557,7 @@ class Tab:
                     self.exclude_artifacts
                 ):  # If we are excluding artifacts, don't calculate slopes for anything in the range that is
                     # considered to be suspect
-                    if self.plotter.artifact_danger(g, left, right):
+                    if self.plot_workbook.artifact_danger(g, left, right):
                         artifact_warning = True
                         continue
 
@@ -659,7 +659,7 @@ class Tab:
                     self.exclude_artifacts
                 ):  # If we are excluding artifacts, don't calculate slopes for anything in the range that is
                     # considered to be suspect
-                    if self.plotter.artifact_danger(g, left, right):
+                    if self.plot_workbook.artifact_danger(g, left, right):
                         artifact_warning = True  # We'll return this to the controller, which will throw up a dialog
                         # warning the user that we are skipping some spectra.
                         continue
@@ -739,7 +739,7 @@ class Tab:
     def plot_avg_reflectance(self, x_axis):
         if x_axis in ("e", "theta"):
             Tab(
-                self.plotter,
+                self.plot_workbook,
                 "Reflectance vs " + x_axis,
                 self.incidence_samples,
                 x_axis=x_axis,
@@ -747,7 +747,7 @@ class Tab:
             )
         elif x_axis == "i":
             Tab(
-                self.plotter,
+                self.plot_workbook,
                 "Reflectance vs " + x_axis,
                 self.emission_samples,
                 x_axis=x_axis,
@@ -755,7 +755,7 @@ class Tab:
             )
         elif x_axis == "g":
             Tab(
-                self.plotter,
+                self.plot_workbook,
                 "Reflectance vs " + x_axis,
                 self.incidence_samples,
                 x_axis=x_axis,
@@ -763,7 +763,7 @@ class Tab:
             )
         elif x_axis == "e,i":
             tab = Tab(
-                self.plotter, "Reflectance", [self.contour_sample], x_axis="contour", y_axis="average reflectance"
+                self.plot_workbook, "Reflectance", [self.contour_sample], x_axis="contour", y_axis="average reflectance"
             )
             # For whatever reason, x and y labels don't show up
             # unless these update functions are called.
@@ -791,45 +791,45 @@ class Tab:
                         print("Failed to create hemisphere plot")
                         raise e
                 else:
-                    self.plotter.controller.log(
+                    self.plot_workbook.controller.log(
                         f"Not creating hemisphere plot for i = {incidence} (Not enough datapoints)."
                     )
 
     def plot_band_centers(self, x_axis):
         if x_axis in ("e", "theta"):
-            Tab(self.plotter, "Band center vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band center")
+            Tab(self.plot_workbook, "Band center vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band center")
         elif x_axis == "i":
-            Tab(self.plotter, "Band center vs " + x_axis, self.emission_samples, x_axis=x_axis, y_axis="band center")
+            Tab(self.plot_workbook, "Band center vs " + x_axis, self.emission_samples, x_axis=x_axis, y_axis="band center")
         elif x_axis == "g":
-            Tab(self.plotter, "Band center vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band center")
+            Tab(self.plot_workbook, "Band center vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band center")
         elif x_axis == "e,i":
-            Tab(self.plotter, "Band center", [self.contour_sample], x_axis="contour", y_axis="band center")
+            Tab(self.plot_workbook, "Band center", [self.contour_sample], x_axis="contour", y_axis="band center")
         elif x_axis == "az, e":
             self.plot_hemisphere_plots("band center", "Band center [nm]")
 
     def plot_band_depths(self, x_axis):
         if x_axis in ("e", "theta"):
-            Tab(self.plotter, "Band depth vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band depth")
+            Tab(self.plot_workbook, "Band depth vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band depth")
         elif x_axis == "i":
-            Tab(self.plotter, "Band depth vs " + x_axis, self.emission_samples, x_axis=x_axis, y_axis="band depth")
+            Tab(self.plot_workbook, "Band depth vs " + x_axis, self.emission_samples, x_axis=x_axis, y_axis="band depth")
         elif x_axis == "g":
-            Tab(self.plotter, "Band depth vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band depth")
+            Tab(self.plot_workbook, "Band depth vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="band depth")
         elif x_axis == "e,i":
-            Tab(self.plotter, "Band depth", [self.contour_sample], x_axis="contour", y_axis="band depth")
+            Tab(self.plot_workbook, "Band depth", [self.contour_sample], x_axis="contour", y_axis="band depth")
         elif x_axis == "az, e":
             self.plot_hemisphere_plots("band depth", "Band depth")
 
     def plot_slopes(self, x_axis):
         if x_axis == "e,i":
-            Tab(self.plotter, "Slope", [self.contour_sample], x_axis="contour", y_axis="slope")
+            Tab(self.plot_workbook, "Slope", [self.contour_sample], x_axis="contour", y_axis="slope")
         elif x_axis in ("e", "theta"):
-            Tab(self.plotter, "Slope vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="slope")
+            Tab(self.plot_workbook, "Slope vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="slope")
         elif x_axis == "i":
-            Tab(self.plotter, "Slope vs " + x_axis, self.emission_samples, x_axis=x_axis, y_axis="slope")
+            Tab(self.plot_workbook, "Slope vs " + x_axis, self.emission_samples, x_axis=x_axis, y_axis="slope")
         elif x_axis == "g":
-            Tab(self.plotter, "Slope vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="slope")
+            Tab(self.plot_workbook, "Slope vs " + x_axis, self.incidence_samples, x_axis=x_axis, y_axis="slope")
         elif x_axis == "i,e":
-            Tab(self.plotter, "Slope", [self.contour_sample], x_axis="contour", y_axis="slope")
+            Tab(self.plot_workbook, "Slope", [self.contour_sample], x_axis="contour", y_axis="slope")
         elif x_axis == "az, e":
             self.plot_hemisphere_plots("slope", "Slope")
 
@@ -969,17 +969,17 @@ class Tab:
     #         self.refresh(original=self.original_samples, xlim=self.xlim, ylim=self.ylim, y_axis=self.y_axis)
     def set_title(self, title, init=False):
         if not init:
-            self.plotter.titles.remove(self.notebook_title)
+            self.plot_workbook.titles.remove(self.notebook_title)
         base = title
         i = 1
-        while title in self.plotter.titles:
+        while title in self.plot_workbook.titles:
             title = base + " (" + str(i) + ")"
             i = i + 1
         self.notebook_title = title
-        self.plotter.titles.append(self.notebook_title)
+        self.plot_workbook.titles.append(self.notebook_title)
         if not init:
             self.plot.set_title(title)
-            self.plotter.notebook.tab(self.top, text=title + " x")
+            self.plot_workbook.notebook.tab(self.top, text=title + " x")
 
     def reset(self):
         self.samples = self.original_samples
@@ -994,11 +994,11 @@ class Tab:
         # Build up lists of strings telling available samples, which of those samples a currently plotted,
         # and a dictionary mapping those strings to the sample options.
         self.build_sample_lists()
-        self.plotter.controller.open_analysis_tools(self)
+        self.plot_workbook.controller.open_analysis_tools(self)
 
     def open_plot_settings(self):
         self.build_sample_lists()
-        self.plotter.controller.open_plot_settings(self)
+        self.plot_workbook.controller.open_plot_settings(self)
 
     def build_sample_lists(self):
         # Sample options will be the list of strings to put in the listbox.
@@ -1010,7 +1010,7 @@ class Tab:
         # Each file got a dataset name assigned to it when loaded, so each group of samples from a file will
         # have a dataset name associated with them.
         # If the dataset name is not "", show it in the listbox.
-        for i, sample in enumerate(self.plotter.sample_objects):
+        for i, sample in enumerate(self.plot_workbook.sample_objects):
             for plotted_sample in self.samples:
                 if sample.name == plotted_sample.name and sample.file == plotted_sample.file:
                     self.existing_indices.append(i)
@@ -1030,7 +1030,7 @@ class Tab:
         self.build_sample_lists()
         # We tell the controller which samples are already plotted so it can initiate the listbox with those
         # samples highlighted.
-        self.plotter.controller.ask_plot_samples(
+        self.plot_workbook.controller.ask_plot_samples(
             self, self.existing_indices, self.sample_options_list, self.geoms, self.notebook_title
         )
 
@@ -1052,33 +1052,14 @@ class Tab:
                 self.specularity_tolerance = int(tolerance)
             except ValueError:
                 self.specularity_tolerance = 0
-        winnowed_samples = (
-            []
-        )  # These will only have the data we are actually going to plot, which will only be from the
-        # specificied geometries.
 
-        for i, sample in enumerate(self.samples):
-            winnowed_sample = Sample(sample.name, sample.file, sample.title)
+        self.samples = self.plot_workbook.get_winnowed_samples(
+            self.geoms,
+            self.samples,
+            exclude_specular,
+            self.specularity_tolerance
+        )
 
-            for geom in sample.geoms:  # For every spectrum associated with the sample,
-                # check if it is for a geometry we are going to plot.
-                # if it is, attach that spectrum to the winnowed sample data
-                try:  # If there is no geometry information for this sample, this will throw an exception.
-                    i, e, az = utils.get_i_e_az(geom)
-                    if self.check_geom(
-                        i, e, az, exclude_specular, self.specularity_tolerance
-                    ):  # If this is a geometry we are supposed to plot
-                        winnowed_sample.add_spectrum(
-                            geom, sample.data[geom]["reflectance"], sample.data[geom]["wavelength"]
-                        )
-                except (IndexError, KeyError):  # If there's no geometry information, plot the sample.
-                    print("Warning: Plotting spectrum with invalid geometry information")
-                    winnowed_sample.add_spectrum(
-                        geom, sample.data[geom]["reflectance"], sample.data[geom]["wavelength"]
-                    )
-            winnowed_samples.append(winnowed_sample)
-
-        self.samples = winnowed_samples
         self.set_title(title)
         self.refresh()
 
@@ -1086,11 +1067,11 @@ class Tab:
         self, original=None, xlim=None, ylim=None, x_axis="wavelength", y_axis="reflectance"
     ):  # Gets called when data is updated, either from edit plot or analysis tools. We set original = False if
         # calling from normalize, that way we will still hold on to the unchanged data.
-        tab_index = self.plotter.notebook.index(self.plotter.notebook.select())
-        self.plotter.titles.remove(self.notebook_title)
-        self.plotter.notebook.forget(self.plotter.notebook.select())
+        tab_index = self.plot_workbook.notebook.index(self.plot_workbook.notebook.select())
+        self.plot_workbook.titles.remove(self.notebook_title)
+        self.plot_workbook.notebook.forget(self.plot_workbook.notebook.select())
         self.__init__(
-            self.plotter,
+            self.plot_workbook,
             self.notebook_title,
             self.samples,
             tab_index=tab_index,
@@ -1110,33 +1091,10 @@ class Tab:
         self.popup_menu.grab_release()
 
     def close(self):
-        tabid = self.plotter.notebook.select()
-        self.plotter.notebook.forget(tabid)
-        self.plotter.titles.remove(self.notebook_title)
+        tabid = self.plot_workbook.notebook.select()
+        self.plot_workbook.notebook.forget(tabid)
+        self.plot_workbook.titles.remove(self.notebook_title)
 
-    def check_geom(self, i, e, az, exclude_specular=False, tolerance=None):
-        i = int(float(i))  # Get exception from int('0.0')
-        e = int(float(e))
-        if az is not None:
-            az = int(float(az))
-
-        if exclude_specular:
-            if np.abs(int(i) - (-1 * int(e))) <= tolerance:
-                return False
-
-        good_i = False
-        if i in self.geoms["i"] or self.geoms["i"] == []:
-            good_i = True
-
-        good_e = False
-        if e in self.geoms["e"] or self.geoms["e"] == []:
-            good_e = True
-
-        good_az = False
-        if az in self.geoms["az"] or self.geoms["az"] == []:
-            good_az = True
-
-        return good_i and good_e and good_az
 
     def adjust_x(self, left: float, right: float):
         self.xlim = [left, right]

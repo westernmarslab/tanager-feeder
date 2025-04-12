@@ -7,13 +7,14 @@ from tkinter.filedialog import askopenfilename
 from tanager_feeder.dialogs.dialog import Dialog
 from tanager_feeder.dialogs.error_dialog import ErrorDialog
 from tanager_feeder.dialogs.remote_file_explorer import RemoteFileExplorer
+from tanager_feeder.plotter.standard_plot_generator import StandardPlotGenerator
 from tanager_feeder import utils
 
 
 class PlotManager:
     def __init__(self, controller: utils.ControllerType):
         self.controller = controller
-        self.plotter = self.controller.plotter
+        self.plot_workbook = self.controller.plot_workbook
         self.config_info = controller.config_info
         self.tk_format = utils.TkFormat(self.controller.config_info)
 
@@ -145,35 +146,35 @@ class PlotManager:
         plot_button_frame = Frame(plot_frame, bg=self.tk_format.bg)
         plot_button_frame.pack()
 
-        plot_button = Button(
+        custom_plot_button = Button(
             plot_button_frame,
             fg=self.tk_format.textcolor,
-            text="Plot",
+            text="Custom Plots",
             padx=self.tk_format.padx,
             pady=self.tk_format.pady,
             width=int(self.tk_format.button_width * 1.3),
             bg="light gray",
-            command=self.plot_button_cmd,
+            command=self.custom_plot_button_cmd,
         )
-        plot_button.config(
+        custom_plot_button.config(
             fg=self.tk_format.buttontextcolor,
             highlightbackground=self.tk_format.highlightbackgroundcolor,
             bg=self.tk_format.buttonbackgroundcolor,
         )
-        plot_button.pack(side=LEFT, pady=(20, 20), padx=(15, 15))
+        custom_plot_button.pack(side=LEFT, pady=(20, 20), padx=(15, 15))
 
-        process_close_button = Button(
+        standard_plot_button = Button(
             plot_button_frame,
             fg=self.tk_format.buttontextcolor,
             highlightbackground=self.tk_format.highlightbackgroundcolor,
-            text="Close",
+            text="Standard Plots",
             padx=self.tk_format.padx,
             pady=self.tk_format.pady,
             width=int(self.tk_format.button_width * 1.3),
             bg=self.tk_format.buttonbackgroundcolor,
-            command=self.close_plot,
+            command=self.save_standard_plots,
         )
-        process_close_button.pack(pady=(20, 20), padx=(15, 15), side=LEFT)
+        standard_plot_button.pack(pady=(20, 20), padx=(15, 15), side=LEFT)
 
     def close_plot(self) -> None:
         self.plot_top.destroy()
@@ -224,17 +225,17 @@ class PlotManager:
                 self.plot_input_dir_entry.insert(0, file)
         self.plot_top.lift()
 
-    def plot_button_cmd(self) -> None:
+    def plot_setup(self) -> str:
         plot_input_file = self.plot_input_dir_entry.get()
 
         if (
-            self.plotter.save_dir is None
+            self.plot_workbook.save_dir is None
         ):  # If the user hasn't specified a folder where they want to save plots yet, set the default folder to be
             # the same one they got the data from. Otherwise, leave it as is.
             if self.config_info.opsys == "Windows":
-                self.plotter.save_dir = "\\".join(plot_input_file.split("\\")[0:-1])
+                self.plot_workbook.save_dir = "\\".join(plot_input_file.split("\\")[0:-1])
             else:
-                self.plotter.save_dir = "/".join(plot_input_file.split("/")[0:-1])
+                self.plot_workbook.save_dir = "/".join(plot_input_file.split("/")[0:-1])
 
         self.dataset_name = self.dataset_name_entry.get()
         if self.plot_remote.get():
@@ -250,22 +251,40 @@ class PlotManager:
         except OSError:
             print("Error saving data location for plots.")
 
-        self.plot_top.destroy()
-        if self.plot_local_remote == "remote":
-            self.controller.plot_remote(plot_input_file)
-        else:
-            self.plot(plot_input_file)
+        return plot_input_file
 
-    def plot(self, plot_input_file):
+    def custom_plot_button_cmd(self) -> None:
+        plot_input_file = self.plot_setup()
+        self.plot_top.destroy()
+
+        if self.plot_local_remote == "remote":
+            self.controller.load_remote_plot_data(plot_input_file, new_tab=True)
+        else:
+            self.load_data(plot_input_file, new_tab=True)
+
+    def save_standard_plots(self) -> None:
+        plot_input_file = self.plot_setup()
+        self.plot_top.destroy()
+
+        if self.plot_local_remote == "remote":
+            self.controller.load_remote_plot_data(plot_input_file, new_tab=False)
+        else:
+            self.load_data(plot_input_file, new_tab=False)
+
+        print("generating standards")
+        std_plot_gen = StandardPlotGenerator(self.plot_workbook, self.dataset_name, plot_input_file)
+        std_plot_gen.generate_plots()
+        std_plot_gen.generate_plots(white_reference=False)
+
+    def load_data(self, plot_input_file, new_tab):
         if len(self.controller.queue) > 0:
             if self.plot in self.controller.queue[0]:
                 # Happens if we just transferred data from spec compy.
                 self.controller.complete_queue_item()
                 self.controller.wait_dialog.top.destroy()
 
-
         try:
-            data_loaded = self.plotter.load_samples(self.dataset_name, plot_input_file)
+            data_loaded = self.plot_workbook.load_samples(self.dataset_name, plot_input_file)
             if not data_loaded:
                 ErrorDialog(self.controller, "Error", "Error: Could not load data.")
                 print("Error: Could not load data.")
@@ -279,5 +298,8 @@ class PlotManager:
                 " is the server accessible?",
                 {"ok": {}},
             )
-            return
-        self.plotter.new_tab()
+            return False
+
+        if new_tab:
+            self.plot_workbook.new_tab()
+

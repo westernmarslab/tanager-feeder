@@ -73,7 +73,7 @@ from tanager_feeder.goniometer_view.goniometer_view import GoniometerView
 from tanager_feeder.listeners.pi_listener import PiListener
 from tanager_feeder.listeners.spec_listener import SpecListener
 
-from tanager_feeder.plotter.plotter import Plotter
+from tanager_feeder.plotter.plot_workbook import PlotWorkbook
 from tanager_feeder.remote_directory_worker import RemoteDirectoryWorker
 from tanager_feeder.utils import VerticalScrolledFrame, MovementUnits, sin, cos, arctan
 from tanager_feeder import utils
@@ -348,8 +348,8 @@ class Controller(utils.ControllerType):
         self.goniometer_view = GoniometerView(self, self.view_notebook)
         self.view_notebook.bind("<<NotebookTabChanged>>", lambda event: self.goniometer_view.tab_switch(event))
 
-        # The plotter manages all the plots.
-        self.plotter = Plotter(
+        # The plot_workbook manages all the plots.
+        self.plot_workbook = PlotWorkbook(
             self,
             self.get_dpi(),
             [
@@ -1168,10 +1168,10 @@ class Controller(utils.ControllerType):
     def show_plot_frame(self) -> None:
         self.plot_manager.show()
 
-    def plot_remote(self, filename: str) -> None:
+    def load_remote_plot_data(self, filename: str, new_tab: bool) -> None:
         self.queue.insert(0, {self.plot_remote: [filename]})
         plot_loc = os.path.join(self.config_info.local_config_loc, "plot_temp.csv")
-        self.queue.insert(1, {self.plot_manager.plot: [plot_loc]})
+        self.queue.insert(1, {self.plot_manager.load_data: [plot_loc, new_tab]})
         self.spec_commander.transfer_data(filename)
         DataHandler(
             self,
@@ -2251,7 +2251,7 @@ class Controller(utils.ControllerType):
             pass
 
     def reset_plot_data(self):
-        self.plotter = Plotter(
+        self.plot_workbook = PlotWorkbook(
             self,
             self.get_dpi(),
             [
@@ -2787,7 +2787,7 @@ class Controller(utils.ControllerType):
                 self.goniometer_view.double_embed.configure(height=goniometer_height)
                 self.console.console_frame.configure(height=console_height)
                 self.view_notebook.configure(height=goniometer_height)
-                self.plotter.set_height(goniometer_height)
+                self.plot_workbook.set_height(goniometer_height)
 
                 thread = Thread(
                     target=self.refresh

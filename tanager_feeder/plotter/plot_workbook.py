@@ -2,15 +2,18 @@
 from tkinter import TclError, filedialog
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 from tanager_feeder import utils
+from tanager_feeder.plotter.sample import Sample
 from tanager_feeder.plotter.tab import Tab
 from tanager_data_io.data_io import DataIO
 
 
-class Plotter(DataIO):
+class PlotWorkbook(DataIO):
     def __init__(self, controller, dpi, style):
         super().__init__()
+        self.num = 0
         self.num = 0
         self.controller = controller
         self.notebook = self.controller.view_notebook
@@ -129,6 +132,61 @@ class Plotter(DataIO):
     #     az = int(label.split("az=")[1].strip(")"))
     #     g = utils.get_phase_angle(i, e, az)
     #     return e, i, g
+
+    @staticmethod
+    def get_winnowed_samples(geoms, all_samples, exclude_specular, specularity_tolerance):
+        winnowed_samples = (
+            []
+        )  # These will only have the data we are actually going to plot, which will only be from the
+        # specified geometries.
+
+        for i, sample in enumerate(all_samples):
+            winnowed_sample = Sample(sample.name, sample.file, sample.title)
+
+            for geom in sample.geoms:  # For every spectrum associated with the sample,
+                # check if it is for a geometry we are going to plot.
+                # if it is, attach that spectrum to the winnowed sample data
+                try:  # If there is no geometry information for this sample, this will throw an exception.
+                    i, e, az = utils.get_i_e_az(geom)
+                    if PlotWorkbook.check_geom(
+                            geoms, i, e, az, exclude_specular, specularity_tolerance
+                    ):  # If this is a geometry we are supposed to plot
+                        winnowed_sample.add_spectrum(
+                            geom, sample.data[geom]["reflectance"], sample.data[geom]["wavelength"]
+                        )
+                except (IndexError, KeyError):  # If there's no geometry information, plot the sample.
+                    print("Warning: Plotting spectrum with invalid geometry information")
+                    winnowed_sample.add_spectrum(
+                        geom, sample.data[geom]["reflectance"], sample.data[geom]["wavelength"]
+                    )
+            winnowed_samples.append(winnowed_sample)
+
+        return winnowed_samples
+
+    @staticmethod
+    def check_geom(geoms, i, e, az, exclude_specular=False, tolerance=None):
+        i = int(float(i))  # Get exception from int('0.0')
+        e = int(float(e))
+        if az is not None:
+            az = int(float(az))
+
+        if exclude_specular:
+            if np.abs(int(i) - (-1 * int(e))) <= tolerance:
+                return False
+
+        good_i = False
+        if i in geoms["i"] or geoms["i"] == []:
+            good_i = True
+
+        good_e = False
+        if e in geoms["e"] or geoms["e"] == []:
+            good_e = True
+
+        good_az = False
+        if az in geoms["az"] or geoms["az"] == []:
+            good_az = True
+
+        return good_i and good_e and good_az
 
     @staticmethod
     def artifact_danger(g, left=0, right=100000000000000000000):
