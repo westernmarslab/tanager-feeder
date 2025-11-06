@@ -54,15 +54,12 @@ class ChangeIPDialog(Dialog):
 
         with open(self.config_loc + "ip_addresses.txt", "w+") as f:
             if self.connection_manager.spec_ip != "":
-                print("writing ip! ")
-                print("spec ip")
-                print(self.connection_manager.spec_ip)
+                print(f"Saving spectrometer computer IP address: {self.connection_manager.spec_ip}")
                 f.write(self.connection_manager.spec_ip + "\n")
             else:
                 f.write("spec_compy_ip\n")
             if self.connection_manager.spec_ip != "":
-                print("writing pi_pi")
-                print(self.connection_manager.pi_ip)
+                print(f"Saving Raspberry Pi IP address: {self.connection_manager.pi_ip}")
                 f.write(self.connection_manager.pi_ip)
             else:
                 f.write("raspberrypi")
