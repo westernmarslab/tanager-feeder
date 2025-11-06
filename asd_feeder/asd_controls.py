@@ -5,6 +5,7 @@ import pywinauto
 import warnings
 import pyautogui
 from pywinauto import mouse
+import psutil
 import time
 import os
 import shutil
@@ -46,7 +47,7 @@ class RS3Controller:
     def __init__(self, share_loc, RS3_loc):
         self.RS3_loc = RS3_loc
         self.share_loc = share_loc
-        self.app = Application()
+        self.app = None
         self.save_dir = ""
         self.basename = ""
         self.nextnum = None
@@ -400,29 +401,33 @@ class RS3Controller:
             self.nextnum = "0" + self.nextnum
         save = self.app["Spectrum Save"]
         if save.exists() == False:
-            self.menu.open_control_dialog([IMG_LOC + "/rs3specsave.png", IMG_LOC + "/rs3specsave2.png"])
+            self.menu.open_control_dialog(
+                [IMG_LOC + "/rs3specsave.png", IMG_LOC + "/rs3specsave2.png", IMG_LOC + "/rs3specsave3.png"]
+            )
         for _ in range(int(2.5 / self.interval)):
             save = self.app["Spectrum Save"]
             if save.exists():
+                print("Found Spectrum Save")
                 break
             else:
-                print("no spectrum save yet")
+                print("Waiting for Spectrum Save dialog")
                 time.sleep(self.interval)
 
         if save.exists() == False:
             print("ERROR: Failed to open save dialog")
             raise Exception
-            return
+
         save.Edit6.set_edit_text(dir)
         save.Edit7.set_edit_text("")
         save.Edit5.set_edit_text(base)
         save.Edit4.set_edit_text(startnum)
+        print("Done setting edit text")
 
         focused = try_set_focus(save)
         if not focused:
             print("ERROR: Failed to set focus on save dialog")
             raise Exception
-            return
+
         okfound = False
         controls = [save.ThunderRT6PictureBoxDC3, save.ThunderRT6PictureBoxDC2, save.ThunderRT6PictureBox]
         t = 15
@@ -437,7 +442,6 @@ class RS3Controller:
                     break
             if okfound:
                 break
-            print("searching for OK button")
             time.sleep(0.5)
             t -= 0.5
         if t < 0:
@@ -802,38 +806,35 @@ class RS3Menu:
         height = 50
         controlregion = (x_left, y_top, width, height)
 
-        loc = None
-        found = False
+        loc1 = None
         for _ in range(10 * timeout):
-            loc = find_image(IMG_LOC + "/rs3control.png", loc=controlregion)
-            print(loc)
-            if loc == None:
-                print("Searching for image 2")
-                loc = find_image(IMG_LOC + "/rs3control2.png", loc=controlregion)
+            loc1 = find_image(IMG_LOC + "/rs3control.png", loc=controlregion)
+            if not loc1:
+                loc1 = find_image(IMG_LOC + "/rs3control2.png", loc=controlregion)
                 time.sleep(0.25)
-            else:
-
-                x = loc[0] + controlregion[0]
-                y = loc[1] + controlregion[1]
+            if loc1:
+                x = loc1[0] + controlregion[0]
+                y = loc1[1] + controlregion[1]
                 mouse.click(coords=(x, y))
                 menuregion = (x, y, 100, 300)
 
                 # Now that you've opened the menu, find the menu item.
+                loc2=None
                 for _ in range(4 * timeout):
-                    loc2 = find_image(menuitems[0], loc=menuregion)
-                    if loc2 == None and len(menuitems) > 1:
-                        loc2 = find_image(menuitems[1], loc=menuregion)
-                    if loc2 != None:
+                    for item in reversed(menuitems):
+                        loc2 = find_image(item, loc=menuregion)
+                        if loc2:
+                            break
+                    if loc2:
                         x = loc2[0] + menuregion[0]
                         y = loc2[1] + menuregion[1]
                         mouse.click(coords=(x, y))
-                        found = True
                         break
                     else:
                         print("Searching for menu item")
                         time.sleep(0.25)
                 break
-        if not found:
+        if not loc1 or not loc2:
             print("Menu item not found")
             raise Exception("Menu item not found")
 
@@ -855,7 +856,11 @@ def find_image(image, rect=None, loc=None):
         screenshot = pyautogui.screenshot(region=(rect.left, rect.top, rect.width(), rect.height()))
     else:
         screenshot = pyautogui.screenshot(region=loc)
-    location = pyautogui.locate(image, screenshot)
+    try:
+        location = pyautogui.locate(image, screenshot)
+    except pyautogui.ImageNotFoundException:
+        location = None
+
     return location
 
 def try_set_focus(target):

@@ -19,15 +19,19 @@ class TanagerClient:
         if self.connected:
             raise AlreadyConnectedException
         if self.server_address is None:
+            print(f"Cannot connect. Server address: {self.server_address}")
             return False
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.settimeout(timeout)
         # Connect the socket to the port where the server is listening
         try:
+            print(f"    Connecting on {self.server_address}")
             self.sock.connect(self.server_address)
             self.connected = True
             return True
-        except (socket.timeout, socket.gaierror, TimeoutError, ConnectionRefusedError, OSError):
+        except (socket.timeout, socket.gaierror, TimeoutError, ConnectionRefusedError, OSError) as e:
+            print("     Error trying to connect.")
+            print(e)
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.connected = False
             return False

@@ -1006,6 +1006,25 @@ class Controller(utils.ControllerType):
             bg=self.tk_format.buttonbackgroundcolor,
         )
 
+        self.garbage_button = Button(
+            self.action_button_frame,
+            fg=self.tk_format.textcolor,
+            text="Garbage",
+            padx=self.tk_format.padx,
+            pady=self.tk_format.pady,
+            width=self.tk_format.button_width,
+            height=2,
+            bg="light gray",
+            command=self.garbage_button_cmd,
+        )
+        self.tk_buttons.append(self.garbage_button)
+        self.garbage_button.pack(padx=self.tk_format.padx, pady=self.tk_format.pady, side=LEFT)
+        self.garbage_button.config(
+            fg=self.tk_format.buttontextcolor,
+            highlightbackground=self.tk_format.highlightbackgroundcolor,
+            bg=self.tk_format.buttonbackgroundcolor,
+        )
+
         self.acquire_button = Button(
             self.action_button_frame,
             fg=self.tk_format.textcolor,
@@ -2076,6 +2095,14 @@ class Controller(utils.ControllerType):
         )  # We don't automatically retry taking spectra so there is no need to have override and setup complete set to
         # true here as for the other two above.
         self.acquire(override=False, setup_complete=False, action=self.take_spectrum, garbage=False)
+
+    # Take a spectrum with 'garbage' label
+    def garbage_button_cmd(self):
+        self.queue = []
+        self.queue.append(
+            {self.take_spectrum: [False, False, True]}
+        )
+        self.acquire(override=False, setup_complete=False, action=self.take_spectrum, garbage=True)
 
     # commands that are put in the queue for optimizing, wr, taking a spectrum.
     def opt(self, override: bool = False, setup_complete: bool = False) -> None:

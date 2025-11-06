@@ -83,7 +83,7 @@ class SpecCompyController:
             # check for new commands in the tcp server queue
             while len(self.local_server.queue) > 0:
                 if self.local_server.remote_server_address != self.client.server_address:
-                    print("Setting control computer address:")
+                    print("Connecting to control computer:")
                     self.client.server_address = self.local_server.remote_server_address
                     print(self.client.server_address)
                 message = self.local_server.queue.pop(0)
