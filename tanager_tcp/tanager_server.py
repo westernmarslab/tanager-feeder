@@ -15,7 +15,7 @@ class TanagerServer:
         #This is useful because when the spectrometer computer starts up, asd-feeder may start
         # before network connections are initialized. This can lead to the TanagerServer using localhost.
         if wait_for_network:
-            while self.ip_address[0:3] == "127":
+            while self.ip_address[0:3] in ["127", "0.0"]:
                 print("Waiting for network connection...")
                 hostname = socket.gethostname()
                 self.ip_address = socket.gethostbyname(hostname)
@@ -37,7 +37,8 @@ class TanagerServer:
         i = 0
         while True:
             i += 1
-
+            hostname = socket.gethostname()
+            print(f"Current IP address: {socket.gethostbyname(hostname)}")
             connection, _ = self.sock.accept()
             try:
                 # Receive the header telling the length of the message
