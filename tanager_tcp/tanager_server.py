@@ -1,4 +1,5 @@
 import os
+import platform
 import socket
 import time
 from typing import Optional, Tuple
@@ -15,15 +16,17 @@ class TanagerServer:
         #This is useful because when the spectrometer computer starts up, asd-feeder may start
         # before network connections are initialized. This can lead to the TanagerServer using localhost.
         if wait_for_network:
-            while self.ip_address[0:3] in ["127", "0.0"]:
+            while self.ip_address[0:3] in ["127"]:
                 print("Waiting for network connection...")
                 hostname = socket.gethostname()
                 self.ip_address = socket.gethostbyname(hostname)
                 time.sleep(2)
 
         # Bind the socket to the port
-        # self.server_address = (ip_address, port) #This causes the raspberry pi to fail.
-        self.server_address = ("", port)
+        if platform.system() == "Windows":
+            self.server_address = (self.ip_address, port) #This causes the raspberry pi to fail.
+        if platform.system() == "Linux":
+            self.server_address = ("", port)
 
         self.sock.bind(self.server_address)
         self.queue = []
@@ -38,7 +41,6 @@ class TanagerServer:
         while True:
             i += 1
             hostname = socket.gethostname()
-            print(f"Current IP address: {socket.gethostbyname(hostname)}")
             connection, _ = self.sock.accept()
             try:
                 # Receive the header telling the length of the message
@@ -71,8 +73,6 @@ class TanagerServer:
                     message += data
                     if not data:
                         raise ShortMessageError("Message shorter than expected")
-
-
 
                 # Send a return message containing the header and address info
                 connection.sendall(header + remote_server_address)
