@@ -25,7 +25,6 @@ class TanagerClient:
         self.sock.settimeout(timeout)
         # Connect the socket to the port where the server is listening
         try:
-            print(f"    Connecting on {self.server_address}")
             self.sock.connect(self.server_address)
             self.connected = True
             return True

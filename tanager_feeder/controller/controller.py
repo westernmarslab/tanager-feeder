@@ -1018,7 +1018,7 @@ class Controller(utils.ControllerType):
             command=self.garbage_button_cmd,
         )
         self.tk_buttons.append(self.garbage_button)
-        self.garbage_button.pack(padx=self.tk_format.padx, pady=self.tk_format.pady, side=LEFT)
+
         self.garbage_button.config(
             fg=self.tk_format.buttontextcolor,
             highlightbackground=self.tk_format.highlightbackgroundcolor,
@@ -1339,7 +1339,6 @@ class Controller(utils.ControllerType):
         return "set"
 
     def check_mandatory_input(self) -> bool:
-        print("CHECKING MANDATORY INPUT")
         save_config_status = self.check_save_config()
         if save_config_status == "invalid":
             ErrorDialog(self, label="Error: Please enter a valid save configuration.")
@@ -1511,8 +1510,6 @@ class Controller(utils.ControllerType):
                     label = "White Reference"
                 else:
                     label = self.sample_label_entries[self.current_sample_gui_index].get()
-                    print("controller queue:")
-                    print(self.queue)
                     # if self.manual_automatic.get() == 0:
                     #     # if in manual mode, clear out the sample label after taking a spectrum.
                     #     self.queue.append({self.clear_sample: []})
@@ -2655,6 +2652,7 @@ class Controller(utils.ControllerType):
             self.opt_button.pack(padx=self.tk_format.padx, pady=self.tk_format.pady, side=LEFT)
             self.wr_button.pack(padx=self.tk_format.padx, pady=self.tk_format.pady, side=LEFT)
             self.spec_button.pack(padx=self.tk_format.padx, pady=self.tk_format.pady, side=LEFT)
+            self.garbage_button.pack(padx=self.tk_format.padx, pady=self.tk_format.pady, side=LEFT)
 
             self.acquire_button.pack_forget()
             menu.entryconfigure(0, label="X Manual")
@@ -2667,6 +2665,7 @@ class Controller(utils.ControllerType):
             self.spec_button.pack_forget()
             self.opt_button.pack_forget()
             self.wr_button.pack_forget()
+            self.garbage_button.pack_forget()
             self.range_radio.configure(state=NORMAL)
             self.add_sample_button.configure(state=NORMAL)
             for pos_menu in self.pos_menus:

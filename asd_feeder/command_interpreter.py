@@ -125,10 +125,9 @@ class CommandInterpreter:
 
     def mkdir(self, params):
         try:
-            print(params[0])
             os.makedirs(params[0])
             if self.spec_controller.save_dir is not None and self.spec_controller.save_dir != "":
-                print("setting spec save directory to new directory")
+                print("Setting spec save directory to new directory.")
                 if "\\".join(params[0].split("\\")[:-1]) == self.spec_controller.save_dir:
                     expected = params[0].split(self.spec_controller.save_dir)[1].split("\\")[1]
                     self.spec_controller.hopefully_saved_files.append(expected)
@@ -191,18 +190,14 @@ class CommandInterpreter:
         source = params[0]
         if "spec_temp_data_loc" in source:
             source = source.replace("spec_temp_data_loc", self.temp_data_loc)
-            print(source)
         try:
             with open(source, "r") as file:
                 data = file.readlines()
                 if len(data[10]) < 5000:
-                    print("Smallish!")
                     batch_size = 100
                 elif len(data[10]) < 10000:
-                    print("Biggish!")
                     batch_size = 50
                 else:
-                    print("Big!")
                     batch_size = 10
                 utils.send(self.client, f"datatransferstarted{len(data)/batch_size}", [])
 
@@ -348,10 +343,6 @@ class CommandInterpreter:
             utils.send(self.client, "noconfig", [])
             print("noconfig")
             return
-        print("In white reference")
-        print(self.spec_controller.numspectra)
-        print(self.spec_controller.calfile)
-        print(type(self.spec_controller.calfile))
         if self.spec_controller.numspectra is None or self.spec_controller.calfile is None:
             utils.send(self.client, "nonumspectra", [])
             print("nonumspectectra")
@@ -476,9 +467,6 @@ class CommandInterpreter:
             datafile = temp_output_path + "\\" + csv_name
 
             #Don't give warnings about all the temp files that get dropped into the save directroy
-            print("*************************************************")
-            print(input_path)
-            print(self.spec_controller.save_dir)
             if input_path == self.spec_controller.save_dir:
                 self.data_files_to_ignore.append(csv_name)
                 batches = int(len(self.data_files_to_ignore)/self.process_controller.batch_size)+1

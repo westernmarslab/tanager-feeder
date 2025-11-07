@@ -342,7 +342,7 @@ class TkFormat:
         self.padx = 3
         self.pady = 3
         self.border_color = "light gray"
-        self.button_width = 15
+        self.button_width = 13
         self.buttonbackgroundcolor = "#888888"
         self.highlightbackgroundcolor = "#222222"
         self.entry_background = "light gray"
