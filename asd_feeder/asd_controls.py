@@ -1,4 +1,4 @@
-from pywinauto import Application, keyboard, findwindows
+from pywinauto import Application, keyboard, findwindows, Desktop
 from pywinauto.base_wrapper import ElementNotEnabled
 import pywintypes
 import pywinauto
@@ -74,15 +74,29 @@ class RS3Controller:
         self.menu = RS3Menu(self.app)
 
     def restart(self):
+        try:
             self.quit_RS3()
             time.sleep(10)
-            self.start_rs3()
-            time.sleep(3)
-            self.spectrum_save(
-                self.save_dir,
-                self.basename,
-                self.nextnum
-            )
+        except pywinauto.findbestmatch.MatchError:
+            print("Unable to quit RS3. Likely because RS3 already quit.")
+            # print("Visible windows:")
+            # for w in Desktop(backend="win32").windows():
+            #     try:
+            #         print(
+            #             "title=", repr(w.window_text()),
+            #             "class=", repr(w.class_name()),
+            #             "handle=", w.handle
+            #         )
+            #     except Exception:
+            #         pass
+
+        self.start_RS3()
+        time.sleep(3)
+        self.spectrum_save(
+            self.save_dir,
+            self.basename,
+            self.nextnum
+        )
 
     def quit_RS3(self):
         self.spec.set_focus()
