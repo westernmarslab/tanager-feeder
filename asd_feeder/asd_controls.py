@@ -295,14 +295,13 @@ class RS3Controller:
         t = 0
         timeout = 30
         while not started and t < timeout:
-            loc = find_image(IMG_LOC + "/optimizing.png", rect=self.spec.ThunderRT6Frame3.rectangle())
-            if loc != None:
+            self.spec.ThunderRT6Frame22.draw_outline(colour="blue", thickness=1)
+            loc = find_image(IMG_LOC + "/optimizing3.png", rect=self.spec.ThunderRT6Frame22.rectangle())
+            if loc is not None:
                 started = True
                 print("Initialized optimization")
             else:
                 t += 0.1  # Note there is no sleeping. If we sleep, we might miss the words appearing on the screen, which aren't always there for long.
-                if t % 5 == 0:
-                    print(t)
         if not started:
             print("opt timed out")
             raise Exception("Optimization timed out")
@@ -315,12 +314,12 @@ class RS3Controller:
         timeout = 10 + int(self.numspectra) / 9
         while not finished and t < timeout:
             loc = find_image(IMG_LOC + "/white_status.png", rect=self.spec.ThunderRT6PictureBoxDC5.rectangle())
-            if loc != None:
+            if loc is not None:
                 print("Found white status")
                 while not finished and t < timeout:
 
                     loc = find_image(IMG_LOC + "/white_status.png", rect=self.spec.ThunderRT6PictureBoxDC5.rectangle())
-                    if loc != None:
+                    if loc is not None:
                         finished = True
                     else:
                         time.sleep(self.interval)
@@ -337,7 +336,7 @@ class RS3Controller:
         timeout = 10 + int(self.numspectra) / 9
         while not ready and t < timeout:
             loc = find_image(IMG_LOC + "/status_color.png", rect=self.spec.ThunderRT6PictureBoxDC5.rectangle())
-            if loc != None:
+            if loc is not None:
                 ready = True
             else:
                 time.sleep(self.interval)
