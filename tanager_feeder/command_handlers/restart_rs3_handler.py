@@ -13,6 +13,7 @@ class RestartRS3Handler(CommandHandler):
         while self.timeout_s > 0:
             if "rs3restarted" in self.listener.queue:
                 self.listener.queue.remove("rs3restarted")
+                print("Waiting 120 seconds for RS3 restart to complete.")
                 time.sleep(120) # Give a chance for rs3 to really start
                 self.success()
                 return
