@@ -1018,7 +1018,7 @@ class Controller(utils.ControllerType):
             command=self.garbage_button_cmd,
         )
         self.tk_buttons.append(self.garbage_button)
-
+        self.garbage_button.pack(padx=self.tk_format.padx, pady=self.tk_format.pady, side=LEFT)
         self.garbage_button.config(
             fg=self.tk_format.buttontextcolor,
             highlightbackground=self.tk_format.highlightbackgroundcolor,
