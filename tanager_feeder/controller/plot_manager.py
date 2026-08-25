@@ -274,6 +274,17 @@ class PlotManager:
         std_plot_gen = StandardPlotGenerator(self.plot_workbook, self.dataset_name, plot_input_file)
         std_plot_gen.generate_plots()
         std_plot_gen.generate_plots(white_reference=False)
+        root = os.path.split(plot_input_file)[0]
+        save_dir = os.path.join(root, "standard_plots")
+        Dialog(
+            self.controller,
+            "Figured Saved.",
+            f"Standard figures saved to\n\n{save_dir}",
+            {
+                "ok": {},
+            }
+        )
+
 
     def load_data(self, plot_input_file, new_tab):
         if len(self.controller.queue) > 0:

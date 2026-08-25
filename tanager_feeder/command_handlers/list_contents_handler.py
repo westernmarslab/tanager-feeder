@@ -38,8 +38,6 @@ class ListContentsHandler(CommandHandler):
         if self.status == "timeout":
             self.timeout("Error: Operation timed out while listing directory contents.")
         else:
-            print("here is what a success status looks like (in listcontents handler)")
-            print(self.status)
             self.success()
 
     # inner_mkdir function gets called if the directory doesn't exist and the user clicks 'yes' for making the directory.

@@ -140,8 +140,8 @@ class Plot:
         # we'll use these to generate hsv lists of colors for each sample, which will be evenly distributed across a
         # gradient to make it easy to see what the overall trend of reflectance is.
         #         self.hues=[200,12,130,290,170,37,330]
-        self.hues = [200, 12, 130, 290, 170, 37]
-        self.color_names = ["Blue", "Red", "Green", "Magenta", "Teal", "Custom"]
+        self.hues = [205, 0, 130, 310, 40, 170, 65, 260, 180]
+        self.color_names = ["Blue", "Red", "Green", "Magenta", "Orange", "Teal", "Yellow", "Purple", "Custom"]
         self.oversize_legend = oversize_legend
         self.plot_scale = plot_scale
         self.annotations = (
@@ -304,7 +304,10 @@ class Plot:
             save_format = path.split(".")[-1]
             if save_format not in available_formats:
                 path = path + ".png"
+        original_size = fig.get_size_inches()
+        fig.set_size_inches(9, 5)
         fig.savefig(path, facecolor=fig.get_facecolor())
+        fig.set_size_inches(original_size)
 
     def set_title(self, title, draw=True):
         self.title = title

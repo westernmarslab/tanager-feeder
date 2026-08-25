@@ -77,5 +77,5 @@ class GetPositionHandler(CommandHandler):
         self.controller.science_i = None
         self.controller.science_e = None
         self.controller.science_az = None
-        self.controller.set_manual_automatic(force=0)
+        self.controller.set_manual_automatic(0)
         self.controller.unfreeze()

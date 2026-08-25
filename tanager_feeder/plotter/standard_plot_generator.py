@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 from tanager_feeder.plotter.plot import Plot
 from tanager_feeder import utils
+from tanager_feeder.dialogs.dialog import Dialog
 
 class StandardPlotGenerator:
     def __init__(self, plot_workbook, dataset_name, file):
@@ -95,5 +96,6 @@ class StandardPlotGenerator:
                 plot.save(white_fig, filename)
                 plt.close(white_fig)
                 plt.close(dark_fig)
+
 
 
