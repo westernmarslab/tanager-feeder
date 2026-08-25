@@ -289,10 +289,16 @@ class Controller(utils.ControllerType):
             self.audiomenu.add_command(label="X Disabled", command=self.disable_audio)
         editmenu.add_cascade(label="Audio signals", menu=self.audiomenu)
 
-        self.goniometermenu = Menu(editmenu, tearoff=0)
-        self.goniometermenu.add_command(label="X Manual", command=lambda: self.set_manual_automatic(force=0))
-        self.goniometermenu.add_command(label="  Automatic", command=lambda: self.set_manual_automatic(force=1))
-        editmenu.add_cascade(label="Goniometer control", menu=self.goniometermenu)
+        self.controlmodemenu = Menu(editmenu, tearoff=0)
+        editmenu.add_cascade(label="Control mode", menu=self.controlmodemenu)
+
+        self.manualmenu = Menu(self.controlmodemenu, tearoff=0)
+        self.manualmenu.add_command(label="Contact probe", command=self.set_contact_probe_mode)
+        self.manualmenu.add_command(label="Small diameter probe", command=self.set_small_diameter_probe_mode)
+        self.manualmenu.add_command(label="X Goniometer", command=self.set_manual_goniometer_mode)
+        self.controlmodemenu.add_cascade(label="X Manual", menu=self.manualmenu)
+        self.controlmodemenu.add_command(label="  Automatic", command=lambda: self.set_manual_automatic(force=1))
+
 
         self.geommenu = Menu(editmenu, tearoff=0)
         self.geommenu.add_command(label="X Individual", command=lambda: self.set_individual_range(0))
@@ -1001,25 +1007,6 @@ class Controller(utils.ControllerType):
         self.tk_buttons.append(self.spec_button)
         self.spec_button.pack(padx=self.tk_format.padx, pady=self.tk_format.pady, side=LEFT)
         self.spec_button.config(
-            fg=self.tk_format.buttontextcolor,
-            highlightbackground=self.tk_format.highlightbackgroundcolor,
-            bg=self.tk_format.buttonbackgroundcolor,
-        )
-
-        self.garbage_button = Button(
-            self.action_button_frame,
-            fg=self.tk_format.textcolor,
-            text="Garbage",
-            padx=self.tk_format.padx,
-            pady=self.tk_format.pady,
-            width=self.tk_format.button_width,
-            height=2,
-            bg="light gray",
-            command=self.garbage_button_cmd,
-        )
-        self.tk_buttons.append(self.garbage_button)
-        self.garbage_button.pack(padx=self.tk_format.padx, pady=self.tk_format.pady, side=LEFT)
-        self.garbage_button.config(
             fg=self.tk_format.buttontextcolor,
             highlightbackground=self.tk_format.highlightbackgroundcolor,
             bg=self.tk_format.buttonbackgroundcolor,
@@ -2083,22 +2070,20 @@ class Controller(utils.ControllerType):
         self.queue.append({self.take_spectrum: [True, True, False]})
         self.acquire(override=False, setup_complete=False, action=self.wr)
 
-    # called when user clicks take spectrum button. No different than take_spectrum() except we clear out the queue
-    # first just in case there is something leftover hanging out in there.
+    # called when user clicks take spectrum button. Different from take_spectrum() in that
+    #   1. we clear out the queue first just in case there is something leftover hanging out in there.
+    #   2. we include a garbage spectrum.
     def spec_button_cmd(self) -> None:
         self.queue = []
-        self.queue.append(
-            {self.take_spectrum: [False, False, False]}
-        )  # We don't automatically retry taking spectra so there is no need to have override and setup complete set to
+        # We don't automatically retry taking spectra so there is no need to have override and setup complete set to
         # true here as for the other two above.
-        self.acquire(override=False, setup_complete=False, action=self.take_spectrum, garbage=False)
-
-    # Take a spectrum with 'garbage' label
-    def garbage_button_cmd(self):
-        self.queue = []
         self.queue.append(
             {self.take_spectrum: [False, False, True]}
         )
+        self.queue.append(
+            {self.take_spectrum: [True, True, False]}
+        )
+
         self.acquire(override=False, setup_complete=False, action=self.take_spectrum, garbage=True)
 
     # commands that are put in the queue for optimizing, wr, taking a spectrum.
@@ -2629,8 +2614,37 @@ class Controller(utils.ControllerType):
             buttons=buttons,
         )
 
+    def clear_manualmenu_selection(self):
+        self.manualmenu.entryconfigure(0, label="Contact probe")
+        self.manualmenu.entryconfigure(1, label="Small diameter probe")
+        self.manualmenu.entryconfigure(2, label="Goniometer")
+
+    def set_contact_probe_mode(self):
+        self.set_manual_automatic(0)
+        self.clear_manualmenu_selection()
+        self.manualmenu.entryconfigure(0, label="X Contact probe")
+        for entry in [self.incidence_entries[0], self.emission_entries[0], self.azimuth_entries[0]]:
+            entry.delete(0, tk.END)
+        self.incidence_entries[0].insert(0, "12")
+        self.emission_entries[0].insert(0, "35")
+        self.azimuth_entries[0].insert(0, "0")
+
+    def set_small_diameter_probe_mode(self):
+        self.set_manual_automatic(0)
+        self.clear_manualmenu_selection()
+        self.manualmenu.entryconfigure(1, label="X Small diameter probe")
+        for entry in [self.incidence_entries[0], self.emission_entries[0], self.azimuth_entries[0]]:
+            entry.delete(0, tk.END)
+            entry.insert(0, "0")
+
+    def set_manual_goniometer_mode(self):
+        self.set_manual_automatic(0)
+        self.clear_manualmenu_selection()
+        self.manualmenu.entryconfigure(2, label="X Goniometer")
+        for entry in [self.incidence_entries[0], self.emission_entries[0], self.azimuth_entries[0]]:
+            entry.delete(0, tk.END)
+
     def set_manual_automatic(self, force=-1, known_goniometer_state=False):
-        menu = self.goniometermenu
         if force == 0:
             self.manual_automatic.set(0)
         elif force == 1:
@@ -2652,11 +2666,10 @@ class Controller(utils.ControllerType):
             self.opt_button.pack(padx=self.tk_format.padx, pady=self.tk_format.pady, side=LEFT)
             self.wr_button.pack(padx=self.tk_format.padx, pady=self.tk_format.pady, side=LEFT)
             self.spec_button.pack(padx=self.tk_format.padx, pady=self.tk_format.pady, side=LEFT)
-            self.garbage_button.pack(padx=self.tk_format.padx, pady=self.tk_format.pady, side=LEFT)
 
             self.acquire_button.pack_forget()
-            menu.entryconfigure(0, label="X Manual")
-            menu.entryconfigure(1, label="  Automatic")
+            self.controlmodemenu.entryconfigure(0, label="X Manual")
+            self.controlmodemenu.entryconfigure(1, label="  Automatic")
             self.geommenu.entryconfigure(0, label="X Individual")
             self.geommenu.entryconfigure(1, state=DISABLED, label="  Range (Automatic only)")
         else:
@@ -2665,7 +2678,6 @@ class Controller(utils.ControllerType):
             self.spec_button.pack_forget()
             self.opt_button.pack_forget()
             self.wr_button.pack_forget()
-            self.garbage_button.pack_forget()
             self.range_radio.configure(state=NORMAL)
             self.add_sample_button.configure(state=NORMAL)
             for pos_menu in self.pos_menus:
@@ -2674,14 +2686,16 @@ class Controller(utils.ControllerType):
             # This is if you are setting manual_automatic from commandline and already entered i, e, sample tray
             # position.
             if known_goniometer_state:
-                menu.entryconfigure(0, label="  Manual")
-                menu.entryconfigure(1, label="X Automatic")
+                self.controlmodemenu.entryconfigure(0, label="  Manual")
+                self.controlmodemenu.entryconfigure(1, label="X Automatic")
+                self.clear_manualmenu_selection()
                 self.geommenu.entryconfigure(1, state=NORMAL, label="  Range (Automatic only)")
             else:
                 self.get_position_from_pi()
 
-            menu.entryconfigure(0, label="  Manual")
-            menu.entryconfigure(1, label="X Automatic")
+            self.controlmodemenu.entryconfigure(0, label="  Manual")
+            self.controlmodemenu.entryconfigure(1, label="X Automatic")
+            self.clear_manualmenu_selection()
             self.geommenu.entryconfigure(1, state=NORMAL, label="  Range (Automatic only)")
 
     def get_position_from_pi(self):
@@ -2797,7 +2811,7 @@ class Controller(utils.ControllerType):
     def refresh(self):
         time.sleep(0.25)
         self.goniometer_view.flip()
-        self.master.update()
+        self.master_update()
 
     def resize(
         self, window=None
@@ -2824,12 +2838,18 @@ class Controller(utils.ControllerType):
                     window.width - self.control_frame.winfo_width() - 2, goniometer_height - 10
                 )
                 self.goniometer_view.flip()
-                self.master.update()
+                self.master_update()
             except (AttributeError, TclError):
                 # Happens when the program is just starting up and there is no view yet
                 pass
             except ValueError:
                 pass
+
+    def master_update(self):
+        try:
+            self.master.update()
+        except RuntimeError:
+            print("Warning - RuntimeError. Likely due to Tk call from outside main thread.")
 
     def complete_queue_item(self):
         self.queue.pop(0)
