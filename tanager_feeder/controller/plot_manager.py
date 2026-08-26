@@ -288,7 +288,7 @@ class PlotManager:
 
     def load_data(self, plot_input_file, new_tab):
         if len(self.controller.queue) > 0:
-            if self.plot in self.controller.queue[0]:
+            if self.plot_setup in self.controller.queue[0]:
                 # Happens if we just transferred data from spec compy.
                 self.controller.complete_queue_item()
                 self.controller.wait_dialog.top.destroy()

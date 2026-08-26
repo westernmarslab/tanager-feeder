@@ -117,11 +117,13 @@ class ProcessHandler(CommandHandler):
         self.timeout()
 
     def complete_queue_items(self):
-        for i, item in enumerate(self.controller.queue):
-            if i > 1:
-                break
-            elif item in [self.controller.process_cmd, self.controller.finish_process]:
+        print("before:")
+        print(self.controller.queue)
+        print()
+        for item in self.controller.queue[:2]:
+            if self.controller.process_cmd in item or self.controller.finish_process in item:
                 self.controller.complete_queue_item()
+        print("after:")
         print(self.controller.queue)
 
 
